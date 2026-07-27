@@ -121,7 +121,7 @@
   #roleList{max-height:56vh;overflow:auto;padding-right:2px}   /* list dài tự cuộn — phần trên đứng yên */
   #ruleTbl td.slot{height:96px;vertical-align:top;background:#fdfdfd}
   #ruleTbl td.slot.over{background:#e8f2ff}
-  #ruleTbl td.flowName{white-space:nowrap;font-weight:600;background:#f8f8f8}
+  #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:600;background:#f8f8f8}
   .chip{display:block;border:1px solid #666;border-radius:3px;
         background:#fff;padding:3px 6px;margin:2px 0;font-size:12px}
   .chip .chipTop{display:flex;align-items:center;justify-content:space-between;gap:5px}
@@ -188,16 +188,19 @@
     <div id="ver">version 6</div>
   </div>
   <div class="grp seg">
-    <button id="tabBtnOrg"   class="tabbtn active">Sơ đồ tổ chức</button>
-    <button id="tabBtnRules" class="tabbtn">Định nghĩa luồng</button>
-    <button id="tabBtnFlow"  class="tabbtn">Luồng duyệt</button>
+    <button id="tabBtnOrg"   class="tabbtn active" data-i18n="tabOrg">Sơ đồ tổ chức</button>
+    <button id="tabBtnRules" class="tabbtn" data-i18n="tabRules">Định nghĩa luồng</button>
+    <button id="tabBtnFlow"  class="tabbtn" data-i18n="tabFlow">Luồng duyệt</button>
   </div>
   <div class="grp">
-    <button id="bSave">Lưu JSON</button>
-    <button id="bOpen">Mở JSON</button>
+    <button id="bSave" data-i18n="btnSave">Lưu JSON</button>
+    <button id="bOpen" data-i18n="btnOpen">Mở JSON</button>
   </div>
   <div class="grp">
-    <button id="bUndo" class="ghost" title="Ctrl+Z">↶ Hoàn tác</button>
+    <button id="bUndo" class="ghost" title="Ctrl+Z" data-i18n="btnUndo">↶ Hoàn tác</button>
+  </div>
+  <div class="grp">
+    <button id="bLang" class="ghost" title="Switch language / Chuyển ngôn ngữ">English</button>
   </div>
   <input type="file" id="fileIn" accept=".json,application/json" hidden>
   <span id="msg"></span>
@@ -207,18 +210,18 @@
 <!-- ================= TAB 1: SƠ ĐỒ TỔ CHỨC ================= -->
 <div id="tabOrg">
   <div id="orgBar">
-    <div class="grp"><button id="bRoot" class="primary">＋ Box gốc</button></div>
+    <div class="grp"><button id="bRoot" class="primary" data-i18n="btnRoot">＋ Box gốc</button></div>
     <div class="grp">
-      <button id="bCopy">Copy bảng</button>
-      <button id="bDrawio">Xuất .drawio</button>
+      <button id="bCopy" data-i18n="btnCopy">Copy bảng</button>
+      <button id="bDrawio" data-i18n="btnDrawio">Xuất .drawio</button>
     </div>
     <div class="grp seg">
-      <button id="bZoomOut" class="ghost" title="Thu nhỏ">−</button>
-      <button id="bZoomReset" class="ghost" title="Về 100%"><span id="zoomLbl">100%</span></button>
-      <button id="bZoomIn" class="ghost" title="Phóng to">＋</button>
+      <button id="bZoomOut" class="ghost" data-i18n-title="tipZoomOut" title="Thu nhỏ">−</button>
+      <button id="bZoomReset" class="ghost" data-i18n-title="tipZoomReset" title="Về 100%"><span id="zoomLbl">100%</span></button>
+      <button id="bZoomIn" class="ghost" data-i18n-title="tipZoomIn" title="Phóng to">＋</button>
     </div>
     <div class="grp">
-      <button id="bZoomFit" class="ghost">Vừa màn hình</button>
+      <button id="bZoomFit" class="ghost" data-i18n="btnZoomFit">Vừa màn hình</button>
     </div>
     <div class="grp">
       <button id="bTglChart" class="ghost">Ẩn sơ đồ</button>
@@ -234,7 +237,7 @@
   </main>
 
   <section id="tableSec">
-    <h2>Bảng phân cấp (cột thẳng hàng theo cấp) <button id="bTgl">Thu gọn ▾</button></h2>
+    <h2><span data-i18n="orgTableH">Bảng phân cấp (cột thẳng hàng theo cấp)</span> <button id="bTgl">Thu gọn ▾</button></h2>
     <div id="tblHost"></div>
   </section>
 </div>
@@ -243,33 +246,33 @@
 <div id="tabRules">
   <div id="rulesWrap">
     <div id="rulesMain">
-      <div class="cardH">Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô</div>
+      <div class="cardH" data-i18n="rulesH">Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô</div>
       <div class="scrollTbl">
         <table id="ruleTbl" style="table-layout:fixed;width:100%;min-width:1026px">
           <colgroup>
             <col style="width:78px"><col style="width:158px"><col style="width:158px">
             <col style="width:158px"><col style="width:158px"><col style="width:158px"><col style="width:158px">
           </colgroup>
-          <thead><tr><th>Màu</th><th>TĐ1</th><th>TĐ2</th><th>TĐ3</th><th>TĐ4</th><th>TĐ*</th><th>PD</th></tr></thead>
+          <thead><tr><th data-i18n="colFlowName">Màu</th><th data-col="TĐ1">TĐ1</th><th data-col="TĐ2">TĐ2</th><th data-col="TĐ3">TĐ3</th><th data-col="TĐ4">TĐ4</th><th data-col="TĐ*">TĐ*</th><th data-col="PD">PD</th></tr></thead>
           <tbody id="ruleTbody"></tbody>
         </table>
       </div>
-      <div class="hint" style="margin-top:8px">
+      <div class="hint" style="margin-top:8px" data-i18n-html="rulesHint">
         Ô <b>🔒 CBQLNS</b> là cố định. Trên mỗi box đã thả, bấm nhãn phạm vi để xoay vòng
         <b>Tất cả → Vận hành → Còn lại</b> — một ô có thể chứa 1 box "Tất cả" hoặc 2 box "Vận hành" + "Còn lại".
         Nhánh "Vận hành" đánh dấu bằng checkbox trong panel Chi tiết box (tab Sơ đồ tổ chức).
       </div>
     </div>
     <div id="rulesSide" class="flowCard">
-      <div class="cardH">Box vai trò</div>
+      <div class="cardH" data-i18n="paletteH">Box vai trò</div>
       <div class="miniRow">
-        <button id="bAddFreeRole" class="primary">＋ Box mới</button>
+        <button id="bAddFreeRole" class="primary" data-i18n="btnAddFreeRole">＋ Box mới</button>
       </div>
       <div class="miniRow">
         <select id="rolePick" style="flex:1;min-width:0"></select>
-        <button id="bAddNodeRole">＋ Từ sơ đồ</button>
+        <button id="bAddNodeRole" data-i18n="btnAddNodeRole">＋ Từ sơ đồ</button>
       </div>
-      <div class="hint" style="margin:6px 0 10px">Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức
+      <div class="hint" style="margin:6px 0 10px" data-i18n-html="paletteHint">Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức
       (vd MCEO, MD) — sửa bên sơ đồ là bên này tự cập nhật. Kéo ở tay nắm ⠿ để thả vào ma trận.</div>
       <div id="roleList"></div>
     </div>
@@ -281,27 +284,27 @@
   <!-- Thanh điều khiển: ẩn/hiện khu nhập liệu -->
   <div class="miniRow" style="margin:0 0 10px">
     <button id="bTglInputs" class="ghost">Ẩn khu nhập liệu ▴</button>
-    <span class="hint">Ẩn khu Nhóm / Fund Center để chỉ xem bảng luồng duyệt.</span>
+    <span class="hint" data-i18n="inputsHint">Ẩn khu Nhóm / Fund Center để chỉ xem bảng luồng duyệt.</span>
   </div>
 
   <!-- KHU NHẬP LIỆU: Nhóm FC + FC cùng một hàng ngang -->
   <div class="flowTop" id="flowInputs">
     <!-- Nhóm Fund Center: bảng Mã FCG / Tên / CBQLNS + lọc nhanh (cùng ngôn ngữ với bảng FC) -->
     <section id="grpSec" class="flowCard">
-      <div class="cardH">Nhóm Fund Center <span id="grpCount" class="gcnt"></span></div>
+      <div class="cardH"><span data-i18n="grpH">Nhóm Fund Center</span> <span id="grpCount" class="gcnt"></span></div>
       <div id="grpBody">
         <div class="miniRow">
-          <input id="grpFilter" class="w2" placeholder="Lọc nhanh theo mã / tên nhóm…" autocomplete="off">
-          <button id="bAddGrp">＋ Nhóm</button>
+          <input id="grpFilter" class="w2" data-i18n-ph="grpFilterPh" placeholder="Lọc nhanh theo mã / tên nhóm…" autocomplete="off">
+          <button id="bAddGrp" data-i18n="btnAddGrp">＋ Nhóm</button>
         </div>
         <div class="scrollTbl inScroll" style="margin-top:8px">
           <table id="grpTbl">
             <colgroup><col style="width:100px"><col style="width:200px"><col style="width:220px"><col style="width:62px"><col style="width:46px"></colgroup>
-            <thead><tr><th>Mã FCG</th><th>Tên nhóm</th><th>CBQLNS (★)</th><th>FC</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="thFcgCode">Mã FCG</th><th data-i18n="thGrpName">Tên nhóm</th><th data-i18n="thCbqlns">CBQLNS (★)</th><th>FC</th><th></th></tr></thead>
             <tbody id="grpTbody"></tbody>
           </table>
         </div>
-        <div class="hint" style="margin-top:6px">Mỗi nhóm gán 1 CBQLNS (box có ★ bên tab Sơ đồ). Luồng duyệt tính theo nhóm.</div>
+        <div class="hint" style="margin-top:6px" data-i18n="grpHint">Mỗi nhóm gán 1 CBQLNS (box có ★ bên tab Sơ đồ). Luồng duyệt tính theo nhóm.</div>
       </div>
     </section>
 
@@ -310,20 +313,20 @@
       <div class="cardH">Fund Center <span id="fcCount" class="gcnt"></span></div>
       <div id="fcBody">
         <div class="miniRow">
-          <input id="fcFilter" class="w2" placeholder="Lọc nhanh theo mã / tên / nhóm…" autocomplete="off">
+          <input id="fcFilter" class="w2" data-i18n-ph="fcFilterPh" placeholder="Lọc nhanh theo mã / tên / nhóm…" autocomplete="off">
           <button id="bAddFc">＋ Fund Center</button>
-          <button id="bPaste">Dán từ Excel</button>
+          <button id="bPaste" data-i18n="btnPaste">Dán từ Excel</button>
         </div>
         <div id="pasteBox">
-          <div class="hint">Dán 3 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm</b> (cột nhóm được phép trống;
+          <div class="hint" data-i18n-html="pasteHint">Dán 3 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm</b> (cột nhóm được phép trống;
           nhóm chưa tồn tại sẽ được tạo và khớp theo tên, không phân biệt hoa thường).</div>
           <textarea id="pasteTa" placeholder="ID00T00101&#9;Depot 1 - Kapuk&#9;VH Vùng 1&#10;ID00T00201&#9;Depot 2 - Limo&#9;VH Vùng 1"></textarea>
-          <div class="miniRow"><button id="bPasteGo" class="primary">Nhập</button><button id="bPasteCancel">Hủy</button></div>
+          <div class="miniRow"><button id="bPasteGo" class="primary" data-i18n="btnPasteGo">Nhập</button><button id="bPasteCancel" data-i18n="btnPasteCancel">Hủy</button></div>
         </div>
         <div class="scrollTbl inScroll" style="margin-top:8px">
           <table id="fcTbl">
             <colgroup><col style="width:150px"><col style="width:280px"><col style="width:230px"><col style="width:46px"></colgroup>
-            <thead><tr><th>Mã</th><th>Tên Fund Center</th><th>Nhóm</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="thFcCode">Mã</th><th data-i18n="thFcName">Tên Fund Center</th><th data-i18n="thFcGroup">Nhóm</th><th></th></tr></thead>
             <tbody id="fcTbody"></tbody>
           </table>
         </div>
@@ -333,14 +336,14 @@
 
   <!-- Kết quả -->
   <section class="flowCard">
-    <div class="cardH">Bảng luồng duyệt
+    <div class="cardH"><span data-i18n="resH">Bảng luồng duyệt</span>
       <button id="bFlowView">Đang xem: theo nhóm</button>
-      <button id="bCopyFlow">Copy bảng luồng</button>
+      <button id="bCopyFlow" data-i18n="btnCopyFlow">Copy bảng luồng</button>
       <button id="tglRes" class="tgl">▴</button>
     </div>
     <div id="resBody">
       <div id="flowResult"></div>
-      <div class="hint" style="margin-top:8px">
+      <div class="hint" style="margin-top:8px" data-i18n-html="resHint">
         Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>.
         Nhánh của mỗi nhóm (Vận hành / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.
       </div>
@@ -380,6 +383,219 @@ var zoom = 1, worldW = 300, worldH = 300;
 var ZMIN = 0.2, ZMAX = 2, ZSTEP = 1.2;
 var MMW = 200, MMH = 150;               // khung minimap
 
+/* ============ [1b] I18N — Anh/Việt ============
+   Nguyên tắc: KHÓA DỮ LIỆU giữ nguyên (FLOWS/COLS/LEVELS/scope trong JSON),
+   chỉ dịch NHÃN hiển thị. Ngôn ngữ là tuỳ chọn UI, lưu localStorage.        */
+var LANG = (function(){ try{ return localStorage.getItem('ob_lang') || 'vi'; }catch(_){ return 'vi'; } })();
+
+var STR = {
+vi: {
+  docTitle:'Org Builder — sơ đồ, bảng phân cấp & luồng duyệt',
+  tabOrg:'Sơ đồ tổ chức', tabRules:'Định nghĩa luồng', tabFlow:'Luồng duyệt',
+  btnSave:'Lưu JSON', btnOpen:'Mở JSON', btnUndo:'↶ Hoàn tác',
+  btnRoot:'＋ Box gốc', btnCopy:'Copy bảng', btnDrawio:'Xuất .drawio',
+  tipZoomOut:'Thu nhỏ', tipZoomReset:'Về 100%', tipZoomIn:'Phóng to', btnZoomFit:'Vừa màn hình',
+  lblHideChart:'Ẩn sơ đồ', lblShowChart:'Hiện sơ đồ', lblHidePanel:'Ẩn panel', lblShowPanel:'Hiện panel',
+  lblTblCollapse:'Thu gọn ▾', lblTblExpand:'Mở ▴',
+  lblHideInputs:'Ẩn khu nhập liệu ▴', lblShowInputs:'Hiện khu nhập liệu ▸',
+  lblViewByGroup:'Đang xem: theo nhóm', lblViewByFc:'Đang xem: từng FC',
+  orgTableH:'Bảng phân cấp (cột thẳng hàng theo cấp)',
+  orgTableEmpty:'Bảng sẽ tự cập nhật khi bạn vẽ. Mỗi nhánh là một dòng; mỗi cột là một hàng cấp trên chart. Ô "—" nghĩa là nhánh đi xuyên qua cấp đó.',
+  // --- thuật ngữ miền (đồng nhất mọi nơi) ---
+  cbqlns:'CBQLNS', cbqlnsFull:'CBQLNS (quản lý ngân sách)',
+  tipStar:'CBQLNS — Cán bộ quản lý ngân sách',
+  vhBadge:'VH', vhWord:'VẬN HÀNH',
+  segALL:'Tất cả', segVH:'Vận hành', segREST:'Còn lại',
+  // --- panel chi tiết ---
+  panelH:'Chi tiết box', panelEmptyH:'Chi tiết',
+  panelEmptyHint:'Chọn một box để sửa.<br><br>Bắt đầu: bấm "＋ Box gốc", nhập thông tin, rồi "＋ Cấp dưới".<br><br>Kéo chuột trên nền để di chuyển vùng nhìn. Ctrl+Z để hoàn tác.<br><br>Cấp cao nhất là CC, rồi tới T1…T8. Cấp của box con tối thiểu bằng cấp của box cha.<br><br>★ = CBQLNS (cán bộ quản lý ngân sách), dùng cho tab Luồng duyệt.<br><br>Cờ "Nhánh VẬN HÀNH" đánh dấu gốc nhánh vận hành — CBQLNS nằm dưới nhánh này tính luồng theo "Vận hành", ngoài nhánh tính theo "Còn lại".',
+  lblDept:'Tên phòng / khối (tự IN HOA, đậm)', lblTitle:'Chức danh (đậm)', lblPerson:'Người phụ trách (nghiêng)',
+  lblLevel:'Cấp', lblLevelMin:' (tối thiểu {L} theo cấp cha)',
+  ckCbqlns:'★ CBQLNS (quản lý ngân sách)', ckVh:'Nhánh VẬN HÀNH (tính luồng duyệt)',
+  btnChild:'＋ Cấp dưới', btnSib:'＋ Ngang hàng', btnCollapse:'Thu gọn cấp dưới', btnExpand:'Bung cấp dưới',
+  btnFocus:'Focus nhánh', btnUnfocus:'Bỏ focus', btnDel:'Xóa',
+  panelHint:'◀ ▶ đổi thứ tự với box ngang hàng. Chữ dài quá khung sẽ thu gọn bằng "…", rê chuột vào box để xem đủ.',
+  emptyBox:'(chưa nhập)', unnamed:'(chưa đặt tên)',
+  hidTip:'Đang ẩn {n} box cấp dưới — bấm để bung',
+  vhTipNode:'Nhánh VẬN HÀNH — CBQLNS dưới nhánh này tính luồng theo "Vận hành"',
+  vhTipTitle:'[Nhánh VẬN HÀNH]',
+  // --- thông báo/confirm ---
+  msgUnfocusRoot:'Đã bỏ focus để thêm box gốc',
+  cfmDelNode:'Xóa "{name}" cùng {n} box cấp dưới?',
+  msgRaised:'Đã nâng {n} box cấp dưới cho khớp cấp mới',
+  msgOnlyOneVh:'Chỉ được 1 nhánh Vận hành — đang ở "{name}", bỏ tick ở đó trước',
+  vhLocked:'Chỉ được 1 nhánh Vận hành — đang ở "{name}"',
+  msgFocusCleared:'Đã bỏ focus (nhánh focus nằm trong vùng vừa thu gọn)',
+  msgNoUndo:'Không còn gì để hoàn tác', msgUndoErr:'Lỗi hoàn tác', msgUndone:'Đã hoàn tác',
+  msgNothingCopy:'Chưa có gì để copy',
+  msgCopiedView:'Đã copy theo view hiện tại{hidden} — dán thẳng vào Excel',
+  hiddenSuffix:' (đang ẩn {n} box)',
+  msgSavedJson:'Đã tải orgchart.json',
+  msgBadJson:'File không phải JSON hợp lệ — giữ nguyên dữ liệu hiện tại',
+  msgBadStruct:'Cấu trúc file không đúng — giữ nguyên dữ liệu hiện tại',
+  msgOpened:'Đã mở file', msgReadFail:'Không đọc được file',
+  msgNothingExport:'Chưa có gì để xuất',
+  msgDrawioSaved:'Đã tải orgchart.drawio{hidden}', drawioHiddenSuffix:' (theo view — đang ẩn {n} box)',
+  msgCopyBlocked:'Trình duyệt chặn copy',
+  // --- engine luồng ---
+  roleDeleted:'(box sơ đồ đã bị xóa)', starRemoved:'\n(box đã bỏ ★)', noCbqlns:'(chưa gán CBQLNS)',
+  groupUnnamed:'(nhóm chưa đặt tên)',
+  // --- nhóm FC / FC ---
+  phFcg:'FCG…', phGrpName:'Tên nhóm', optNoCbqlns:'(chưa gán CBQLNS)', optStarRemoved:'(đã bỏ ★) ',
+  tipDelGroup:'Xóa nhóm', grpH:'Nhóm Fund Center',
+  grpFilterPh:'Lọc nhanh theo mã / tên nhóm…', btnAddGrp:'＋ Nhóm',
+  thFcgCode:'Mã FCG', thGrpName:'Tên nhóm', thCbqlns:'CBQLNS (★)',
+  grpHint:'Mỗi nhóm gán 1 CBQLNS (box có ★ bên tab Sơ đồ). Luồng duyệt tính theo nhóm.',
+  grpEmpty:'Chưa có nhóm nào — bấm "＋ Nhóm" hoặc Dán từ Excel.',
+  fcFilterPh:'Lọc nhanh theo mã / tên / nhóm…', btnPaste:'Dán từ Excel',
+  pasteHint:'Dán 3 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm</b> (cột nhóm được phép trống; nhóm chưa tồn tại sẽ được tạo và khớp theo tên, không phân biệt hoa thường).',
+  btnPasteGo:'Nhập', btnPasteCancel:'Hủy',
+  thFcCode:'Mã', thFcName:'Tên Fund Center', thFcGroup:'Nhóm',
+  phCode:'Mã', phName:'Tên', optNoGroup:'(chưa gán nhóm)', tipDelFc:'Xóa FC',
+  msgNothingImport:'Chưa có dữ liệu để nhập',
+  msgImported:'Đã nhập {n} FC', msgImportedGroups:', tạo mới {g} nhóm',
+  inputsHint:'Ẩn khu Nhóm / Fund Center để chỉ xem bảng luồng duyệt.',
+  // --- bảng kết quả ---
+  resH:'Bảng luồng duyệt', btnCopyFlow:'Copy bảng luồng',
+  flowEmptyHint:'Thêm Fund Center (hoặc Dán từ Excel) và gán nhóm/CBQLNS để xem luồng duyệt.',
+  colGroupFc:'Nhóm (FC)', colFundCenter:'Fund Center', colFlow:'Luồng', colFlowName:'Màu',
+  lineCbqlns:'CBQLNS: ', lineBranch:'Nhánh: ', lineGroup:'nhóm: ',
+  unassigned:'(chưa gán)', noFc:'(chưa có FC)', noCode:'(chưa mã)', noCodeLong:'(chưa có mã)',
+  unassignedRow:'(Chưa gán nhóm — không tính được luồng) FC: ',
+  msgCopiedFlow:'Đã copy bảng luồng ({view}) — dán thẳng vào Excel',
+  viewByGroupWord:'theo nhóm', viewByFcWord:'theo FC',
+  resHint:'Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>. Nhánh của mỗi nhóm (Vận hành / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.',
+  // --- tab định nghĩa luồng ---
+  rulesH:'Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô',
+  rulesHint:'Ô <b>🔒 CBQLNS</b> là cố định. Trên mỗi box đã thả, bấm nhãn phạm vi để xoay vòng <b>Tất cả → Vận hành → Còn lại</b> — một ô có thể chứa 1 box "Tất cả" hoặc 2 box "Vận hành" + "Còn lại". Nhánh "Vận hành" đánh dấu bằng checkbox trong panel Chi tiết box (tab Sơ đồ tổ chức).',
+  paletteH:'Box vai trò', btnAddFreeRole:'＋ Box mới', btnAddNodeRole:'＋ Từ sơ đồ',
+  paletteHint:'Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức (vd MCEO, MD) — sửa bên sơ đồ là bên này tự cập nhật. Kéo ở tay nắm ⠿ để thả vào ma trận.',
+  msgCellFixed:'Ô này cố định là CBQLNS',
+  msgPickBox:'Chọn một box trên sơ đồ trước', msgBoxExists:'Box này đã có trong danh sách',
+  cfmDelRole:'Box "{name}" đang dùng ở {n} ô — xóa khỏi cả ma trận?',
+  tipCycleScope:'Bấm để chuyển phạm vi: Tất cả → Vận hành → Còn lại',
+  tipRemoveFromCell:'Bỏ khỏi ô',
+  tipLockedChip:'Cố định: CBQLNS của nhóm (box có ★ bên tab Sơ đồ)',
+  slotHint:'thả vào đây',
+  paletteEmpty:'Chưa có box vai trò nào — bấm "＋ Box mới" hoặc thêm từ sơ đồ.',
+  tagFromChart:'từ sơ đồ', tagCustom:'tự đặt', usedCells:'{n} ô',
+  tipDelRole:'Xóa box vai trò', phRoleTitle:'Chức danh', phRolePerson:'Người phụ trách',
+  optPickChart:'(chọn box trên sơ đồ…)'
+},
+en: {
+  docTitle:'Org Builder — org chart, hierarchy table & approval flows',
+  tabOrg:'Org Chart', tabRules:'Flow Rules', tabFlow:'Approval Flow',
+  btnSave:'Save JSON', btnOpen:'Open JSON', btnUndo:'↶ Undo',
+  btnRoot:'＋ Root box', btnCopy:'Copy table', btnDrawio:'Export .drawio',
+  tipZoomOut:'Zoom out', tipZoomReset:'Reset to 100%', tipZoomIn:'Zoom in', btnZoomFit:'Fit to screen',
+  lblHideChart:'Hide chart', lblShowChart:'Show chart', lblHidePanel:'Hide panel', lblShowPanel:'Show panel',
+  lblTblCollapse:'Collapse ▾', lblTblExpand:'Expand ▴',
+  lblHideInputs:'Hide input area ▴', lblShowInputs:'Show input area ▸',
+  lblViewByGroup:'View: by group', lblViewByFc:'View: per FC',
+  orgTableH:'Hierarchy table (columns aligned by level)',
+  orgTableEmpty:'The table updates as you draw. Each branch is one row; each column is a level row on the chart. A "—" cell means the branch passes through that level.',
+  cbqlns:'BMO', cbqlnsFull:'BMO (Budget Management Officer)',
+  tipStar:'BMO — Budget Management Officer',
+  vhBadge:'OPS', vhWord:'OPERATIONS',
+  segALL:'All', segVH:'Operations', segREST:'Others',
+  panelH:'Box details', panelEmptyH:'Details',
+  panelEmptyHint:'Select a box to edit.<br><br>Start with "＋ Root box", fill in the details, then "＋ Child".<br><br>Drag the background to pan. Ctrl+Z to undo.<br><br>The top level is CC, then T1…T8. A child\'s level is at least its parent\'s.<br><br>★ = BMO (Budget Management Officer), used by the Approval Flow tab.<br><br>The "OPERATIONS branch" flag marks the root of the operations branch — BMOs under it use the "Operations" flow, everyone else "Others".',
+  lblDept:'Department / division (auto UPPERCASE, bold)', lblTitle:'Job title (bold)', lblPerson:'Person in charge (italic)',
+  lblLevel:'Level', lblLevelMin:' (min {L}, from parent)',
+  ckCbqlns:'★ BMO (Budget Management Officer)', ckVh:'OPERATIONS branch (used for approval flow)',
+  btnChild:'＋ Child', btnSib:'＋ Sibling', btnCollapse:'Collapse children', btnExpand:'Expand children',
+  btnFocus:'Focus branch', btnUnfocus:'Unfocus', btnDel:'Delete',
+  panelHint:'◀ ▶ reorder among siblings. Long text is clipped with "…" — hover a box to see it in full.',
+  emptyBox:'(empty)', unnamed:'(unnamed)',
+  hidTip:'Hiding {n} descendant boxes — click to expand',
+  vhTipNode:'OPERATIONS branch — BMOs under this branch use the "Operations" flow',
+  vhTipTitle:'[OPERATIONS branch]',
+  msgUnfocusRoot:'Focus cleared to add a root box',
+  cfmDelNode:'Delete "{name}" and {n} descendant boxes?',
+  msgRaised:'Raised {n} descendant boxes to match the new level',
+  msgOnlyOneVh:'Only one Operations branch allowed — currently on "{name}", untick it there first',
+  vhLocked:'Only one Operations branch allowed — currently on "{name}"',
+  msgFocusCleared:'Focus cleared (the focused branch is inside the collapsed area)',
+  msgNoUndo:'Nothing to undo', msgUndoErr:'Undo failed', msgUndone:'Undone',
+  msgNothingCopy:'Nothing to copy',
+  msgCopiedView:'Copied current view{hidden} — paste straight into Excel',
+  hiddenSuffix:' ({n} boxes hidden)',
+  msgSavedJson:'Downloaded orgchart.json',
+  msgBadJson:'Not a valid JSON file — current data kept',
+  msgBadStruct:'Unexpected file structure — current data kept',
+  msgOpened:'File opened', msgReadFail:'Could not read the file',
+  msgNothingExport:'Nothing to export',
+  msgDrawioSaved:'Downloaded orgchart.drawio{hidden}', drawioHiddenSuffix:' (current view — {n} boxes hidden)',
+  msgCopyBlocked:'Clipboard blocked by the browser',
+  roleDeleted:'(chart box deleted)', starRemoved:'\n(★ removed from box)', noCbqlns:'(no BMO assigned)',
+  groupUnnamed:'(unnamed group)',
+  phFcg:'FCG…', phGrpName:'Group name', optNoCbqlns:'(no BMO assigned)', optStarRemoved:'(★ removed) ',
+  tipDelGroup:'Delete group', grpH:'Fund Center Groups',
+  grpFilterPh:'Quick filter by code / group name…', btnAddGrp:'＋ Group',
+  thFcgCode:'FCG code', thGrpName:'Group name', thCbqlns:'BMO (★)',
+  grpHint:'Each group is assigned one BMO (★ box on the Org Chart tab). Flows are computed per group.',
+  grpEmpty:'No groups yet — click "＋ Group" or Paste from Excel.',
+  fcFilterPh:'Quick filter by code / name / group…', btnPaste:'Paste from Excel',
+  pasteHint:'Paste 3 columns from Excel: <b>FC code ⇥ Name ⇥ Group name</b> (the group column may be blank; unknown groups are created and matched by name, case-insensitive).',
+  btnPasteGo:'Import', btnPasteCancel:'Cancel',
+  thFcCode:'Code', thFcName:'Fund Center name', thFcGroup:'Group',
+  phCode:'Code', phName:'Name', optNoGroup:'(no group)', tipDelFc:'Delete FC',
+  msgNothingImport:'No data to import',
+  msgImported:'Imported {n} FCs', msgImportedGroups:', created {g} new groups',
+  inputsHint:'Hide the Groups / Fund Center area to see only the approval flow table.',
+  resH:'Approval flow table', btnCopyFlow:'Copy flow table',
+  flowEmptyHint:'Add Fund Centers (or Paste from Excel) and assign groups/BMO to see approval flows.',
+  colGroupFc:'Group (FC)', colFundCenter:'Fund Center', colFlow:'Flow', colFlowName:'Flow',
+  lineCbqlns:'BMO: ', lineBranch:'Branch: ', lineGroup:'group: ',
+  unassigned:'(unassigned)', noFc:'(no FCs)', noCode:'(no code)', noCodeLong:'(no code)',
+  unassignedRow:'(No group assigned — flow cannot be computed) FC: ',
+  msgCopiedFlow:'Copied flow table ({view}) — paste straight into Excel',
+  viewByGroupWord:'by group', viewByFcWord:'per FC',
+  resHint:'Flow rules are defined by drag-and-drop on the <b>Flow Rules</b> tab. Each group\'s branch (Operations / Others) is derived from its BMO\'s position on the org chart.',
+  rulesH:'Approval flow matrix — drag role boxes from the right panel into cells',
+  rulesHint:'The <b>🔒 BMO</b> cells are fixed. On each placed box, click the scope tag to cycle <b>All → Operations → Others</b> — a cell holds one "All" box or an "Operations" + "Others" pair. Mark the "Operations" branch with the checkbox in the Box details panel (Org Chart tab).',
+  paletteH:'Role boxes', btnAddFreeRole:'＋ New box', btnAddNodeRole:'＋ From chart',
+  paletteHint:'A "from chart" box pulls its title/person straight from an Org Chart box (e.g. MCEO, MD) — edit it there and it updates here. Drag by the ⠿ handle to drop into the matrix.',
+  msgCellFixed:'This cell is fixed to the BMO',
+  msgPickBox:'Pick a chart box first', msgBoxExists:'This box is already in the list',
+  cfmDelRole:'Box "{name}" is used in {n} cells — remove it from the matrix too?',
+  tipCycleScope:'Click to cycle scope: All → Operations → Others',
+  tipRemoveFromCell:'Remove from cell',
+  tipLockedChip:"Fixed: the group's BMO (★ box on the Org Chart tab)",
+  slotHint:'drop here',
+  paletteEmpty:'No role boxes yet — click "＋ New box" or add one from the chart.',
+  tagFromChart:'from chart', tagCustom:'custom', usedCells:'{n} cells',
+  tipDelRole:'Delete role box', phRoleTitle:'Job title', phRolePerson:'Person',
+  optPickChart:'(pick a chart box…)'
+}
+};
+function t(k){ var d = STR[LANG]; return (d && d[k] !== undefined ? d[k] : STR.vi[k]) || k; }
+function tf(k, p){ return t(k).replace(/\{(\w+)\}/g, function(_, n){ return p[n]; }); }
+// Nhãn miền: khóa dữ liệu -> nhãn hiển thị theo ngôn ngữ (khóa JSON không đổi)
+var FLOW_EN = {'Xanh':'Green','Vàng':'Yellow','Đỏ':'Red','Tím':'Purple','NNS':'Additional budget'};
+var COL_EN  = {'TĐ1':'R1','TĐ2':'R2','TĐ3':'R3','TĐ4':'R4','TĐ*':'R*','PD':'Approval'};
+function flowLabel(f){ return LANG === 'en' ? (FLOW_EN[f] || f) : f; }
+function colLabel(c){ return LANG === 'en' ? (COL_EN[c] || c) : c; }
+function segLabel(s){ return t('seg' + s); }
+// Áp chuỗi tĩnh (data-i18n*) + tiêu đề trang; gọi lúc khởi động và mỗi lần đổi ngôn ngữ
+function applyStatic(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el){ el.innerHTML = t(el.getAttribute('data-i18n-html')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){ el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el){ el.title = t(el.getAttribute('data-i18n-title')); });
+  document.querySelectorAll('[data-col]').forEach(function(el){ el.textContent = colLabel(el.getAttribute('data-col')); });
+  document.title = t('docTitle');
+  document.documentElement.lang = LANG;
+  var bl = $('bLang'); if (bl) bl.textContent = LANG === 'vi' ? 'English' : 'Tiếng Việt';
+  refreshStateLabels();
+}
+function setLang(l){
+  LANG = l;
+  try{ localStorage.setItem('ob_lang', l); }catch(_){/**/}
+  applyStatic();
+  renderAll();
+}
+
 var LEVELS = ['CC','T1','T2','T3','T4','T5','T6','T7','T8'];
 var TCOLOR = {CC:'#5e8cf9',T1:'#ea9651',T2:'#92d050',T3:'#f6d5b9',
               T4:'#77e3f2',T5:'#cfc8dd',T6:'#ffffff',T7:'#ffffff',T8:'#ffffff'};
@@ -393,14 +609,14 @@ function msg(t){
 function debounce(fn, ms){                       // gõ liền mạch -> chỉ chạy 1 lần sau khi ngừng
   var t; return function(){ clearTimeout(t); t = setTimeout(fn, ms); };
 }
-function dispName(n){ return n.dept || n.title || n.person || '(chưa nhập)'; }
+function dispName(n){ return n.dept || n.title || n.person || t('emptyBox'); }
 function cellText(n){
   var p = [n.dept, n.title, n.person].filter(Boolean);
-  if (n.star) p.push('★ CBQLNS');
-  return p.length ? p.join('\n') : '(chưa nhập)';
+  if (n.star) p.push('★ ' + t('cbqlns'));
+  return p.length ? p.join('\n') : t('emptyBox');
 }
 function roleText(n){
-  return [n.title || n.dept, n.person].filter(Boolean).join('\n') || '(chưa nhập)';
+  return [n.title || n.dept, n.person].filter(Boolean).join('\n') || t('emptyBox');
 }
 
 /* ============ [2] STATE + UNDO + DIRTY ============ */
@@ -422,7 +638,6 @@ var RESULT_ORDER = ['NNS','Tím','Đỏ','Vàng','Xanh'];    // thứ tự hàng
 var COLS   = ['TĐ1','TĐ2','TĐ3','TĐ4','TĐ*','PD'];
 var FLOW_COLORS  = {'Xanh':'#92d050','Vàng':'#ffd54a','Đỏ':'#e05a4e','Tím':'#9b7bd4','NNS':'#5b9bd5'};
 var FIXED_CBQLNS = {'Xanh':'PD','Vàng':'TĐ1','Đỏ':'TĐ1','Tím':'TĐ1','NNS':'TĐ1'};
-var SEG_LABEL    = {ALL:'Tất cả', VH:'Vận hành', REST:'Còn lại'};
 
 var roleBoxes = [];
 var ruleGrid  = {};
@@ -464,11 +679,11 @@ function snap(key){
   dirty = true;
 }
 function undo(){
-  if (!undoStack.length){ msg('Không còn gì để hoàn tác'); return; }
+  if (!undoStack.length){ msg(t('msgNoUndo')); return; }
   try { applyState(JSON.parse(undoStack.pop())); }
-  catch(e){ msg('Lỗi hoàn tác'); return; }
+  catch(e){ msg(t('msgUndoErr')); return; }
   lastSnapKey = null; dirty = true;
-  renderAll(); msg('Đã hoàn tác');
+  renderAll(); msg(t('msgUndone'));
 }
 
 /* ============ [3] MODEL: THAO TÁC TRÊN CÂY ============ */
@@ -479,7 +694,7 @@ function nn(dept, title, person, t, parent, id){
   return nid;
 }
 function addRoot(){
-  if (focusId){ focusId = null; msg('Đã bỏ focus để thêm box gốc'); }
+  if (focusId){ focusId = null; msg(t('msgUnfocusRoot')); }
   snap(null);
   var id = nn('','','','CC', null);
   rootIds.push(id); select(id, true);
@@ -513,7 +728,7 @@ function wipe(id){
 function delNode(id){
   var n = nodes.get(id);
   if (n.children.length &&
-      !confirm('Xóa "' + dispName(n) + '" cùng ' + (subCount(id)-1) + ' box cấp dưới?')) return;
+      !confirm(tf('cfmDelNode', { name: dispName(n), n: subCount(id)-1 }))) return;
   snap(null);
   var arr = n.parent ? nodes.get(n.parent).children : rootIds;
   arr.splice(arr.indexOf(id), 1);
@@ -542,7 +757,7 @@ function setT(id, t){
       fix(c);
     });
   })(id);
-  if (fixed) msg('Đã nâng ' + fixed + ' box cấp dưới cho khớp cấp mới');
+  if (fixed) msg(tf('msgRaised', { n: fixed }));
   renderAll();
 }
 function toggleStar(id){
@@ -560,7 +775,7 @@ function toggleVh(id){
   if (!n.vh){                                  // chỉ được 1 nhánh Vận hành trên toàn cây
     var ex = vhRootId();
     if (ex && ex !== id){
-      msg('Chỉ được 1 nhánh Vận hành — đang ở "' + dispName(nodes.get(ex)) + '", bỏ tick ở đó trước');
+      msg(tf('msgOnlyOneVh', { name: dispName(nodes.get(ex)) }));
       renderPanel(); return;
     }
   }
@@ -577,7 +792,7 @@ function toggleCollapse(id){
   var n = nodes.get(id);
   if (!n.children.length) return;
   if (!n.collapsed && focusId && isAncestor(id, focusId)){
-    focusId = null; msg('Đã bỏ focus (nhánh focus nằm trong vùng vừa thu gọn)');
+    focusId = null; msg(t('msgFocusCleared'));
   }
   snap(null);
   n.collapsed = !n.collapsed;
@@ -730,26 +945,26 @@ function renderCanvas(L){
     var tt = document.createElement('div'); tt.className='tt'; tt.textContent = n.t; d.appendChild(tt);
     if (n.star){
       var st = document.createElement('div'); st.className='st'; st.textContent='★';
-      st.title = 'CBQLNS — Cán bộ quản lý ngân sách'; d.appendChild(st);
+      st.title = t('tipStar'); d.appendChild(st);
     }
     if (n.vh){
-      var vb = document.createElement('div'); vb.className='vh'; vb.textContent='VH';
-      vb.title = 'Nhánh VẬN HÀNH — CBQLNS dưới nhánh này tính luồng theo "Vận hành"'; d.appendChild(vb);
+      var vb = document.createElement('div'); vb.className='vh'; vb.textContent = t('vhBadge');
+      vb.title = t('vhTipNode'); d.appendChild(vb);
     }
     var any = false;
     if (n.dept){  var e1=document.createElement('div'); e1.className='bd'; e1.textContent=n.dept;  d.appendChild(e1); any=true; }
     if (n.title){ var e2=document.createElement('div'); e2.className='bt'; e2.textContent=n.title; d.appendChild(e2); any=true; }
     if (n.person){var e3=document.createElement('div'); e3.className='bp'; e3.textContent=n.person;d.appendChild(e3); any=true; }
-    if (!any){    var e0=document.createElement('div'); e0.className='be'; e0.textContent='(chưa nhập)'; d.appendChild(e0); }
+    if (!any){    var e0=document.createElement('div'); e0.className='be'; e0.textContent = t('emptyBox'); d.appendChild(e0); }
 
     if (n.collapsed && n.children.length){
       var hd = document.createElement('div'); hd.className='hid';
       hd.textContent = '+' + (subCount(id)-1);
-      hd.title = 'Đang ẩn ' + (subCount(id)-1) + ' box cấp dưới — bấm để bung';
+      hd.title = tf('hidTip', { n: subCount(id)-1 });
       hd.onclick = function(e){ e.stopPropagation(); toggleCollapse(id); };
       d.appendChild(hd);
     }
-    d.title = cellText(n) + '\n[' + n.t + ']' + (n.vh ? '\n[Nhánh VẬN HÀNH]' : '');
+    d.title = cellText(n) + '\n[' + n.t + ']' + (n.vh ? '\n' + t('vhTipTitle') : '');
     d.onclick    = function(e){ e.stopPropagation(); select(id); };
     d.ondblclick = function(e){ e.stopPropagation(); select(id, true); };
     cv.appendChild(d);
@@ -766,12 +981,7 @@ function renderCanvas(L){
 function renderPanel(){
   var p = $('panel');
   if (!sel || !nodes.has(sel)){
-    p.innerHTML = '<h2>Chi tiết</h2><div class="hint">Chọn một box để sửa.'
-      + '<br><br>Bắt đầu: bấm “＋ Box gốc”, nhập thông tin, rồi “＋ Cấp dưới”.'
-      + '<br><br>Kéo chuột trên nền để di chuyển vùng nhìn. Ctrl+Z để hoàn tác.'
-      + '<br><br>Cấp cao nhất là CC, rồi tới T1…T8. Cấp của box con tối thiểu bằng cấp của box cha.'
-      + '<br><br>★ = CBQLNS (cán bộ quản lý ngân sách), dùng cho tab Luồng duyệt.'
-      + '<br><br>Cờ "Nhánh VẬN HÀNH" đánh dấu gốc nhánh vận hành — CBQLNS nằm dưới nhánh này tính luồng theo "Vận hành", ngoài nhánh tính theo "Còn lại".</div>';
+    p.innerHTML = '<h2>' + t('panelEmptyH') + '</h2><div class="hint">' + t('panelEmptyHint') + '</div>';
     return;
   }
   var n = nodes.get(sel);
@@ -780,20 +990,19 @@ function renderPanel(){
   for (var i = minR; i <= 8; i++) opts += '<option>' + LEVELS[i] + '</option>';
 
   p.innerHTML =
-      '<h2>Chi tiết box</h2>'
-    + '<label>Tên phòng / khối (tự IN HOA, đậm)</label><input id="fD" autocomplete="off">'
-    + '<label>Chức danh (đậm)</label><input id="fC" autocomplete="off">'
-    + '<label>Người phụ trách (nghiêng)</label><input id="fP" autocomplete="off">'
-    + '<label>Cấp' + (minR > 0 ? ' (tối thiểu ' + LEVELS[minR] + ' theo cấp cha)' : '') + '</label>'
+      '<h2>' + t('panelH') + '</h2>'
+    + '<label>' + t('lblDept') + '</label><input id="fD" autocomplete="off">'
+    + '<label>' + t('lblTitle') + '</label><input id="fC" autocomplete="off">'
+    + '<label>' + t('lblPerson') + '</label><input id="fP" autocomplete="off">'
+    + '<label>' + t('lblLevel') + (minR > 0 ? tf('lblLevelMin', { L: LEVELS[minR] }) : '') + '</label>'
     + '<select id="fT">' + opts + '</select>'
-    + '<div class="ck"><input type="checkbox" id="fStar"><label for="fStar" style="margin:0">★ CBQLNS (quản lý ngân sách)</label></div>'
-    + '<div class="ck"><input type="checkbox" id="fVh"><label for="fVh" style="margin:0">Nhánh VẬN HÀNH (tính luồng duyệt)</label></div>'
-    + '<div class="row"><button id="bChild" class="primary">＋ Cấp dưới</button><button id="bSib">＋ Ngang hàng</button></div>'
-    + '<div class="row"><button id="bClps">' + (n.collapsed ? 'Bung cấp dưới' : 'Thu gọn cấp dưới') + '</button>'
-    +   '<button id="bFocus">' + (focusId === sel ? 'Bỏ focus' : 'Focus nhánh') + '</button></div>'
-    + '<div class="row"><button id="bL">◀</button><button id="bR">▶</button><button id="bDel" class="danger">Xóa</button></div>'
-    + '<div class="hint" style="margin-top:10px">◀ ▶ đổi thứ tự với box ngang hàng. '
-    + 'Chữ dài quá khung sẽ thu gọn bằng “…”, rê chuột vào box để xem đủ.</div>';
+    + '<div class="ck"><input type="checkbox" id="fStar"><label for="fStar" style="margin:0">' + t('ckCbqlns') + '</label></div>'
+    + '<div class="ck"><input type="checkbox" id="fVh"><label for="fVh" style="margin:0">' + t('ckVh') + '</label></div>'
+    + '<div class="row"><button id="bChild" class="primary">' + t('btnChild') + '</button><button id="bSib">' + t('btnSib') + '</button></div>'
+    + '<div class="row"><button id="bClps">' + (n.collapsed ? t('btnExpand') : t('btnCollapse')) + '</button>'
+    +   '<button id="bFocus">' + (focusId === sel ? t('btnUnfocus') : t('btnFocus')) + '</button></div>'
+    + '<div class="row"><button id="bL">◀</button><button id="bR">▶</button><button id="bDel" class="danger">' + t('btnDel') + '</button></div>'
+    + '<div class="hint" style="margin-top:10px">' + t('panelHint') + '</div>';
 
   var fD = $('fD'); fD.value = n.dept;
   fD.oninput = function(){
@@ -815,7 +1024,7 @@ function renderPanel(){
   var vhEx = vhRootId();
   if (vhEx && vhEx !== sel){                   // đã có nhánh VH ở box khác -> khóa checkbox
     cvh.disabled = true;
-    cvh.parentElement.title = 'Chỉ được 1 nhánh Vận hành — đang ở "' + dispName(nodes.get(vhEx)) + '"';
+    cvh.parentElement.title = tf('vhLocked', { name: dispName(nodes.get(vhEx)) });
     cvh.parentElement.style.opacity = '.55';
   }
   cvh.onchange = function(){ toggleVh(sel); };
@@ -859,8 +1068,7 @@ function buildGrid(L){
 function renderTable(L){
   var host = $('tblHost'); host.innerHTML = '';
   if (!L.vis.size){
-    host.innerHTML = '<div class="hint">Bảng sẽ tự cập nhật khi bạn vẽ. Mỗi nhánh là một dòng; '
-      + 'mỗi cột là một hàng cấp trên chart. Ô “—” nghĩa là nhánh đi xuyên qua cấp đó.</div>';
+    host.innerHTML = '<div class="hint">' + t('orgTableEmpty') + '</div>';
     return;
   }
   var g = buildGrid(L);
@@ -911,7 +1119,7 @@ function copyText(t, okMsg){
   function fb(){
     var ta = document.createElement('textarea'); ta.value = t;
     document.body.appendChild(ta); ta.select();
-    try{ document.execCommand('copy'); ok(); }catch(e){ msg('Trình duyệt chặn copy'); }
+    try{ document.execCommand('copy'); ok(); }catch(e){ msg(t('msgCopyBlocked')); }
     document.body.removeChild(ta);
   }
   if (navigator.clipboard && navigator.clipboard.writeText){
@@ -920,9 +1128,9 @@ function copyText(t, okMsg){
 }
 function copyTable(){
   var L = layout();
-  if (!L.vis.size){ msg('Chưa có gì để copy'); return; }
+  if (!L.vis.size){ msg(t('msgNothingCopy')); return; }
   var hidden = nodes.size - L.vis.size;
-  copyText(tsv(), 'Đã copy theo view hiện tại' + (hidden ? ' (đang ẩn ' + hidden + ' box)' : '') + ' — dán thẳng vào Excel');
+  copyText(tsv(), tf('msgCopiedView', { hidden: hidden ? tf('hiddenSuffix', { n: hidden }) : '' }));
 }
 function dl(blob, name){
   var a = document.createElement('a');
@@ -941,7 +1149,7 @@ function ser(id){
 function saveJSON(){
   dl(new Blob([JSON.stringify(serializeAll(), null, 1)], {type:'application/json'}), 'orgchart.json');
   dirty = false;
-  msg('Đã tải orgchart.json');
+  msg(t('msgSavedJson'));
 }
 function applyState(d){
   if (!d || typeof d !== 'object' || !Array.isArray(d.roots)) throw new Error('bad root');
@@ -1043,12 +1251,12 @@ function loadJSON(file){
   file.text().then(function(txt){
     var d;
     try { d = JSON.parse(txt); }
-    catch(e){ msg('File không phải JSON hợp lệ — giữ nguyên dữ liệu hiện tại'); return; }
+    catch(e){ msg(t('msgBadJson')); return; }
     try { applyState(d); }
-    catch(e){ msg('Cấu trúc file không đúng — giữ nguyên dữ liệu hiện tại'); return; }
+    catch(e){ msg(t('msgBadStruct')); return; }
     undoStack.length = 0; lastSnapKey = null; dirty = false;
-    renderAll(); msg('Đã mở file');
-  }).catch(function(){ msg('Không đọc được file'); });
+    renderAll(); msg(t('msgOpened'));
+  }).catch(function(){ msg(t('msgReadFail')); });
 }
 function xesc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -1056,7 +1264,7 @@ function xesc(s){
 }
 function exportDrawio(){
   var L = layout();
-  if (!L.vis.size){ msg('Chưa có gì để xuất'); return; }
+  if (!L.vis.size){ msg(t('msgNothingExport')); return; }
   var cells = '<mxCell id="0"/><mxCell id="1" parent="0"/>';
   L.vis.forEach(function(id){
     var n = nodes.get(id), pv = L.pos.get(id);
@@ -1086,7 +1294,7 @@ function exportDrawio(){
           + cells + '</root></mxGraphModel></diagram></mxfile>';
   dl(new Blob([xml], {type:'application/xml'}), 'orgchart.drawio');
   var hidden = nodes.size - L.vis.size;
-  msg('Đã tải orgchart.drawio' + (hidden ? ' (theo view — đang ẩn ' + hidden + ' box)' : ''));
+  msg(tf('msgDrawioSaved', { hidden: hidden ? tf('drawioHiddenSuffix', { n: hidden }) : '' }));
 }
 
 /* ============ [8] LUỒNG DUYỆT & ĐỊNH NGHĨA LUỒNG ============ */
@@ -1107,19 +1315,19 @@ function roleBoxText(rb){                     // nội dung đầy đủ (nhiề
   if (!rb) return '—';
   if (rb.kind === 'node'){
     var n = nodes.get(rb.nodeId);
-    return n ? roleText(n) : '(box sơ đồ đã bị xóa)';
+    return n ? roleText(n) : t('roleDeleted');
   }
-  return [rb.title, rb.person].filter(Boolean).join('\n') || '(chưa đặt tên)';
+  return [rb.title, rb.person].filter(Boolean).join('\n') || t('unnamed');
 }
 // {t: chức danh, p: người} — chip/palette chỉ hiện 2 thông tin cần thiết, không kèm khối/phòng
 function rolePair(rb){
   if (!rb) return { t:'—', p:'' };
   if (rb.kind === 'node'){
     var n = nodes.get(rb.nodeId);
-    return n ? { t: n.title || n.dept || '(chưa nhập)', p: n.person || '' }
-             : { t:'(box sơ đồ đã bị xóa)', p:'' };
+    return n ? { t: n.title || n.dept || t('emptyBox'), p: n.person || '' }
+             : { t: t('roleDeleted'), p:'' };
   }
-  return { t: rb.title || '(chưa đặt tên)', p: rb.person || '' };
+  return { t: rb.title || t('unnamed'), p: rb.person || '' };
 }
 function roleBoxName(rb){ return rolePair(rb).t; }
 // Nhánh của CBQLNS: đi ngược tổ tiên, gặp cờ VẬN HÀNH -> 'VH'; không gặp -> 'REST' (Còn lại)
@@ -1131,7 +1339,7 @@ function segmentOf(cb){
 // Nội dung một ô của bảng luồng duyệt
 function resolveCell(flow, col, seg, cb){
   if (FIXED_CBQLNS[flow] === col)
-    return cb ? roleText(cb) + (cb.star ? '' : '\n(box đã bỏ ★)') : '(chưa gán CBQLNS)';
+    return cb ? roleText(cb) + (cb.star ? '' : t('starRemoved')) : t('noCbqlns');
   var asg = (ruleGrid[flow] || {})[col];
   if (!asg) return '—';
   var rid = asg.ALL || asg[seg];
@@ -1143,7 +1351,7 @@ function resolveCell(flow, col, seg, cb){
 function renderFlow(){ renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult(); }
 
 /* ---------- [8b] NHÓM FC — bảng Mã FCG / Tên / CBQLNS, cập nhật đích danh ---------- */
-function groupLabel(g){ return (g.code ? g.code + ' · ' : '') + (g.name || '(nhóm chưa đặt tên)'); }
+function groupLabel(g){ return (g.code ? g.code + ' · ' : '') + (g.name || t('groupUnnamed')); }
 function groupOption(g){
   var o = document.createElement('option');
   o.value = g.id; o.textContent = groupLabel(g);
@@ -1161,25 +1369,25 @@ function groupRow(g){
   var tr = document.createElement('tr'); tr.dataset.gid = g.id;
 
   var td0 = document.createElement('td');
-  var code = document.createElement('input'); code.placeholder = 'FCG…'; code.value = g.code || '';
+  var code = document.createElement('input'); code.placeholder = t('phFcg'); code.value = g.code || '';
   code.oninput = function(){ snap('g:' + g.id + ':code'); g.code = code.value; patchGroupOptionLabels(g); refreshFlowResultSoon(); };
   td0.appendChild(code);
 
   var td1 = document.createElement('td');
-  var inp = document.createElement('input'); inp.placeholder = 'Tên nhóm'; inp.value = g.name;
+  var inp = document.createElement('input'); inp.placeholder = t('phGrpName'); inp.value = g.name;
   inp.oninput = function(){ snap('g:' + g.id + ':name'); g.name = inp.value; patchGroupOptionLabels(g); refreshFlowResultSoon(); };
   td1.appendChild(inp);
 
   var td2 = document.createElement('td');
   var selE = document.createElement('select');
-  var o0 = document.createElement('option'); o0.value=''; o0.textContent='(chưa gán CBQLNS)';
+  var o0 = document.createElement('option'); o0.value=''; o0.textContent = t('optNoCbqlns');
   selE.appendChild(o0);
   var stars = starredNodes();
   if (g.cbqlns && nodes.has(g.cbqlns) && !nodes.get(g.cbqlns).star) stars.push(nodes.get(g.cbqlns));
   stars.forEach(function(n){
     var o = document.createElement('option');
     o.value = n.id;
-    o.textContent = (n.star ? '★ ' : '(đã bỏ ★) ') + dispName(n) + (n.person ? ' — ' + n.person : '');
+    o.textContent = (n.star ? '★ ' : t('optStarRemoved')) + dispName(n) + (n.person ? ' — ' + n.person : '');
     selE.appendChild(o);
   });
   selE.value = g.cbqlns || '';
@@ -1192,7 +1400,7 @@ function groupRow(g){
 
   var td4 = document.createElement('td');
   var del = document.createElement('button'); del.className='danger'; del.textContent='✕';
-  del.title = 'Xóa nhóm';
+  del.title = t('tipDelGroup');
   del.onclick = function(){ delGroup(g, tr); };
   td4.appendChild(del);
 
@@ -1202,7 +1410,7 @@ function groupRow(g){
 function renderGroups(){
   var tb = $('grpTbody'); tb.innerHTML = '';
   if (!fcGroups.length){
-    tb.innerHTML = '<tr id="grpEmpty"><td colspan="5" class="dash">Chưa có nhóm nào — bấm “＋ Nhóm” hoặc Dán từ Excel.</td></tr>';
+    tb.innerHTML = '<tr id="grpEmpty"><td colspan="5" class="dash">' + t('grpEmpty') + '</td></tr>';
     return;
   }
   fcGroups.forEach(function(g){ tb.appendChild(groupRow(g)); });
@@ -1257,16 +1465,16 @@ function updateGroupCounts(){
 function fcRow(f){
   var tr = document.createElement('tr'); tr.dataset.fcid = f.id;
   var td1 = document.createElement('td');
-  var code = document.createElement('input'); code.placeholder='Mã'; code.value = f.code;
+  var code = document.createElement('input'); code.placeholder = t('phCode'); code.value = f.code;
   code.oninput = function(){ snap('fc:'+f.id+':code'); f.code = code.value; refreshFlowResultSoon(); };
   td1.appendChild(code);
   var td2 = document.createElement('td');
-  var name = document.createElement('input'); name.placeholder='Tên'; name.value = f.name;
+  var name = document.createElement('input'); name.placeholder = t('phName'); name.value = f.name;
   name.oninput = function(){ snap('fc:'+f.id+':name'); f.name = name.value; refreshFlowResultSoon(); };
   td2.appendChild(name);
   var td3 = document.createElement('td');
   var selE = document.createElement('select');
-  var o0 = document.createElement('option'); o0.value=''; o0.textContent='(chưa gán nhóm)';
+  var o0 = document.createElement('option'); o0.value=''; o0.textContent = t('optNoGroup');
   selE.appendChild(o0);
   fcGroups.forEach(function(g){ selE.appendChild(groupOption(g)); });
   selE.value = f.groupId || '';
@@ -1274,7 +1482,7 @@ function fcRow(f){
   td3.appendChild(selE);
   var td4 = document.createElement('td');
   var del = document.createElement('button'); del.className='danger'; del.textContent='✕';
-  del.title = 'Xóa FC';
+  del.title = t('tipDelFc');
   del.onclick = function(){ snap(null); fcs = fcs.filter(function(x){ return x !== f; }); tr.remove(); updateGroupCounts(); renderFlowResult(); };
   td4.appendChild(del);
   tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
@@ -1309,10 +1517,10 @@ function applyFcFilter(){
 // chưa có thì tạo mới. Dòng header (bắt đầu bằng "Mã"/"Code") tự bỏ qua.
 function importPaste(txt){
   var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
-  if (!lines.length){ msg('Chưa có dữ liệu để nhập'); return; }
+  if (!lines.length){ msg(t('msgNothingImport')); return; }
   var first = (lines[0].split('\t')[0]||'').trim().toLowerCase();
   if (/^(mã|ma\b|code|fc\b)/.test(first)) lines.shift();
-  if (!lines.length){ msg('Chưa có dữ liệu để nhập'); return; }
+  if (!lines.length){ msg(t('msgNothingImport')); return; }
   snap(null);
   var byName = {};
   fcGroups.forEach(function(g){ byName[(g.name||'').trim().toLowerCase()] = g; });
@@ -1333,7 +1541,7 @@ function importPaste(txt){
   });
   $('pasteTa').value = ''; $('pasteBox').style.display = 'none';
   renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult();
-  msg('Đã nhập ' + nFc + ' FC' + (nG ? (', tạo mới ' + nG + ' nhóm') : ''));
+  msg(tf('msgImported', { n: nFc }) + (nG ? tf('msgImportedGroups', { g: nG }) : ''));
 }
 
 /* ---------- [8d] BẢNG KẾT QUẢ — gộp theo nhóm / bung theo FC ---------- */
@@ -1341,24 +1549,24 @@ function importPaste(txt){
 // nên mặc định gộp theo nhóm: 10 nhóm = 10 khối × 5 dòng thay vì 40 khối.
 function flowBlocks(){
   var blocks = [];
-  function segLine(cb){ return 'Nhánh: ' + (segmentOf(cb) === 'VH' ? 'Vận hành' : 'Còn lại'); }
+  function segLine(cb){ return t('lineBranch') + segLabel(segmentOf(cb)); }
   if (!flowViewByFc){
     fcGroups.forEach(function(g){
       var cb = (g.cbqlns && nodes.has(g.cbqlns)) ? nodes.get(g.cbqlns) : null;
       var codes = fcs.filter(function(f){ return f.groupId === g.id; })
-                     .map(function(f){ return f.code || '(chưa mã)'; });
+                     .map(function(f){ return f.code || t('noCode'); });
       var head = groupLabel(g)
-        + '\nCBQLNS: ' + (cb ? (cb.person || dispName(cb)) : '(chưa gán)')
+        + '\n' + t('lineCbqlns') + (cb ? (cb.person || dispName(cb)) : t('unassigned'))
         + '\n' + segLine(cb)
-        + '\nFC: ' + (codes.length ? codes.join(', ') : '(chưa có FC)');
+        + '\nFC: ' + (codes.length ? codes.join(', ') : t('noFc'));
       blocks.push({ head: head, cb: cb, seg: segmentOf(cb) });
     });
   } else {
     fcs.forEach(function(f){
       var g  = fcGroups.find(function(x){ return x.id === f.groupId; }) || null;
       var cb = (g && g.cbqlns && nodes.has(g.cbqlns)) ? nodes.get(g.cbqlns) : null;
-      var head = (f.code || '(chưa có mã)') + '\n' + (f.name || '')
-        + '\n' + (g ? ('nhóm: ' + groupLabel(g)) : '(chưa gán nhóm)')
+      var head = (f.code || t('noCodeLong')) + '\n' + (f.name || '')
+        + '\n' + (g ? (t('lineGroup') + groupLabel(g)) : t('optNoGroup'))
         + '\n' + segLine(cb);
       blocks.push({ head: head, cb: cb, seg: segmentOf(cb) });
     });
@@ -1368,7 +1576,7 @@ function flowBlocks(){
 function renderFlowResult(){
   var host = $('flowResult'); host.innerHTML = '';
   if (!fcs.length && !fcGroups.length){
-    host.innerHTML = '<div class="hint">Thêm Fund Center (hoặc Dán từ Excel) và gán nhóm/CBQLNS để xem luồng duyệt.</div>';
+    host.innerHTML = '<div class="hint">' + t('flowEmptyHint') + '</div>';
     return;
   }
   var cols = COLS, order = RESULT_ORDER, colors = FLOW_COLORS;
@@ -1385,9 +1593,10 @@ function renderFlowResult(){
   tb.appendChild(cg);
 
   var tr = document.createElement('tr');
-  [ flowViewByFc ? 'Fund Center' : 'Nhóm (FC)', 'Luồng' ].concat(cols).forEach(function(h){
-    var th = document.createElement('th'); th.textContent = h; tr.appendChild(th);
-  });
+  [ flowViewByFc ? t('colFundCenter') : t('colGroupFc'), t('colFlow') ]
+    .concat(cols.map(colLabel)).forEach(function(h){
+      var th = document.createElement('th'); th.textContent = h; tr.appendChild(th);
+    });
   tb.appendChild(tr);
 
   flowBlocks().forEach(function(b){
@@ -1402,7 +1611,7 @@ function renderFlowResult(){
       var tdl = document.createElement('td');
       var dot = document.createElement('span'); dot.className='fdot';
       dot.style.background = colors[flow] || '#ccc';
-      tdl.appendChild(dot); tdl.appendChild(document.createTextNode(flow));
+      tdl.appendChild(dot); tdl.appendChild(document.createTextNode(flowLabel(flow)));
       trr.appendChild(tdl);
       cols.forEach(function(c){
         var td = document.createElement('td');
@@ -1422,8 +1631,8 @@ function renderFlowResult(){
       var trU = document.createElement('tr');
       var tdU = document.createElement('td');
       tdU.colSpan = cols.length + 2;
-      tdU.textContent = '(Chưa gán nhóm — không tính được luồng) FC: '
-        + un.map(function(f){ return f.code || '(chưa mã)'; }).join(', ');
+      tdU.textContent = t('unassignedRow')
+        + un.map(function(f){ return f.code || t('noCode'); }).join(', ');
       tdU.className = 'dash';
       trU.appendChild(tdU); tb.appendChild(trU);
     }
@@ -1431,10 +1640,11 @@ function renderFlowResult(){
   sc.appendChild(tb); host.appendChild(sc);
 }
 function flowTsv(){
-  var lines = [ [ flowViewByFc ? 'Fund Center' : 'Nhóm (FC)', 'Luồng' ].concat(COLS).map(q).join('\t') ];
+  var lines = [ [ flowViewByFc ? t('colFundCenter') : t('colGroupFc'), t('colFlow') ]
+    .concat(COLS.map(colLabel)).map(q).join('\t') ];
   flowBlocks().forEach(function(b){
     RESULT_ORDER.forEach(function(flow){
-      var cells = [ b.head, flow ].concat(COLS.map(function(c){
+      var cells = [ b.head, flowLabel(flow) ].concat(COLS.map(function(c){
         return resolveCell(flow, c, b.seg, b.cb);
       }));
       lines.push(cells.map(q).join('\t'));
@@ -1443,8 +1653,8 @@ function flowTsv(){
   return lines.join('\n');
 }
 function copyFlowTable(){
-  if (!fcs.length && !fcGroups.length){ msg('Chưa có gì để copy'); return; }
-  copyText(flowTsv(), 'Đã copy bảng luồng (' + (flowViewByFc ? 'theo FC' : 'theo nhóm') + ') — dán thẳng vào Excel');
+  if (!fcs.length && !fcGroups.length){ msg(t('msgNothingCopy')); return; }
+  copyText(flowTsv(), tf('msgCopiedFlow', { view: flowViewByFc ? t('viewByFcWord') : t('viewByGroupWord') }));
 }
 
 /* ---------- [8e] TAB ĐỊNH NGHĨA LUỒNG — palette box vai trò + kéo-thả vào ma trận ---------- */
@@ -1460,7 +1670,7 @@ function usageCount(rid){
   return c;
 }
 function dropRole(flow, col, rid){
-  if (FIXED_CBQLNS[flow] === col){ msg('Ô này cố định là CBQLNS'); return; }
+  if (FIXED_CBQLNS[flow] === col){ msg(t('msgCellFixed')); return; }
   if (!roleById(rid)) return;
   snap(null);
   var row = ruleGrid[flow] || (ruleGrid[flow] = {});
@@ -1497,9 +1707,9 @@ function addFreeRole(){
 }
 function addNodeRole(){
   var nid = $('rolePick').value;
-  if (!nid || !nodes.has(nid)){ msg('Chọn một box trên sơ đồ trước'); return; }
+  if (!nid || !nodes.has(nid)){ msg(t('msgPickBox')); return; }
   if (roleBoxes.some(function(r){ return r.kind === 'node' && r.nodeId === nid; })){
-    msg('Box này đã có trong danh sách'); return;
+    msg(t('msgBoxExists')); return;
   }
   snap(null);
   roleBoxes.push({ id:'r' + (rseq++), kind:'node', nodeId:nid });
@@ -1507,7 +1717,7 @@ function addNodeRole(){
 }
 function deleteRole(rb){
   var used = usageCount(rb.id);
-  if (used && !confirm('Box "' + roleBoxName(rb) + '" đang dùng ở ' + used + ' ô — xóa khỏi cả ma trận?')) return;
+  if (used && !confirm(tf('cfmDelRole', { name: roleBoxName(rb), n: used }))) return;
   snap(null);
   roleBoxes = roleBoxes.filter(function(x){ return x !== rb; });
   FLOWS.forEach(function(fl){
@@ -1539,11 +1749,11 @@ function chipEl(flow, col, scope, rid){
   var top = document.createElement('div'); top.className = 'chipTop';
   var sc = document.createElement('span');
   sc.className = 'sc' + (scope === 'VH' ? ' vh' : scope === 'REST' ? ' rest' : '');
-  sc.textContent = SEG_LABEL[scope];
-  sc.title = 'Bấm để chuyển phạm vi: Tất cả → Vận hành → Còn lại';
+  sc.textContent = segLabel(scope);
+  sc.title = t('tipCycleScope');
   sc.onclick = function(){ cycleScope(flow, col, scope); };
   var rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '✕';
-  rm.title = 'Bỏ khỏi ô'; rm.onclick = function(){ removeAssign(flow, col, scope); };
+  rm.title = t('tipRemoveFromCell'); rm.onclick = function(){ removeAssign(flow, col, scope); };
   top.appendChild(sc); top.appendChild(rm);
   var cn = document.createElement('div'); cn.className = 'cn'; cn.textContent = pr.t;
   ch.title = roleBoxText(rb);
@@ -1558,14 +1768,14 @@ function renderRules(){
     var td0 = document.createElement('td'); td0.className = 'flowName';
     var dot = document.createElement('span'); dot.className = 'fdot';
     dot.style.background = FLOW_COLORS[flow] || '#ccc';
-    td0.appendChild(dot); td0.appendChild(document.createTextNode(flow));
+    td0.appendChild(dot); td0.appendChild(document.createTextNode(flowLabel(flow)));
     tr.appendChild(td0);
     COLS.forEach(function(col){
       var td = document.createElement('td'); td.className = 'slot';
       if (FIXED_CBQLNS[flow] === col){
         var lk = document.createElement('div'); lk.className = 'chip locked';
-        lk.textContent = '🔒 CBQLNS';
-        lk.title = 'Cố định: CBQLNS của nhóm (box có ★ bên tab Sơ đồ)';
+        lk.textContent = '🔒 ' + t('cbqlns');
+        lk.title = t('tipLockedChip');
         td.appendChild(lk);
       } else {
         var a = (ruleGrid[flow] || {})[col] || {};
@@ -1574,7 +1784,7 @@ function renderRules(){
           if (a[s]){ td.appendChild(chipEl(flow, col, s, a[s])); any = true; }
         });
         if (!any){
-          var h = document.createElement('div'); h.className = 'slotHint'; h.textContent = 'thả vào đây';
+          var h = document.createElement('div'); h.className = 'slotHint'; h.textContent = t('slotHint');
           td.appendChild(h);
         }
         td.ondragover  = function(e){ e.preventDefault(); td.classList.add('over'); };
@@ -1594,7 +1804,7 @@ function renderRules(){
 function renderRolePalette(){
   var host = $('roleList'); host.innerHTML = '';
   if (!roleBoxes.length){
-    host.innerHTML = '<div class="hint">Chưa có box vai trò nào — bấm "＋ Box mới" hoặc thêm từ sơ đồ.</div>';
+    host.innerHTML = '<div class="hint">' + t('paletteEmpty') + '</div>';
     return;
   }
   roleBoxes.forEach(function(rb){
@@ -1612,19 +1822,20 @@ function renderRolePalette(){
     top.appendChild(ttl);
     var tag = document.createElement('span'); tag.className = 'kindTag';
     var used = usageCount(rb.id);
-    tag.textContent = (rb.kind === 'node' ? 'từ sơ đồ' : 'tự đặt') + (used ? ' · ' + used + ' ô' : '');
+    tag.textContent = (rb.kind === 'node' ? t('tagFromChart') : t('tagCustom'))
+                    + (used ? ' · ' + tf('usedCells', { n: used }) : '');
     top.appendChild(tag);
     var del = document.createElement('button'); del.className = 'rm'; del.textContent = '✕';
-    del.title = 'Xóa box vai trò'; del.onclick = function(){ deleteRole(rb); };
+    del.title = t('tipDelRole'); del.onclick = function(){ deleteRole(rb); };
     top.appendChild(del);
     card.appendChild(top);
     if (rb.kind === 'free'){
-      var fT = document.createElement('input'); fT.placeholder = 'Chức danh'; fT.value = rb.title;
+      var fT = document.createElement('input'); fT.placeholder = t('phRoleTitle'); fT.value = rb.title;
       fT.oninput = function(){
         snap('r:' + rb.id + ':t'); rb.title = fT.value;
         ttl.textContent = roleBoxName(rb); patchRoleChips(rb); refreshFlowResultSoon();
       };
-      var fP = document.createElement('input'); fP.placeholder = 'Người phụ trách'; fP.value = rb.person;
+      var fP = document.createElement('input'); fP.placeholder = t('phRolePerson'); fP.value = rb.person;
       fP.style.fontStyle = 'italic';
       fP.oninput = function(){
         snap('r:' + rb.id + ':p'); rb.person = fP.value;
@@ -1645,7 +1856,7 @@ function renderRolePalette(){
 }
 function fillRolePick(){
   var s = $('rolePick'), cur = s.value; s.innerHTML = '';
-  var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '(chọn box trên sơ đồ…)';
+  var o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('optPickChart');
   s.appendChild(o0);
   var list = [];
   nodes.forEach(function(n){ list.push(n); });
@@ -1828,17 +2039,27 @@ wireCollapse('tglRes', 'resBody');
 
 // Tab Sơ đồ: ẩn/hiện sơ đồ (bảng chiếm toàn màn hình) và ẩn/hiện panel
 var chartHidden = false, panelHidden = false;
+// Nhãn phụ thuộc trạng thái — đọc state để đổi ngôn ngữ xong gọi lại là đúng
+function refreshStateLabels(){
+  $('bTglChart').textContent  = chartHidden   ? t('lblShowChart')  : t('lblHideChart');
+  $('bTglPanel').textContent  = panelHidden   ? t('lblShowPanel')  : t('lblHidePanel');
+  $('bTgl').textContent       = tblCollapsed  ? t('lblTblExpand')  : t('lblTblCollapse');
+  $('bTglInputs').textContent = inputsHidden  ? t('lblShowInputs') : t('lblHideInputs');
+  $('bFlowView').textContent  = flowViewByFc  ? t('lblViewByFc')   : t('lblViewByGroup');
+}
 $('bTglChart').onclick = function(){
   chartHidden = !chartHidden;
   document.querySelector('main').style.display = chartHidden ? 'none' : 'flex';
   $('tableSec').classList.toggle('full', chartHidden);
-  this.textContent = chartHidden ? 'Hiện sơ đồ' : 'Ẩn sơ đồ';
+  refreshStateLabels();
 };
 $('bTglPanel').onclick = function(){
   panelHidden = !panelHidden;
   $('panel').style.display = panelHidden ? 'none' : '';
-  this.textContent = panelHidden ? 'Hiện panel' : 'Ẩn panel';
+  refreshStateLabels();
 };
+
+$('bLang').onclick = function(){ setLang(LANG === 'vi' ? 'en' : 'vi'); };
 
 $('bZoomIn').onclick    = function(){ applyZoom(zoom * ZSTEP); };
 $('bZoomOut').onclick   = function(){ applyZoom(zoom / ZSTEP); };
@@ -1867,7 +2088,7 @@ var inputsHidden = false;
 $('bTglInputs').onclick = function(){
   inputsHidden = !inputsHidden;
   $('flowInputs').style.display = inputsHidden ? 'none' : '';
-  this.textContent = inputsHidden ? 'Hiện khu nhập liệu ▸' : 'Ẩn khu nhập liệu ▴';
+  refreshStateLabels();
 };
 $('bPaste').onclick  = function(){
   var pb = $('pasteBox');
@@ -1877,7 +2098,7 @@ $('bPasteGo').onclick     = function(){ importPaste($('pasteTa').value); };
 $('bPasteCancel').onclick = function(){ $('pasteTa').value=''; $('pasteBox').style.display='none'; };
 $('bFlowView').onclick = function(){
   flowViewByFc = !flowViewByFc;
-  this.textContent = flowViewByFc ? 'Đang xem: từng FC' : 'Đang xem: theo nhóm';
+  refreshStateLabels();
   renderFlowResult();
 };
 $('bCopyFlow').onclick = copyFlowTable;
@@ -1886,12 +2107,13 @@ var tblCollapsed = false;
 $('bTgl').onclick = function(){
   tblCollapsed = !tblCollapsed;
   $('tblHost').style.display = tblCollapsed ? 'none' : 'flex';
-  this.textContent = tblCollapsed ? 'Mở ▴' : 'Thu gọn ▾';
+  refreshStateLabels();
 };
 
 window.onbeforeunload = function(){ return (dirty && nodes.size) ? true : null; };
 
 seedRules({});
+applyStatic();
 renderAll();
 </script>
 </body>
