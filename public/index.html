@@ -6,50 +6,72 @@
 <title>Org Builder — sơ đồ, bảng phân cấp &amp; luồng duyệt</title>
 <style>
   /* ============================================================
-     [CSS] Bố cục khóa theo viewport. Mọi section đều thu/mở được:
+     [CSS] Neo-brutalism pastel. Bố cục khóa theo viewport, mọi section thu/mở được:
        Tab Sơ đồ            : ẩn/hiện sơ đồ, ẩn/hiện panel, thu gọn bảng
        Tab Định nghĩa luồng : ma trận luật + palette box vai trò (kéo-thả)
        Tab Luồng            : card (Nhóm / FC / Kết quả) đều có nút ▴▸
+     Quy ước hình thức: viền 2px, bo góc 6px, shadow cứng 2px (không blur).
+     Mọi thứ bấm được đều "thụt xuống" che shadow khi hover -> .press
      ============================================================ */
+  :root{
+    --ink:#1F1B16; --paper:#FFFDF8; --wash:#FAF3EC; --line:#E4DACB;
+    --yellow:#FFD93D; --coral:#F4645C; --blue:#6B8FE8;
+    --green:#A8D989; --cyan:#7ECEE0; --lilac:#C3AEE8; --peach:#FFB98A;
+    --muted:#8C857A;
+    --bd:2px solid var(--ink); --r:6px; --sh:2px 2px 0 var(--ink);
+  }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;font:14px/1.45 system-ui,"Segoe UI",Arial,sans-serif;color:#111;background:#fff;
+  body{margin:0;font:14px/1.45 system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--wash);
        display:flex;flex-direction:column}
 
+  /* Thụt xuống che shadow khi hover — dùng cho mọi thứ bấm được */
+  .press{transition:transform .06s ease, box-shadow .06s ease}
+  .press:hover{transform:translate(2px,2px);box-shadow:none !important}
+  .press:active{transform:translate(2px,2px);box-shadow:none !important;filter:brightness(.96)}
+  .press:disabled,.press[disabled]{transform:none !important;box-shadow:var(--sh) !important;
+       opacity:.45;cursor:not-allowed}
+
   header{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
-         padding:8px 12px;border-bottom:1px solid #ddd;background:#fff}
-  header h1{font-size:15px;margin:0;font-weight:600;line-height:1.15}
+         padding:9px 12px;border-bottom:var(--bd);background:var(--paper)}
+  header h1{font-size:15px;margin:0;font-weight:800;line-height:1.15;letter-spacing:-.01em}
   #brand{display:flex;flex-direction:column;margin-right:6px}
-  #ver{font-size:11px;color:#999;font-weight:400;line-height:1.15}
-  #credit{margin-left:auto;text-align:right;font-size:11px;color:#999;line-height:1.4;white-space:nowrap}
-  #credit b{font-weight:600;color:#777}
-  button{font:inherit;padding:6px 10px;border:1px solid #333;background:#fff;cursor:pointer;border-radius:3px}
-  button:hover{background:#f0f0f0}
-  button.primary{background:#111;color:#fff;border-color:#111}
-  button.primary:hover{background:#333}
-  button.danger{color:#a00;border-color:#a00}
-  button.tabbtn{border-color:#999;color:#555}
-  button.tabbtn.active{background:#111;color:#fff;border-color:#111}
-  button.tgl{padding:1px 7px;font-size:12px;border-color:#999}   /* nút thu/mở section */
-  button.ghost{border-color:#bbb;color:#555}                     /* nút phụ (đổi trạng thái xem) */
-  button.ghost:hover{background:#f5f5f5}
-  /* Nhóm nút theo chức năng: mỗi nhóm cách nhau bằng vách mảnh; tab là segmented control */
-  .grp{display:flex;align-items:center;gap:6px}
-  .grp+.grp{padding-left:10px;border-left:1px solid #e3e3e3}
+  #ver{font-size:11px;color:var(--muted);font-weight:600;line-height:1.15}
+  #credit{margin-left:auto;text-align:right;font-size:11px;color:var(--muted);line-height:1.4;white-space:nowrap}
+  #credit b{font-weight:700;color:var(--ink)}
+
+  button{font:inherit;font-weight:600;padding:6px 11px;border:var(--bd);background:var(--paper);
+         color:var(--ink);cursor:pointer;border-radius:var(--r);box-shadow:var(--sh);
+         transition:transform .06s ease, box-shadow .06s ease}
+  button:hover{transform:translate(2px,2px);box-shadow:none}
+  button:active{transform:translate(2px,2px);box-shadow:none;filter:brightness(.96)}
+  button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:var(--sh)}
+  button.primary{background:var(--yellow)}
+  button.danger{background:var(--coral)}
+  button.tabbtn{background:var(--paper)}
+  button.tabbtn.active{background:var(--yellow)}
+  button.tgl{padding:1px 8px;font-size:12px}
+  button.ghost{background:var(--paper)}
+  /* Nhóm nút theo chức năng; tab là segmented control */
+  .grp{display:flex;align-items:center;gap:7px}
+  .grp+.grp{padding-left:11px;border-left:2px solid var(--line)}
   .seg{gap:0}
-  .seg button{border-radius:0;margin-left:-1px}
-  .seg button:first-child{margin-left:0;border-radius:3px 0 0 3px}
-  .seg button:last-child{border-radius:0 3px 3px 0}
-  #msg{color:#0a6;font-size:12.5px;margin-left:4px}
+  .seg button{border-radius:0;margin-left:-2px}
+  .seg button:first-child{margin-left:0;border-radius:var(--r) 0 0 var(--r)}
+  .seg button:last-child{border-radius:0 var(--r) var(--r) 0}
+  #msg{color:var(--ink);font-size:12.5px;margin-left:4px;font-weight:600;
+       background:var(--green);border:var(--bd);border-radius:var(--r);padding:1px 8px}
+  #msg:empty{display:none}
 
   /* ---- Tab Sơ đồ ---- */
   #tabOrg{flex:1;min-height:0;display:flex;flex-direction:column}
   #orgBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
-          padding:8px 12px;border-bottom:1px solid #eee}
-  #focusChip{font-size:12.5px;color:#555;border:1px dashed #999;border-radius:3px;padding:3px 6px}
-  #focusChip button{padding:0 5px;font-size:12px;border:none}
+          padding:9px 12px;border-bottom:2px solid var(--line);background:var(--wash)}
+  #focusChip{font-size:12.5px;font-weight:600;border:var(--bd);border-radius:var(--r);
+             padding:3px 8px;background:var(--peach)}
+  #focusChip button{padding:0 5px;font-size:12px;border:none;box-shadow:none;background:none}
   main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overlay */
-  #canvasWrap{flex:1;overflow:auto;background:#fafafa;cursor:grab;touch-action:none}
+  #canvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none}
   #canvasWrap.panning{cursor:grabbing}
   #canvasSizer{position:relative}                            /* kích thước = world × zoom, tạo vùng cuộn */
   #canvas{position:relative;transform-origin:0 0}            /* scale(zoom) set bằng JS */
@@ -57,121 +79,159 @@
 
   /* Minimap: overlay góc dưới-trái vùng canvas, không cuộn theo nội dung */
   #minimap{position:absolute;left:12px;bottom:12px;width:200px;height:150px;z-index:4;
-           border:1px solid #999;border-radius:3px;background:rgba(255,255,255,.92);
-           box-shadow:0 1px 6px rgba(0,0,0,.18);overflow:hidden;cursor:pointer;touch-action:none}
+           border:var(--bd);border-radius:var(--r);background:var(--paper);
+           box-shadow:var(--sh);overflow:hidden;cursor:pointer;touch-action:none}
   #minimap.hidden{display:none}
   #miniSvg{position:absolute;left:0;top:0;width:100%;height:100%}
-  #miniView{position:absolute;border:1.5px solid #d97706;background:rgba(217,119,6,.14);
+  #miniView{position:absolute;border:2px solid var(--coral);background:rgba(244,100,92,.14);
             cursor:move;pointer-events:none}
-  #zoomLbl{font-size:12.5px;color:#555;min-width:42px;text-align:center}
+  #zoomLbl{font-size:12.5px;min-width:42px;text-align:center;font-weight:700}
 
-  .node{position:absolute;width:190px;height:104px;border:1px solid #333;background:#fff;
-        border-radius:3px;cursor:pointer;overflow:hidden;padding:6px 8px;
-        display:flex;flex-direction:column;justify-content:flex-start;gap:2px}
-  .node.sel{border-width:2.5px;box-shadow:0 1px 5px rgba(0,0,0,.35)}
-  .node .tt{position:absolute;right:5px;top:3px;font-size:10.5px;color:#333;opacity:.75}
-  .node .st{position:absolute;right:5px;top:17px;font-size:11px;color:#7a5b00}
-  .node .vh{position:absolute;right:4px;bottom:3px;font-size:9.5px;font-weight:700;color:#0b6b80;
-            background:rgba(255,255,255,.85);border:1px solid #7bc4d4;border-radius:2px;padding:0 3px}
-  .node .hid{position:absolute;left:4px;bottom:3px;font-size:10.5px;color:#333;
-             background:#fff;border:1px solid #999;border-radius:3px;padding:0 4px;cursor:pointer}
-  .node .bd{font-weight:700;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
+  .node{position:absolute;width:190px;height:104px;border:var(--bd);background:var(--paper);
+        border-radius:var(--r);box-shadow:var(--sh);cursor:pointer;overflow:hidden;padding:7px 9px;
+        display:flex;flex-direction:column;justify-content:flex-start;gap:2px;
+        transition:transform .06s ease, box-shadow .06s ease}
+  .node:hover{transform:translate(2px,2px);box-shadow:none}
+  .node.sel{box-shadow:0 0 0 3px var(--blue), var(--sh)}
+  .node.sel:hover{box-shadow:0 0 0 3px var(--blue)}
+  .node .tt{position:absolute;right:6px;top:4px;font-size:10.5px;font-weight:700;opacity:.6}
+  .node .st{position:absolute;right:6px;top:19px;font-size:11px}
+  .node .vh{position:absolute;right:5px;bottom:4px;font-size:9.5px;font-weight:800;letter-spacing:.04em;
+            border:2px solid var(--ink);border-radius:4px;padding:0 4px;background:var(--cyan)}
+  .node .vh.br-SM{background:var(--green)}
+  .node .vh.br-BO{background:var(--peach)}
+  .node .hid{position:absolute;left:5px;bottom:4px;font-size:10.5px;font-weight:700;
+             background:var(--paper);border:2px solid var(--ink);border-radius:4px;padding:0 5px;cursor:pointer}
+  .node .bd{font-weight:800;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
             -webkit-box-orient:vertical;overflow:hidden;word-break:break-word;padding-right:20px}
   .node .bt{font-weight:700;font-size:12px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .node .bp{font-style:italic;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
             -webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
-  .node .be{color:#666;font-size:12px}
+  .node .be{color:var(--muted);font-size:12px}
 
-  #panel{width:250px;flex:none;border-left:1px solid #ddd;padding:12px;overflow:auto}
-  #panel h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:#555}
-  #panel label{display:block;font-size:12px;color:#555;margin:10px 0 3px}
-  #panel input,#panel select{width:100%;font:inherit;padding:6px;border:1px solid #bbb;border-radius:3px}
-  #panel .ck{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:13px}
-  #panel .ck input{width:auto}
-  #fD{text-transform:uppercase;font-weight:600}
-  #fC{font-weight:600}
+  #panel{width:256px;flex:none;border-left:var(--bd);padding:12px;overflow:auto;background:var(--paper)}
+  #panel h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;
+            background:var(--yellow);border:var(--bd);border-radius:var(--r);padding:5px 9px}
+  #panel label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:11px 0 4px}
+  #panel input,#panel select{width:100%;font:inherit;padding:6px 8px;border:var(--bd);
+                             border-radius:var(--r);background:#fff;color:var(--ink)}
+  #panel .ck{display:flex;gap:7px;align-items:center;margin-top:11px;font-size:13px;font-weight:600}
+  #panel .ck input{width:auto;accent-color:var(--coral)}
+  #fD{text-transform:uppercase;font-weight:800}
+  #fC{font-weight:700}
   #fP{font-style:italic}
-  .row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-  .hint{color:#888;font-size:12.5px}
+  .row{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+  .row button{flex:1}
+  .hint{color:var(--muted);font-size:12.5px;line-height:1.6}
 
-  #tableSec{flex:none;display:flex;flex-direction:column;max-height:30vh;border-top:1px solid #ddd;padding:10px 12px}
+  #tableSec{flex:none;display:flex;flex-direction:column;max-height:30vh;
+            border-top:var(--bd);padding:11px 12px;background:var(--wash)}
   #tableSec.full{flex:1;max-height:none}                 /* khi ẩn sơ đồ: bảng chiếm toàn bộ */
   #tableSec.full #tblHost{flex:1}
-  #tableSec h2{flex:none;display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 8px;
-               text-transform:uppercase;letter-spacing:.04em;color:#555}
-  #tableSec h2 button{padding:2px 8px;font-size:12px;text-transform:none;letter-spacing:0}
+  #tableSec h2{flex:none;display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 9px;
+               text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+  #tableSec h2 button{padding:2px 9px;font-size:12px;text-transform:none;letter-spacing:0}
   #tblHost{min-height:0;display:flex}
 
   /* Khung bảng dùng chung: cột CỐ ĐỊNH độ rộng (colgroup) + cuộn ngang/dọc */
-  .scrollTbl{overflow:auto;border:1px solid #999;max-width:100%;min-height:0}
+  .scrollTbl{overflow:auto;border:var(--bd);border-radius:var(--r);max-width:100%;min-height:0;
+             background:var(--paper)}
   table{border-collapse:separate;border-spacing:0;font-size:13px}
-  th,td{border-right:1px solid #999;border-bottom:1px solid #999;padding:4px 9px;text-align:left;vertical-align:top}
+  th,td{border-right:2px solid var(--line);border-bottom:2px solid var(--line);
+        padding:5px 9px;text-align:left;vertical-align:top}
   th:last-child,td:last-child{border-right:none}
   tr:last-child td{border-bottom:none}
-  th{position:sticky;top:0;background:#f2f2f2;font-weight:600;z-index:1;white-space:nowrap;
-     overflow:hidden;text-overflow:ellipsis}
-  td{white-space:pre-line;overflow-wrap:anywhere}        /* giữ \n, tự ngắt trong bề rộng cột */
-  td.dash{color:#999;text-align:center}
+  th{position:sticky;top:0;background:var(--ink);color:var(--paper);font-weight:700;z-index:1;
+     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.03em;
+     border-right-color:rgba(255,253,248,.25);border-bottom:var(--bd)}
+  td{white-space:pre-line;overflow-wrap:anywhere;background:var(--paper)}  /* giữ \n, tự ngắt trong cột */
+  td.dash{color:var(--muted);text-align:center}
 
   /* ---- Tab Định nghĩa luồng: ma trận kéo-thả ---- */
   #tabRules{flex:1;min-height:0;overflow:auto;padding:12px;display:none}
   #rulesWrap{display:flex;gap:16px;align-items:flex-start}
   #rulesMain{flex:1;min-width:0}
   #rulesSide{width:300px;flex:none;position:sticky;top:0}
-  #roleList{max-height:56vh;overflow:auto;padding-right:2px}   /* list dài tự cuộn — phần trên đứng yên */
-  #ruleTbl td.slot{height:96px;vertical-align:top;background:#fdfdfd}
-  #ruleTbl td.slot.over{background:#e8f2ff}
-  #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:600;background:#f8f8f8}
-  .chip{display:block;border:1px solid #666;border-radius:3px;
-        background:#fff;padding:3px 6px;margin:2px 0;font-size:12px}
+  #roleList{max-height:56vh;overflow:auto;padding-right:3px}   /* list dài tự cuộn — phần trên đứng yên */
+  #ruleTbl td.slot{height:96px;vertical-align:top;background:var(--paper)}
+  #ruleTbl td.slot.over{background:var(--cyan)}
+  #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:800;background:var(--wash)}
+  .chip{display:block;border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
+        background:var(--paper);padding:4px 7px;margin:0 0 6px;font-size:12px}
   .chip .chipTop{display:flex;align-items:center;justify-content:space-between;gap:5px}
-  .chip .cn{font-weight:600;font-size:11.5px;line-height:1.25;margin-top:1px;
+  .chip .cn{font-weight:700;font-size:11.5px;line-height:1.25;margin-top:2px;
             display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
-  .chip .cp{font-style:italic;font-size:11px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chip .sc{font-size:10px;border:1px solid #999;border-radius:2px;padding:0 3px;cursor:pointer;
-            white-space:nowrap;background:#f4f4f4}
-  .chip .sc.vh{background:#d9f2f8;border-color:#4aa3b8}
-  .chip .sc.rest{background:#efe9f8;border-color:#9b7bd4}
-  .chip .rm,.roleCard .rm{border:none;padding:0 3px;font-size:11px;color:#a00;cursor:pointer;background:none}
-  .chip.locked{border-style:dashed;color:#555;background:#f6f6f6;display:inline-block}
-  .slotHint{color:#c2c2c2;font-size:11px;text-align:center;padding:8px 0}
-  .roleCard{border:1px solid #666;border-radius:3px;background:#fff;padding:6px 8px;margin-bottom:8px}
-  .roleCard .topRow{display:flex;align-items:center;gap:5px;cursor:grab}
+  .chip .cp{font-style:italic;font-size:11px;color:#5A544B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip .sc{font-size:9.5px;font-weight:800;letter-spacing:.03em;border:2px solid var(--ink);
+            border-radius:4px;padding:0 4px;cursor:pointer;white-space:nowrap;background:var(--yellow);
+            transition:transform .06s ease}
+  .chip .sc:hover{transform:translate(1px,1px)}
+  .chip .sc-VH{background:var(--blue)}
+  .chip .sc-SM{background:var(--green)}
+  .chip .sc-BO{background:var(--peach)}
+  .chip .sc-REST{background:var(--lilac)}
+  .chip .rm,.roleCard .rm{border:none;padding:0 4px;font-size:11px;font-weight:800;cursor:pointer;
+                          background:none;box-shadow:none;border-radius:3px}
+  .chip .rm:hover,.roleCard .rm:hover{background:var(--coral);transform:none}
+  .chip.locked{border-style:dashed;background:var(--yellow);display:inline-block;box-shadow:none;font-weight:700}
+  .slotHint{color:#BDB5A8;font-size:11px;text-align:center;padding:9px 0;
+            border:2px dashed var(--line);border-radius:var(--r)}
+  .roleCard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
+            background:var(--paper);padding:7px 9px;margin-bottom:9px}
+  .roleCard .topRow{display:flex;align-items:center;gap:6px;cursor:grab}
   .roleCard .topRow.dragging{opacity:.5}
-  .roleCard .drag{color:#999;font-size:13px}
-  .roleCard .ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;font-size:12.5px}
-  .roleCard .kindTag{font-size:10px;color:#777;border:1px solid #ccc;border-radius:2px;padding:0 3px;white-space:nowrap}
-  .roleCard input{width:100%;font:inherit;font-size:12.5px;border:1px solid #ccc;border-radius:3px;padding:3px 5px;margin-top:4px}
-  .roleCard .nodeTxt{font-size:12px;white-space:pre-line;margin-top:3px;color:#333}
+  .roleCard .drag{color:var(--muted);font-size:13px}
+  .roleCard .ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;font-size:12.5px}
+  .roleCard .kindTag{font-size:9.5px;font-weight:700;border:2px solid var(--ink);border-radius:4px;
+                     padding:0 4px;white-space:nowrap;background:var(--wash)}
+  .roleCard input{width:100%;font:inherit;font-size:12.5px;border:var(--bd);border-radius:var(--r);
+                  padding:4px 7px;margin-top:5px;background:#fff}
+  .roleCard .nodeTxt{font-size:12px;white-space:pre-line;margin-top:4px}
+  /* Trigger "CBQLNS cấp dưới tự PD" — chỉ hiện khi dưới box có box ★ */
+  .roleCard .pdCk{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11.5px;font-weight:700;
+                  background:var(--cyan);border:2px solid var(--ink);border-radius:var(--r);
+                  padding:4px 7px;cursor:pointer}
+  .roleCard .pdCk input{width:auto;margin:0;accent-color:var(--ink)}
 
   /* ---- Tab Luồng duyệt ---- */
   #tabFlow{flex:1;min-height:0;overflow:auto;padding:12px;display:none}
-  .cardH{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 8px;
-         text-transform:uppercase;letter-spacing:.04em;color:#555;font-weight:600}
+  .cardH{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 10px;
+         text-transform:uppercase;letter-spacing:.06em;font-weight:800}
   .flowTop{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
-  .flowCard{border:1px solid #ddd;border-radius:3px;padding:10px 12px}
+  .flowCard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
+            background:var(--paper);padding:11px 12px}
   #grpSec{flex:1 1 380px;min-width:320px}
   #fcSec{flex:1.3 1 480px;min-width:420px}
-  .miniRow{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
-  .miniRow input,.miniRow select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid #bbb;border-radius:3px}
+  .miniRow{display:flex;gap:7px;align-items:center;margin-top:7px;flex-wrap:wrap}
+  .miniRow input,.miniRow select{font:inherit;font-size:13px;padding:5px 8px;border:var(--bd);
+                                 border-radius:var(--r);background:#fff;color:var(--ink)}
   .miniRow input.w2{flex:1;min-width:140px}
   .miniRow select{max-width:290px}
-  .miniRow button{padding:2px 8px;font-size:12px}
-  .gcnt{font-size:12px;color:#777}
+  .miniRow button{padding:3px 10px;font-size:12px}
+  .gcnt{font-size:11px;font-weight:800;background:var(--ink);color:var(--paper);
+        border-radius:4px;padding:1px 7px;letter-spacing:.04em;white-space:nowrap}
+  /* nút ✕ trong ô bảng: gọn lại cho vừa cột hẹp */
+  #grpTbl button,#fcTbl button{padding:2px 7px;font-size:12px;box-shadow:1px 1px 0 var(--ink)}
+  #grpTbl button:hover,#fcTbl button:hover{transform:translate(1px,1px)}
   /* Bảng Nhóm FC + FC: input trần trong ô, lọc nhanh, cuộn riêng ~1/2 view, hàng đầu freeze (th sticky) */
   .inScroll{max-height:48vh}
   .resScroll{max-height:60vh}   /* bảng luồng duyệt: cuộn trong khung riêng để header luôn trong tầm nhìn */
   #fcTbl{width:100%;min-width:706px}                            /* giãn hết card, hẹp quá thì cuộn ngang */
   #grpTbl{width:100%;min-width:628px}
-  #fcTbl input,#fcTbl select,#grpTbl input,#grpTbl select{width:100%;font:inherit;font-size:13px;padding:3px 5px;border:1px solid #ccc;border-radius:3px}
+  #fcTbl input,#fcTbl select,#grpTbl input,#grpTbl select{width:100%;font:inherit;font-size:13px;
+        padding:4px 7px;border:2px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
+  #fcTbl input:focus,#fcTbl select:focus,#grpTbl input:focus,#grpTbl select:focus{
+        border-color:var(--ink);outline:none}
   #fcTbl td,#grpTbl td{white-space:normal}
-  #pasteBox{display:none;margin-top:8px}
-  #pasteBox textarea{width:100%;height:110px;font:12.5px/1.4 Consolas,monospace;border:1px solid #bbb;border-radius:3px;padding:6px}
-  .fdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.25)}
+  #pasteBox{display:none;margin-top:9px}
+  #pasteBox textarea{width:100%;height:110px;font:12.5px/1.45 Consolas,monospace;border:var(--bd);
+                     border-radius:var(--r);padding:8px;background:#fff;color:var(--ink)}
+  .fdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;
+        border:2px solid var(--ink);vertical-align:-1px}
 
   @media(max-width:760px){
     main{flex-direction:column}
-    #panel{width:auto;max-height:36vh;border-left:none;border-top:1px solid #ddd}
+    #panel{width:auto;max-height:36vh;border-left:none;border-top:var(--bd)}
     #tableSec{max-height:26vh}
     #grpSec,#fcSec{min-width:0;flex:1 1 100%}
     #rulesWrap{flex-direction:column}
@@ -185,7 +245,7 @@
 <header>
   <div id="brand">
     <h1>Org Builder</h1>
-    <div id="ver">version 6</div>
+    <div id="ver">version 8</div>
   </div>
   <div class="grp seg">
     <button id="tabBtnOrg"   class="tabbtn active" data-i18n="tabOrg">Sơ đồ tổ chức</button>
@@ -259,8 +319,8 @@
       </div>
       <div class="hint" style="margin-top:8px" data-i18n-html="rulesHint">
         Ô <b>🔒 CBQLNS</b> là cố định. Trên mỗi box đã thả, bấm nhãn phạm vi để xoay vòng
-        <b>Tất cả → Vận hành → Còn lại</b> — một ô có thể chứa 1 box "Tất cả" hoặc 2 box "Vận hành" + "Còn lại".
-        Nhánh "Vận hành" đánh dấu bằng checkbox trong panel Chi tiết box (tab Sơ đồ tổ chức).
+        <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → Còn lại</b> — một ô chứa 1 box "Tất cả",
+        hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box (tab Sơ đồ tổ chức).
       </div>
     </div>
     <div id="rulesSide" class="flowCard">
@@ -345,7 +405,7 @@
       <div id="flowResult"></div>
       <div class="hint" style="margin-top:8px" data-i18n-html="resHint">
         Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>.
-        Nhánh của mỗi nhóm (Vận hành / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.
+        Nhánh của mỗi nhóm (Vận hành / Kinh doanh / Hỗ trợ / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.
       </div>
     </div>
   </section>
@@ -363,7 +423,7 @@
    [6] Render tab Sơ đồ (bảng có colgroup cố định độ rộng cột)
    [7] Xuất & Lưu: TSV, JSON (atomic), .drawio
    [8] Luồng duyệt & Định nghĩa luồng:
-       [8a] engine: box vai trò + ma trận luật + nhánh (Vận hành / Còn lại)
+       [8a] engine: box vai trò + ma trận luật + nhánh (Vận hành / Kinh doanh / Hỗ trợ / Còn lại)
        [8b] Nhóm FC  — render + CẬP NHẬT ĐÍCH DANH (không đập cả tab)
        [8c] Fund Center — bảng + lọc + dán từ Excel
        [8d] Bảng kết quả — gộp theo nhóm (mặc định) / bung theo FC + copy TSV
@@ -404,27 +464,30 @@ vi: {
   // --- thuật ngữ miền (đồng nhất mọi nơi) ---
   cbqlns:'CBQLNS', cbqlnsFull:'CBQLNS (quản lý ngân sách)',
   tipStar:'CBQLNS — Cán bộ quản lý ngân sách',
-  vhBadge:'VH', vhWord:'VẬN HÀNH',
-  segALL:'Tất cả', segVH:'Vận hành', segREST:'Còn lại',
+  brBadgeVH:'VH', brBadgeSM:'SM', brBadgeBO:'BO',
+  segALL:'Tất cả', segVH:'Vận hành', segSM:'Kinh doanh', segBO:'Hỗ trợ', segREST:'Còn lại',
+  brNone:'— Không đánh dấu —', lblBranch:'Nhánh (tính luồng duyệt)',
+  brTipNode:'Gốc nhánh {br} — CBQLNS dưới nhánh này tính luồng theo "{br}"',
+  msgOnlyOneBr:'Chỉ được 1 nhánh {br} — đang ở "{name}", bỏ đánh dấu ở đó trước',
+  ckPdBelow:'CBQLNS cấp dưới tự PD',
+  tipPdBelow:'Nếu CBQLNS của nhóm nằm dưới box này, chính CBQLNS đó sẽ ký ở ô có box này — '
+           + 'không phải đẩy lên box này nữa.',
+  pdDelegatedNote:'\n(CBQLNS tự PD)',
   // --- panel chi tiết ---
   panelH:'Chi tiết box', panelEmptyH:'Chi tiết',
-  panelEmptyHint:'Chọn một box để sửa.<br><br>Bắt đầu: bấm "＋ Box gốc", nhập thông tin, rồi "＋ Cấp dưới".<br><br>Kéo chuột trên nền để di chuyển vùng nhìn. Ctrl+Z để hoàn tác.<br><br>Cấp cao nhất là CC, rồi tới T1…T8. Cấp của box con tối thiểu bằng cấp của box cha.<br><br>★ = CBQLNS (cán bộ quản lý ngân sách), dùng cho tab Luồng duyệt.<br><br>Cờ "Nhánh VẬN HÀNH" đánh dấu gốc nhánh vận hành — CBQLNS nằm dưới nhánh này tính luồng theo "Vận hành", ngoài nhánh tính theo "Còn lại".',
+  panelEmptyHint:'Chọn một box để sửa.<br><br>Bắt đầu: bấm "＋ Box gốc", nhập thông tin, rồi "＋ Cấp dưới".<br><br>Kéo chuột trên nền để di chuyển vùng nhìn. Ctrl+Z để hoàn tác.<br><br>Cấp cao nhất là CC, rồi tới T1…T8. Cấp của box con tối thiểu bằng cấp của box cha.<br><br>★ = CBQLNS (cán bộ quản lý ngân sách), dùng cho tab Luồng duyệt.<br><br>Dropdown "Nhánh" đánh dấu gốc của nhánh Vận hành / Kinh doanh / Hỗ trợ — CBQLNS nằm dưới nhánh nào thì tính luồng theo nhánh đó, ngoài hết thì tính theo "Còn lại".',
   lblDept:'Tên phòng / khối (tự IN HOA, đậm)', lblTitle:'Chức danh (đậm)', lblPerson:'Người phụ trách (nghiêng)',
   lblLevel:'Cấp', lblLevelMin:' (tối thiểu {L} theo cấp cha)',
-  ckCbqlns:'★ CBQLNS (quản lý ngân sách)', ckVh:'Nhánh VẬN HÀNH (tính luồng duyệt)',
+  ckCbqlns:'★ CBQLNS (quản lý ngân sách)',
   btnChild:'＋ Cấp dưới', btnSib:'＋ Ngang hàng', btnCollapse:'Thu gọn cấp dưới', btnExpand:'Bung cấp dưới',
   btnFocus:'Focus nhánh', btnUnfocus:'Bỏ focus', btnDel:'Xóa',
   panelHint:'◀ ▶ đổi thứ tự với box ngang hàng. Chữ dài quá khung sẽ thu gọn bằng "…", rê chuột vào box để xem đủ.',
   emptyBox:'(chưa nhập)', unnamed:'(chưa đặt tên)',
   hidTip:'Đang ẩn {n} box cấp dưới — bấm để bung',
-  vhTipNode:'Nhánh VẬN HÀNH — CBQLNS dưới nhánh này tính luồng theo "Vận hành"',
-  vhTipTitle:'[Nhánh VẬN HÀNH]',
   // --- thông báo/confirm ---
   msgUnfocusRoot:'Đã bỏ focus để thêm box gốc',
   cfmDelNode:'Xóa "{name}" cùng {n} box cấp dưới?',
   msgRaised:'Đã nâng {n} box cấp dưới cho khớp cấp mới',
-  msgOnlyOneVh:'Chỉ được 1 nhánh Vận hành — đang ở "{name}", bỏ tick ở đó trước',
-  vhLocked:'Chỉ được 1 nhánh Vận hành — đang ở "{name}"',
   msgFocusCleared:'Đã bỏ focus (nhánh focus nằm trong vùng vừa thu gọn)',
   msgNoUndo:'Không còn gì để hoàn tác', msgUndoErr:'Lỗi hoàn tác', msgUndone:'Đã hoàn tác',
   msgNothingCopy:'Chưa có gì để copy',
@@ -464,16 +527,16 @@ vi: {
   unassignedRow:'(Chưa gán nhóm — không tính được luồng) FC: ',
   msgCopiedFlow:'Đã copy bảng luồng ({view}) — dán thẳng vào Excel',
   viewByGroupWord:'theo nhóm', viewByFcWord:'theo FC',
-  resHint:'Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>. Nhánh của mỗi nhóm (Vận hành / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.',
+  resHint:'Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>. Nhánh của mỗi nhóm (Vận hành / Kinh doanh / Hỗ trợ / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.',
   // --- tab định nghĩa luồng ---
   rulesH:'Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô',
-  rulesHint:'Ô <b>🔒 CBQLNS</b> là cố định. Trên mỗi box đã thả, bấm nhãn phạm vi để xoay vòng <b>Tất cả → Vận hành → Còn lại</b> — một ô có thể chứa 1 box "Tất cả" hoặc 2 box "Vận hành" + "Còn lại". Nhánh "Vận hành" đánh dấu bằng checkbox trong panel Chi tiết box (tab Sơ đồ tổ chức).',
+  rulesHint:'Ô <b>🔒 CBQLNS</b> là cố định. Bấm nhãn phạm vi trên box đã thả để xoay vòng <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → Còn lại</b> — một ô chứa 1 box "Tất cả", hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box. Tick <b>"CBQLNS cấp dưới tự PD"</b> trên box vai trò lấy từ sơ đồ để CBQLNS nằm dưới box đó tự ký thay.',
   paletteH:'Box vai trò', btnAddFreeRole:'＋ Box mới', btnAddNodeRole:'＋ Từ sơ đồ',
   paletteHint:'Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức (vd MCEO, MD) — sửa bên sơ đồ là bên này tự cập nhật. Kéo ở tay nắm ⠿ để thả vào ma trận.',
   msgCellFixed:'Ô này cố định là CBQLNS',
   msgPickBox:'Chọn một box trên sơ đồ trước', msgBoxExists:'Box này đã có trong danh sách',
   cfmDelRole:'Box "{name}" đang dùng ở {n} ô — xóa khỏi cả ma trận?',
-  tipCycleScope:'Bấm để chuyển phạm vi: Tất cả → Vận hành → Còn lại',
+  tipCycleScope:'Bấm để đổi phạm vi: Tất cả → Vận hành → Kinh doanh → Hỗ trợ → Còn lại',
   tipRemoveFromCell:'Bỏ khỏi ô',
   tipLockedChip:'Cố định: CBQLNS của nhóm (box có ★ bên tab Sơ đồ)',
   slotHint:'thả vào đây',
@@ -496,25 +559,28 @@ en: {
   orgTableEmpty:'The table updates as you draw. Each branch is one row; each column is a level row on the chart. A "—" cell means the branch passes through that level.',
   cbqlns:'BMO', cbqlnsFull:'BMO (Budget Management Officer)',
   tipStar:'BMO — Budget Management Officer',
-  vhBadge:'OPS', vhWord:'OPERATIONS',
-  segALL:'All', segVH:'Operations', segREST:'Others',
+  brBadgeVH:'OPS', brBadgeSM:'SM', brBadgeBO:'BO',
+  segALL:'All', segVH:'Operations', segSM:'Sales', segBO:'Back office', segREST:'Others',
+  brNone:'— None —', lblBranch:'Branch (drives approval flow)',
+  brTipNode:'Root of the {br} branch — BMOs under it use the "{br}" flow',
+  msgOnlyOneBr:'Only one {br} branch allowed — currently on "{name}", clear it there first',
+  ckPdBelow:'BMO below approves directly',
+  tipPdBelow:'When a group\'s BMO sits under this box, that BMO signs the cell holding this box '
+           + 'instead of escalating up to it.',
+  pdDelegatedNote:'\n(BMO approves directly)',
   panelH:'Box details', panelEmptyH:'Details',
-  panelEmptyHint:'Select a box to edit.<br><br>Start with "＋ Root box", fill in the details, then "＋ Child".<br><br>Drag the background to pan. Ctrl+Z to undo.<br><br>The top level is CC, then T1…T8. A child\'s level is at least its parent\'s.<br><br>★ = BMO (Budget Management Officer), used by the Approval Flow tab.<br><br>The "OPERATIONS branch" flag marks the root of the operations branch — BMOs under it use the "Operations" flow, everyone else "Others".',
+  panelEmptyHint:'Select a box to edit.<br><br>Start with "＋ Root box", fill in the details, then "＋ Child".<br><br>Drag the background to pan. Ctrl+Z to undo.<br><br>The top level is CC, then T1…T8. A child\'s level is at least its parent\'s.<br><br>★ = BMO (Budget Management Officer), used by the Approval Flow tab.<br><br>The "Branch" dropdown marks the root of the Operations / Sales / Back office branch — a BMO under one of them uses that branch\'s flow; anyone outside uses "Others".',
   lblDept:'Department / division (auto UPPERCASE, bold)', lblTitle:'Job title (bold)', lblPerson:'Person in charge (italic)',
   lblLevel:'Level', lblLevelMin:' (min {L}, from parent)',
-  ckCbqlns:'★ BMO (Budget Management Officer)', ckVh:'OPERATIONS branch (used for approval flow)',
+  ckCbqlns:'★ BMO (Budget Management Officer)',
   btnChild:'＋ Child', btnSib:'＋ Sibling', btnCollapse:'Collapse children', btnExpand:'Expand children',
   btnFocus:'Focus branch', btnUnfocus:'Unfocus', btnDel:'Delete',
   panelHint:'◀ ▶ reorder among siblings. Long text is clipped with "…" — hover a box to see it in full.',
   emptyBox:'(empty)', unnamed:'(unnamed)',
   hidTip:'Hiding {n} descendant boxes — click to expand',
-  vhTipNode:'OPERATIONS branch — BMOs under this branch use the "Operations" flow',
-  vhTipTitle:'[OPERATIONS branch]',
   msgUnfocusRoot:'Focus cleared to add a root box',
   cfmDelNode:'Delete "{name}" and {n} descendant boxes?',
   msgRaised:'Raised {n} descendant boxes to match the new level',
-  msgOnlyOneVh:'Only one Operations branch allowed — currently on "{name}", untick it there first',
-  vhLocked:'Only one Operations branch allowed — currently on "{name}"',
   msgFocusCleared:'Focus cleared (the focused branch is inside the collapsed area)',
   msgNoUndo:'Nothing to undo', msgUndoErr:'Undo failed', msgUndone:'Undone',
   msgNothingCopy:'Nothing to copy',
@@ -551,15 +617,15 @@ en: {
   unassignedRow:'(No group assigned — flow cannot be computed) FC: ',
   msgCopiedFlow:'Copied flow table ({view}) — paste straight into Excel',
   viewByGroupWord:'by group', viewByFcWord:'per FC',
-  resHint:'Flow rules are defined by drag-and-drop on the <b>Flow Rules</b> tab. Each group\'s branch (Operations / Others) is derived from its BMO\'s position on the org chart.',
+  resHint:'Flow rules are defined by drag-and-drop on the <b>Flow Rules</b> tab. Each group\'s branch (Operations / Sales / Back office / Others) is derived from its BMO\'s position on the org chart.',
   rulesH:'Approval flow matrix — drag role boxes from the right panel into cells',
-  rulesHint:'The <b>🔒 BMO</b> cells are fixed. On each placed box, click the scope tag to cycle <b>All → Operations → Others</b> — a cell holds one "All" box or an "Operations" + "Others" pair. Mark the "Operations" branch with the checkbox in the Box details panel (Org Chart tab).',
+  rulesHint:'The <b>🔒 BMO</b> cells are fixed. Click the scope tag on a placed box to cycle <b>All → Operations → Sales → Back office → Others</b> — a cell holds one "All" box, or one box per branch. Mark branches with the dropdown in the Box details panel. Tick <b>"BMO below approves directly"</b> on a from-chart box to let a BMO under it sign in its place.',
   paletteH:'Role boxes', btnAddFreeRole:'＋ New box', btnAddNodeRole:'＋ From chart',
   paletteHint:'A "from chart" box pulls its title/person straight from an Org Chart box (e.g. MCEO, MD) — edit it there and it updates here. Drag by the ⠿ handle to drop into the matrix.',
   msgCellFixed:'This cell is fixed to the BMO',
   msgPickBox:'Pick a chart box first', msgBoxExists:'This box is already in the list',
   cfmDelRole:'Box "{name}" is used in {n} cells — remove it from the matrix too?',
-  tipCycleScope:'Click to cycle scope: All → Operations → Others',
+  tipCycleScope:'Click to cycle scope: All → Operations → Sales → Back office → Others',
   tipRemoveFromCell:'Remove from cell',
   tipLockedChip:"Fixed: the group's BMO (★ box on the Org Chart tab)",
   slotHint:'drop here',
@@ -597,8 +663,9 @@ function setLang(l){
 }
 
 var LEVELS = ['CC','T1','T2','T3','T4','T5','T6','T7','T8'];
-var TCOLOR = {CC:'#5e8cf9',T1:'#ea9651',T2:'#92d050',T3:'#f6d5b9',
-              T4:'#77e3f2',T5:'#cfc8dd',T6:'#ffffff',T7:'#ffffff',T8:'#ffffff'};
+// Màu cấp — pastel, cùng hệ với bảng màu UI (xem :root trong CSS)
+var TCOLOR = {CC:'#6B8FE8',T1:'#FFB98A',T2:'#A8D989',T3:'#FFD93D',
+              T4:'#7ECEE0',T5:'#C3AEE8',T6:'#FFFDF8',T7:'#FFFDF8',T8:'#FFFDF8'};
 
 function $(id){ return document.getElementById(id); }
 function rnum(t){ return LEVELS.indexOf(t); }
@@ -636,8 +703,11 @@ var fcs      = [];          // [{id, code, name, groupId}]
 var FLOWS  = ['Xanh','Vàng','Đỏ','Tím','NNS'];          // thứ tự hàng trong tab Định nghĩa
 var RESULT_ORDER = ['NNS','Tím','Đỏ','Vàng','Xanh'];    // thứ tự hàng trong bảng kết quả
 var COLS   = ['TĐ1','TĐ2','TĐ3','TĐ4','TĐ*','PD'];
-var FLOW_COLORS  = {'Xanh':'#92d050','Vàng':'#ffd54a','Đỏ':'#e05a4e','Tím':'#9b7bd4','NNS':'#5b9bd5'};
+var FLOW_COLORS  = {'Xanh':'#A8D989','Vàng':'#FFD93D','Đỏ':'#F4645C','Tím':'#C3AEE8','NNS':'#6B8FE8'};
 var FIXED_CBQLNS = {'Xanh':'PD','Vàng':'TĐ1','Đỏ':'TĐ1','Tím':'TĐ1','NNS':'TĐ1'};
+// Nhánh đánh dấu trên sơ đồ (mỗi loại tối đa 1 box). REST = phần còn lại, không đánh dấu.
+var BRANCHES = ['VH','SM','BO'];
+var SCOPES   = ['ALL','VH','SM','BO','REST'];   // vòng xoay phạm vi trên chip ma trận
 
 var roleBoxes = [];
 var ruleGrid  = {};
@@ -668,7 +738,7 @@ function seedRules(fin){
 var undoStack = [], lastSnapKey = null, dirty = false;
 
 function serializeAll(){
-  return { v:6, roots:rootIds.map(ser),
+  return { v:8, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrid:ruleGrid };
 }
 function snap(key){
@@ -690,7 +760,7 @@ function undo(){
 function nn(dept, title, person, t, parent, id){
   var nid = id || ('n' + (seq++));
   nodes.set(nid, {id:nid, dept:dept, title:title, person:person, t:t,
-                  star:false, vh:false, collapsed:false, parent:parent, children:[]});
+                  star:false, br:'', collapsed:false, parent:parent, children:[]});
   return nid;
 }
 function addRoot(){
@@ -765,23 +835,38 @@ function toggleStar(id){
   var n = nodes.get(id); n.star = !n.star;
   renderAll();
 }
-function vhRootId(){
+// Gốc của một loại nhánh (VH/SM/BO) — mỗi loại tối đa 1 box trên toàn cây
+function brRootId(kind){
   var id = null;
-  nodes.forEach(function(n){ if (n.vh && !id) id = n.id; });
+  nodes.forEach(function(n){ if (n.br === kind && !id) id = n.id; });
   return id;
 }
-function toggleVh(id){
+function setBranch(id, kind){
   var n = nodes.get(id);
-  if (!n.vh){                                  // chỉ được 1 nhánh Vận hành trên toàn cây
-    var ex = vhRootId();
+  if (kind && n.br !== kind){                  // loại này đã gắn ở box khác -> chặn
+    var ex = brRootId(kind);
     if (ex && ex !== id){
-      msg(tf('msgOnlyOneVh', { name: dispName(nodes.get(ex)) }));
+      msg(tf('msgOnlyOneBr', { br: segLabel(kind), name: dispName(nodes.get(ex)) }));
       renderPanel(); return;
     }
   }
   snap(null);
-  n.vh = !n.vh;
+  n.br = kind || '';
   renderAll();
+}
+// Trong cây con của id (không tính chính nó) có box nào đánh dấu ★ CBQLNS không?
+function hasStarBelow(id){
+  if (!id || !nodes.has(id)) return false;
+  var found = false;
+  (function walk(x){
+    if (found) return;
+    nodes.get(x).children.forEach(function(c){
+      if (found) return;
+      if (nodes.get(c).star){ found = true; return; }
+      walk(c);
+    });
+  })(id);
+  return found;
 }
 function isAncestor(a, b){
   var p = nodes.get(b) && nodes.get(b).parent;
@@ -930,7 +1015,7 @@ function renderCanvas(L){
       var x1 = a.x + BW/2, y1 = a.y + BH, x2 = b.x + BW/2, y2 = b.y, m = y1 + GY/2;
       var p = document.createElementNS(NS, 'path');
       p.setAttribute('d', 'M '+x1+' '+y1+' V '+m+' H '+x2+' V '+y2);
-      p.setAttribute('fill','none'); p.setAttribute('stroke','#444'); p.setAttribute('stroke-width','1.4');
+      p.setAttribute('fill','none'); p.setAttribute('stroke','#1F1B16'); p.setAttribute('stroke-width','2');
       svg.appendChild(p);
     });
   });
@@ -947,9 +1032,10 @@ function renderCanvas(L){
       var st = document.createElement('div'); st.className='st'; st.textContent='★';
       st.title = t('tipStar'); d.appendChild(st);
     }
-    if (n.vh){
-      var vb = document.createElement('div'); vb.className='vh'; vb.textContent = t('vhBadge');
-      vb.title = t('vhTipNode'); d.appendChild(vb);
+    if (n.br){
+      var vb = document.createElement('div'); vb.className = 'vh br-' + n.br;
+      vb.textContent = t('brBadge' + n.br);
+      vb.title = tf('brTipNode', { br: segLabel(n.br) }); d.appendChild(vb);
     }
     var any = false;
     if (n.dept){  var e1=document.createElement('div'); e1.className='bd'; e1.textContent=n.dept;  d.appendChild(e1); any=true; }
@@ -964,7 +1050,7 @@ function renderCanvas(L){
       hd.onclick = function(e){ e.stopPropagation(); toggleCollapse(id); };
       d.appendChild(hd);
     }
-    d.title = cellText(n) + '\n[' + n.t + ']' + (n.vh ? '\n' + t('vhTipTitle') : '');
+    d.title = cellText(n) + '\n[' + n.t + ']' + (n.br ? '\n[' + segLabel(n.br) + ']' : '');
     d.onclick    = function(e){ e.stopPropagation(); select(id); };
     d.ondblclick = function(e){ e.stopPropagation(); select(id, true); };
     cv.appendChild(d);
@@ -988,6 +1074,13 @@ function renderPanel(){
   var minR = n.parent ? rnum(nodes.get(n.parent).t) : 0;
   var opts = '';
   for (var i = minR; i <= 8; i++) opts += '<option>' + LEVELS[i] + '</option>';
+  // Dropdown nhánh: loại đã gắn ở box khác thì vô hiệu hoá (mỗi loại tối đa 1 box)
+  var brOpts = '<option value="">' + t('brNone') + '</option>';
+  BRANCHES.forEach(function(k){
+    var ex = brRootId(k), taken = ex && ex !== sel;
+    brOpts += '<option value="' + k + '"' + (taken ? ' disabled' : '') + '>'
+            + segLabel(k) + (taken ? ' — ' + dispName(nodes.get(ex)) : '') + '</option>';
+  });
 
   p.innerHTML =
       '<h2>' + t('panelH') + '</h2>'
@@ -997,7 +1090,7 @@ function renderPanel(){
     + '<label>' + t('lblLevel') + (minR > 0 ? tf('lblLevelMin', { L: LEVELS[minR] }) : '') + '</label>'
     + '<select id="fT">' + opts + '</select>'
     + '<div class="ck"><input type="checkbox" id="fStar"><label for="fStar" style="margin:0">' + t('ckCbqlns') + '</label></div>'
-    + '<div class="ck"><input type="checkbox" id="fVh"><label for="fVh" style="margin:0">' + t('ckVh') + '</label></div>'
+    + '<label>' + t('lblBranch') + '</label><select id="fBr">' + brOpts + '</select>'
     + '<div class="row"><button id="bChild" class="primary">' + t('btnChild') + '</button><button id="bSib">' + t('btnSib') + '</button></div>'
     + '<div class="row"><button id="bClps">' + (n.collapsed ? t('btnExpand') : t('btnCollapse')) + '</button>'
     +   '<button id="bFocus">' + (focusId === sel ? t('btnUnfocus') : t('btnFocus')) + '</button></div>'
@@ -1020,14 +1113,8 @@ function renderPanel(){
   sT.onchange = function(){ setT(sel, sT.value); };
   var ck = $('fStar'); ck.checked = !!n.star;
   ck.onchange = function(){ toggleStar(sel); };
-  var cvh = $('fVh'); cvh.checked = !!n.vh;
-  var vhEx = vhRootId();
-  if (vhEx && vhEx !== sel){                   // đã có nhánh VH ở box khác -> khóa checkbox
-    cvh.disabled = true;
-    cvh.parentElement.title = tf('vhLocked', { name: dispName(nodes.get(vhEx)) });
-    cvh.parentElement.style.opacity = '.55';
-  }
-  cvh.onchange = function(){ toggleVh(sel); };
+  var sBr = $('fBr'); sBr.value = n.br || '';
+  sBr.onchange = function(){ setBranch(sel, sBr.value); };
 
   if (!n.children.length) $('bClps').disabled = true;
   $('bClps').onclick  = function(){ toggleCollapse(sel); };
@@ -1141,7 +1228,7 @@ function ser(id){
   var n = nodes.get(id);
   return { id:n.id, dept:n.dept, title:n.title, person:n.person, t:n.t,
            star: n.star || undefined,
-           vh: n.vh || undefined,
+           br: n.br || undefined,
            collapsed: n.collapsed || undefined,
            focus: (id === focusId) || undefined,
            children: n.children.map(ser) };
@@ -1166,7 +1253,7 @@ function applyState(d){
   })(d.roots);
   function genId(){ do { maxN++; } while (used.has('n'+maxN)); return 'n'+maxN; }
 
-  var tN = new Map(), tRoots = [], tFocus = null, tVhSeen = false;
+  var tN = new Map(), tRoots = [], tFocus = null, tBrSeen = {};
   function mk(o, parentId){
     if (!o || typeof o !== 'object') throw new Error('bad node');
     var pr = parentId ? rnum(tN.get(parentId).t) : 0;
@@ -1174,14 +1261,16 @@ function applyState(d){
     if (r < 0) r = parentId ? Math.min(8, pr+1) : 0;
     if (parentId && r < pr) r = pr;
     var id = (typeof o.id === 'string' && /^n\d+$/.test(o.id) && !tN.has(o.id)) ? o.id : genId();
-    var vhFlag = !!o.vh && !tVhSeen;             // chỉ giữ 1 nhánh Vận hành khi mở file
-    if (vhFlag) tVhSeen = true;
+    // file cũ (v≤7) dùng cờ boolean vh -> quy về nhánh 'VH'; mỗi loại nhánh chỉ giữ box đầu tiên
+    var br = (o.br && BRANCHES.indexOf(o.br) >= 0) ? o.br : (o.vh ? 'VH' : '');
+    if (br && tBrSeen[br]) br = '';
+    if (br) tBrSeen[br] = true;
     tN.set(id, { id:id,
                  dept:  String(o.dept  || '').toUpperCase(),
                  title: String(o.title || ''),
                  person:String(o.person|| ''),
                  t: LEVELS[r],
-                 star: !!o.star, vh: vhFlag, collapsed: !!o.collapsed,
+                 star: !!o.star, br: br, collapsed: !!o.collapsed,
                  parent: parentId, children: [] });
     if (o.focus && !tFocus) tFocus = id;
     (o.children || []).forEach(function(c){ tN.get(id).children.push(mk(c, id)); });
@@ -1216,7 +1305,7 @@ function applyState(d){
     var id = okId ? rb.id : ('r' + (++maxR));
     if (rb.kind === 'node'){
       if (typeof rb.nodeId === 'string' && tN.has(rb.nodeId))
-        tRB.push({ id:id, kind:'node', nodeId:rb.nodeId });
+        tRB.push({ id:id, kind:'node', nodeId:rb.nodeId, pdBelow: !!rb.pdBelow });
     } else {
       tRB.push({ id:id, kind:'free', title:String(rb.title||''), person:String(rb.person||'') });
     }
@@ -1231,11 +1320,11 @@ function applyState(d){
         var a = src[c];
         if (!a || typeof a !== 'object') return;
         var out = {};
-        ['ALL','VH','REST'].forEach(function(s){
+        SCOPES.forEach(function(s){
           if (typeof a[s] === 'string' && tRB.some(function(r){ return r.id === a[s]; })) out[s] = a[s];
         });
-        if (out.ALL){ delete out.VH; delete out.REST; }   // bất biến: "Tất cả" đứng một mình
-        if (out.ALL || out.VH || out.REST){ (tGrid[fl] = tGrid[fl] || {})[c] = out; }
+        if (out.ALL) BRANCHES.concat('REST').forEach(function(s){ delete out[s]; });  // "Tất cả" đứng một mình
+        if (SCOPES.some(function(s){ return out[s]; })) (tGrid[fl] = tGrid[fl] || {})[c] = out;
       });
     });
   }
@@ -1330,11 +1419,20 @@ function rolePair(rb){
   return { t: rb.title || t('unnamed'), p: rb.person || '' };
 }
 function roleBoxName(rb){ return rolePair(rb).t; }
-// Nhánh của CBQLNS: đi ngược tổ tiên, gặp cờ VẬN HÀNH -> 'VH'; không gặp -> 'REST' (Còn lại)
+// Nhánh của CBQLNS: đi ngược tổ tiên, gặp cờ nhánh nào trước thì thuộc nhánh đó; không gặp -> 'REST'
 function segmentOf(cb){
   var a = cb;
-  while (a){ if (a.vh) return 'VH'; a = a.parent ? nodes.get(a.parent) : null; }
+  while (a){
+    if (a.br && BRANCHES.indexOf(a.br) >= 0) return a.br;
+    a = a.parent ? nodes.get(a.parent) : null;
+  }
   return 'REST';
+}
+// Box vai trò "từ sơ đồ" có tick "cấp dưới tự PD" và CBQLNS nằm trong cây con của nó
+// -> chính CBQLNS ký thay ở ô đó (vd luồng Vàng: người dưới MCEO tự PD, khỏi đẩy lên MCEO).
+function pdDelegated(rb, cb){
+  return !!(rb && rb.kind === 'node' && rb.pdBelow && cb &&
+            rb.nodeId && nodes.has(rb.nodeId) && isAncestor(rb.nodeId, cb.id));
 }
 // Nội dung một ô của bảng luồng duyệt
 function resolveCell(flow, col, seg, cb){
@@ -1343,7 +1441,10 @@ function resolveCell(flow, col, seg, cb){
   var asg = (ruleGrid[flow] || {})[col];
   if (!asg) return '—';
   var rid = asg.ALL || asg[seg];
-  return rid ? roleBoxText(roleById(rid)) : '—';
+  if (!rid) return '—';
+  var rb = roleById(rid);
+  if (pdDelegated(rb, cb)) return roleText(cb) + t('pdDelegatedNote');
+  return roleBoxText(rb);
 }
 
 // renderFlow: dựng lại TOÀN BỘ tab (dùng khi đổi tab / undo / mở file / thay đổi từ tab Sơ đồ).
@@ -1664,7 +1765,7 @@ function usageCount(rid){
     var row = ruleGrid[fl] || {};
     COLS.forEach(function(col){
       var a = row[col] || {};
-      ['ALL','VH','REST'].forEach(function(s){ if (a[s] === rid) c++; });
+      SCOPES.forEach(function(s){ if (a[s] === rid) c++; });
     });
   });
   return c;
@@ -1675,19 +1776,24 @@ function dropRole(flow, col, rid){
   snap(null);
   var row = ruleGrid[flow] || (ruleGrid[flow] = {});
   var a = row[col];
-  if (!a || a.ALL){ row[col] = {ALL: rid}; }        // ô trống hoặc đang "Tất cả" -> thay
-  else if (!a.VH)  a.VH  = rid;                     // đã có 1 phạm vi -> điền phạm vi còn thiếu
-  else if (!a.REST) a.REST = rid;
-  else { row[col] = {ALL: rid}; }                   // đầy cả 2 phạm vi -> thay bằng "Tất cả"
+  if (!a || a.ALL){ row[col] = {ALL: rid}; return void (renderRules(), renderFlowResult()); }
+  // đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết thì thay bằng "Tất cả"
+  var free = BRANCHES.concat('REST').filter(function(s){ return !a[s]; })[0];
+  if (free) a[free] = rid; else row[col] = {ALL: rid};
   renderRules(); renderFlowResult();
 }
-function cycleScope(flow, col, scope){              // Tất cả -> Vận hành -> Còn lại -> Tất cả
+function cycleScope(flow, col, scope){   // Tất cả -> Vận hành -> Kinh doanh -> Hỗ trợ -> Còn lại -> ...
   snap(null);
   var a = ruleGrid[flow][col];
   var rid = a[scope];
-  var next = scope === 'ALL' ? 'VH' : (scope === 'VH' ? 'REST' : 'ALL');
+  var next = SCOPES[(SCOPES.indexOf(scope) + 1) % SCOPES.length];
+  // bỏ qua phạm vi đang bị box khác chiếm, tránh ghi đè
+  var guard = 0;
+  while (next !== 'ALL' && a[next] && a[next] !== rid && guard++ < SCOPES.length){
+    next = SCOPES[(SCOPES.indexOf(next) + 1) % SCOPES.length];
+  }
   delete a[scope];
-  if (next === 'ALL'){ delete a.VH; delete a.REST; a.ALL = rid; }
+  if (next === 'ALL'){ BRANCHES.concat('REST').forEach(function(s){ delete a[s]; }); a.ALL = rid; }
   else { delete a.ALL; a[next] = rid; }
   renderRules(); renderFlowResult();
 }
@@ -1695,7 +1801,7 @@ function removeAssign(flow, col, scope){
   snap(null);
   var row = ruleGrid[flow], a = row[col];
   delete a[scope];
-  if (!a.ALL && !a.VH && !a.REST) delete row[col];
+  if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
   renderRules(); renderFlowResult();
 }
 function addFreeRole(){
@@ -1712,7 +1818,7 @@ function addNodeRole(){
     msg(t('msgBoxExists')); return;
   }
   snap(null);
-  roleBoxes.push({ id:'r' + (rseq++), kind:'node', nodeId:nid });
+  roleBoxes.push({ id:'r' + (rseq++), kind:'node', nodeId:nid, pdBelow:false });
   renderRules();
 }
 function deleteRole(rb){
@@ -1724,8 +1830,8 @@ function deleteRole(rb){
     var row = ruleGrid[fl]; if (!row) return;
     COLS.forEach(function(col){
       var a = row[col]; if (!a) return;
-      ['ALL','VH','REST'].forEach(function(s){ if (a[s] === rb.id) delete a[s]; });
-      if (!a.ALL && !a.VH && !a.REST) delete row[col];
+      SCOPES.forEach(function(s){ if (a[s] === rb.id) delete a[s]; });
+      if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
     });
   });
   renderRules(); renderFlowResult();
@@ -1748,7 +1854,7 @@ function chipEl(flow, col, scope, rid){
   var ch = document.createElement('div'); ch.className = 'chip'; ch.dataset.rid = rid;
   var top = document.createElement('div'); top.className = 'chipTop';
   var sc = document.createElement('span');
-  sc.className = 'sc' + (scope === 'VH' ? ' vh' : scope === 'REST' ? ' rest' : '');
+  sc.className = 'sc sc-' + scope;
   sc.textContent = segLabel(scope);
   sc.title = t('tipCycleScope');
   sc.onclick = function(){ cycleScope(flow, col, scope); };
@@ -1780,7 +1886,7 @@ function renderRules(){
       } else {
         var a = (ruleGrid[flow] || {})[col] || {};
         var any = false;
-        ['ALL','VH','REST'].forEach(function(s){
+        SCOPES.forEach(function(s){
           if (a[s]){ td.appendChild(chipEl(flow, col, s, a[s])); any = true; }
         });
         if (!any){
@@ -1849,6 +1955,17 @@ function renderRolePalette(){
         tx.style.fontStyle = 'italic';
         tx.textContent = pr.p;
         card.appendChild(tx);
+      }
+      // Trigger "CBQLNS cấp dưới tự PD" — chỉ áp dụng được khi dưới box thật sự CÓ box ★,
+      // nên chỉ hiện với box lấy từ sơ đồ và có CBQLNS trong cây con.
+      if (hasStarBelow(rb.nodeId)){
+        var ckw = document.createElement('label'); ckw.className = 'pdCk';
+        var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!rb.pdBelow;
+        cb.onchange = function(){ snap(null); rb.pdBelow = cb.checked; renderRules(); renderFlowResult(); };
+        ckw.appendChild(cb);
+        ckw.appendChild(document.createTextNode(t('ckPdBelow')));
+        ckw.title = t('tipPdBelow');
+        card.appendChild(ckw);
       }
     }
     host.appendChild(card);
@@ -1919,8 +2036,8 @@ function renderMinimap(L){
     r.setAttribute('x', p.x); r.setAttribute('y', p.y);
     r.setAttribute('width', BW); r.setAttribute('height', BH);
     r.setAttribute('fill', TCOLOR[n.t] || '#ffffff');
-    r.setAttribute('stroke', id === sel ? '#111' : '#888');
-    r.setAttribute('stroke-width', id === sel ? 6 : 2);
+    r.setAttribute('stroke', id === sel ? '#6B8FE8' : '#1F1B16');
+    r.setAttribute('stroke-width', id === sel ? 8 : 3);
     svg.appendChild(r);
   });
   syncMiniView();
