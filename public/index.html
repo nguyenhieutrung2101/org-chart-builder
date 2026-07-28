@@ -22,7 +22,7 @@
   }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;font:14px/1.45 system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--wash);
+  body{margin:0;font:13px/1.45 system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--wash);
        display:flex;flex-direction:column}
 
   /* Thụt xuống che shadow khi hover — dùng cho mọi thứ bấm được */
@@ -34,13 +34,13 @@
 
   header{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
          padding:9px 12px;border-bottom:var(--bd);background:var(--paper)}
-  header h1{font-size:15px;margin:0;font-weight:800;line-height:1.15;letter-spacing:-.01em}
+  header h1{font-size:14px;margin:0;font-weight:800;line-height:1.15;letter-spacing:-.01em}
   #brand{display:flex;flex-direction:column;margin-right:6px}
   #ver{font-size:11px;color:var(--muted);font-weight:600;line-height:1.15}
   #credit{margin-left:auto;text-align:right;font-size:11px;color:var(--muted);line-height:1.4;white-space:nowrap}
   #credit b{font-weight:700;color:var(--ink)}
 
-  button{font:inherit;font-weight:600;padding:6px 11px;border:var(--bd);background:var(--paper);
+  button{font:inherit;font-weight:600;padding:5px 9px;border:var(--bd);background:var(--paper);
          color:var(--ink);cursor:pointer;border-radius:var(--r);box-shadow:var(--sh);
          transition:transform .06s ease, box-shadow .06s ease}
   button:hover{transform:translate(2px,2px);box-shadow:none}
@@ -52,16 +52,32 @@
   button.tabbtn.active{background:var(--yellow)}
   button.tgl{padding:1px 8px;font-size:12px}
   button.ghost{background:var(--paper)}
-  /* Nhóm nút theo chức năng; tab là segmented control */
+  /* Nhóm nút theo chức năng. Nút KHÔNG dính sát nhau: hiệu ứng lún cần mỗi nút
+     sở hữu khoảng trống ≥ shadow quanh nó, nếu không nút trái lún sẽ đè mép nút phải. */
   .grp{display:flex;align-items:center;gap:7px}
   .grp+.grp{padding-left:11px;border-left:2px solid var(--line)}
-  .seg{gap:0}
-  .seg button{border-radius:0;margin-left:-2px}
-  .seg button:first-child{margin-left:0;border-radius:var(--r) 0 0 var(--r)}
-  .seg button:last-child{border-radius:0 var(--r) var(--r) 0}
+  .seg{gap:5px}                                   /* seg = nhóm liên quan chặt, khe hẹp hơn chút */
   #msg{color:var(--ink);font-size:12.5px;margin-left:4px;font-weight:600;
        background:var(--green);border:var(--bd);border-radius:var(--r);padding:1px 8px}
   #msg:empty{display:none}
+
+  /* Scrollbar cùng ngôn ngữ thiết kế: máng kem, con trượt vàng viền mực */
+  ::-webkit-scrollbar{width:13px;height:13px}
+  ::-webkit-scrollbar-track{background:var(--wash)}
+  ::-webkit-scrollbar-thumb{background:var(--yellow);border:2px solid var(--ink);border-radius:7px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--peach)}
+  ::-webkit-scrollbar-corner{background:var(--wash)}
+  @supports not selector(::-webkit-scrollbar){      /* Firefox */
+    *{scrollbar-color:#FFD93D #FAF3EC}
+  }
+
+  /* Dropdown: bỏ giao diện mặc định, mũi tên tự vẽ cùng nét với UI */
+  /* !important vì các rule ngữ cảnh dùng shorthand background:#fff (reset background-image) */
+  select{appearance:none;-webkit-appearance:none;font-weight:600;cursor:pointer;
+         background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='11'%20height='7'%3E%3Cpath%20d='M1.5%201.5l4%204%204-4'%20stroke='%231F1B16'%20stroke-width='2.2'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+         background-repeat:no-repeat !important;background-position:right 9px center !important;
+         background-color:#fff;padding-right:28px !important}
+  select:focus{outline:none;box-shadow:0 0 0 3px var(--cyan)}
 
   /* ---- Tab Sơ đồ ---- */
   #tabOrg{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -70,6 +86,7 @@
   #focusChip{font-size:12.5px;font-weight:600;border:var(--bd);border-radius:var(--r);
              padding:3px 8px;background:var(--peach)}
   #focusChip button{padding:0 5px;font-size:12px;border:none;box-shadow:none;background:none}
+  #focusChip button:hover{transform:none}          /* nút không có shadow thì không lún */
   main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overlay */
   #canvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none}
   #canvasWrap.panning{cursor:grabbing}
@@ -87,8 +104,8 @@
             cursor:move;pointer-events:none}
   #zoomLbl{font-size:12.5px;min-width:42px;text-align:center;font-weight:700}
 
-  .node{position:absolute;width:190px;height:104px;border:var(--bd);background:var(--paper);
-        border-radius:var(--r);box-shadow:var(--sh);cursor:pointer;overflow:hidden;padding:7px 9px;
+  .node{position:absolute;width:176px;height:96px;border:var(--bd);background:var(--paper);
+        border-radius:var(--r);box-shadow:var(--sh);cursor:pointer;overflow:hidden;padding:6px 8px;
         display:flex;flex-direction:column;justify-content:flex-start;gap:2px;
         transition:transform .06s ease, box-shadow .06s ease}
   .node:hover{transform:translate(2px,2px);box-shadow:none}
@@ -102,14 +119,14 @@
   .node .vh.br-BO{background:var(--peach)}
   .node .hid{position:absolute;left:5px;bottom:4px;font-size:10.5px;font-weight:700;
              background:var(--paper);border:2px solid var(--ink);border-radius:4px;padding:0 5px;cursor:pointer}
-  .node .bd{font-weight:800;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
+  .node .bd{font-weight:800;font-size:11.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
             -webkit-box-orient:vertical;overflow:hidden;word-break:break-word;padding-right:20px}
-  .node .bt{font-weight:700;font-size:12px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .node .bp{font-style:italic;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
+  .node .bt{font-weight:700;font-size:11.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .node .bp{font-style:italic;font-size:11.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
             -webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
   .node .be{color:var(--muted);font-size:12px}
 
-  #panel{width:256px;flex:none;border-left:var(--bd);padding:12px;overflow:auto;background:var(--paper)}
+  #panel{width:238px;flex:none;border-left:var(--bd);padding:12px;overflow:auto;background:var(--paper)}
   #panel h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;
             background:var(--yellow);border:var(--bd);border-radius:var(--r);padding:5px 9px}
   #panel label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:11px 0 4px}
@@ -136,9 +153,9 @@
   /* Khung bảng dùng chung: cột CỐ ĐỊNH độ rộng (colgroup) + cuộn ngang/dọc */
   .scrollTbl{overflow:auto;border:var(--bd);border-radius:var(--r);max-width:100%;min-height:0;
              background:var(--paper)}
-  table{border-collapse:separate;border-spacing:0;font-size:13px}
+  table{border-collapse:separate;border-spacing:0;font-size:12.5px}
   th,td{border-right:2px solid var(--line);border-bottom:2px solid var(--line);
-        padding:5px 9px;text-align:left;vertical-align:top}
+        padding:4px 8px;text-align:left;vertical-align:top}
   th:last-child,td:last-child{border-right:none}
   tr:last-child td{border-bottom:none}
   th{position:sticky;top:0;background:var(--ink);color:var(--paper);font-weight:700;z-index:1;
@@ -151,9 +168,9 @@
   #tabRules{flex:1;min-height:0;overflow:auto;padding:12px;display:none}
   #rulesWrap{display:flex;gap:16px;align-items:flex-start}
   #rulesMain{flex:1;min-width:0}
-  #rulesSide{width:300px;flex:none;position:sticky;top:0}
+  #rulesSide{width:282px;flex:none;position:sticky;top:0}
   #roleList{max-height:56vh;overflow:auto;padding-right:3px}   /* list dài tự cuộn — phần trên đứng yên */
-  #ruleTbl td.slot{height:96px;vertical-align:top;background:var(--paper)}
+  #ruleTbl td.slot{height:90px;vertical-align:top;background:var(--paper)}
   #ruleTbl td.slot.over{background:var(--cyan)}
   #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:800;background:var(--wash)}
   .chip{display:block;border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
@@ -173,6 +190,7 @@
   .chip .rm,.roleCard .rm{border:none;padding:0 4px;font-size:11px;font-weight:800;cursor:pointer;
                           background:none;box-shadow:none;border-radius:3px}
   .chip .rm:hover,.roleCard .rm:hover{background:var(--coral);transform:none}
+  .pdCk input:hover{transform:none}
   .chip.locked{border-style:dashed;background:var(--yellow);display:inline-block;box-shadow:none;font-weight:700}
   .slotHint{color:#BDB5A8;font-size:11px;text-align:center;padding:9px 0;
             border:2px dashed var(--line);border-radius:var(--r)}
@@ -214,10 +232,10 @@
   #grpTbl button,#fcTbl button{padding:2px 7px;font-size:12px;box-shadow:1px 1px 0 var(--ink)}
   #grpTbl button:hover,#fcTbl button:hover{transform:translate(1px,1px)}
   /* Bảng Nhóm FC + FC: input trần trong ô, lọc nhanh, cuộn riêng ~1/2 view, hàng đầu freeze (th sticky) */
-  .inScroll{max-height:48vh}
-  .resScroll{max-height:60vh}   /* bảng luồng duyệt: cuộn trong khung riêng để header luôn trong tầm nhìn */
-  #fcTbl{width:100%;min-width:706px}                            /* giãn hết card, hẹp quá thì cuộn ngang */
-  #grpTbl{width:100%;min-width:628px}
+  .inScroll{max-height:48vh;overflow-x:hidden}   /* tab Luồng duyệt: chỉ cuộn dọc */
+  .resScroll{max-height:60vh;overflow-x:hidden}   /* cuộn dọc; header freeze nhờ th sticky */
+  #fcTbl{width:100%;table-layout:fixed}          /* cột chia %, không bao giờ tràn ngang */
+  #grpTbl{width:100%;table-layout:fixed}
   #fcTbl input,#fcTbl select,#grpTbl input,#grpTbl select{width:100%;font:inherit;font-size:13px;
         padding:4px 7px;border:2px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
   #fcTbl input:focus,#fcTbl select:focus,#grpTbl input:focus,#grpTbl select:focus{
@@ -359,7 +377,7 @@
         </div>
         <div class="scrollTbl inScroll" style="margin-top:8px">
           <table id="grpTbl">
-            <colgroup><col style="width:100px"><col style="width:200px"><col style="width:220px"><col style="width:62px"><col style="width:46px"></colgroup>
+            <colgroup><col style="width:16%"><col style="width:32%"><col style="width:36%"><col style="width:9%"><col style="width:7%"></colgroup>
             <thead><tr><th data-i18n="thFcgCode">Mã FCG</th><th data-i18n="thGrpName">Tên nhóm</th><th data-i18n="thCbqlns">CBQLNS (★)</th><th>FC</th><th></th></tr></thead>
             <tbody id="grpTbody"></tbody>
           </table>
@@ -385,7 +403,7 @@
         </div>
         <div class="scrollTbl inScroll" style="margin-top:8px">
           <table id="fcTbl">
-            <colgroup><col style="width:150px"><col style="width:280px"><col style="width:230px"><col style="width:46px"></colgroup>
+            <colgroup><col style="width:21%"><col style="width:44%"><col style="width:28%"><col style="width:7%"></colgroup>
             <thead><tr><th data-i18n="thFcCode">Mã</th><th data-i18n="thFcName">Tên Fund Center</th><th data-i18n="thFcGroup">Nhóm</th><th></th></tr></thead>
             <tbody id="fcTbody"></tbody>
           </table>
@@ -432,11 +450,10 @@
    ====================================================================== */
 
 /* ============ [1] HẰNG SỐ & TIỆN ÍCH ============ */
-var BW = 190, BH = 104;
+var BW = 176, BH = 96;
 var GX = 18,  GY = 70;
 var PAD = 20;
-var COLW_ORG  = 190;                    // độ rộng cột bảng phân cấp
-var COLW_FLOW = { head:240, flow:90, step:170 };   // độ rộng cột bảng luồng
+var COLW_ORG  = 176;                    // độ rộng cột bảng phân cấp
 
 // Zoom sơ đồ (view-state tạm, KHÔNG lưu JSON). worldW/H = kích thước world lần render gần nhất.
 var zoom = 1, worldW = 300, worldH = 300;
@@ -1685,12 +1702,12 @@ function renderFlowResult(){
   var sc = document.createElement('div'); sc.className = 'scrollTbl resScroll';   // header freeze khi cuộn
   var tb = document.createElement('table');
   tb.style.tableLayout = 'fixed';
-  tb.style.width = '100%';                                       // giãn hết card, hẹp quá thì cuộn ngang
-  tb.style.minWidth = (COLW_FLOW.head + COLW_FLOW.flow + COLW_FLOW.step * COLS.length) + 'px';
-  var cg = document.createElement('colgroup');
-  var c0 = document.createElement('col'); c0.style.width = COLW_FLOW.head + 'px'; cg.appendChild(c0);
-  var c1 = document.createElement('col'); c1.style.width = COLW_FLOW.flow + 'px'; cg.appendChild(c1);
-  cols.forEach(function(){ var c = document.createElement('col'); c.style.width = COLW_FLOW.step + 'px'; cg.appendChild(c); });
+  tb.style.width = '100%';
+  var cg = document.createElement('colgroup');                  // cột chia %, không cuộn ngang
+  var c0 = document.createElement('col'); c0.style.width = '19%'; cg.appendChild(c0);
+  var c1 = document.createElement('col'); c1.style.width = '8%'; cg.appendChild(c1);
+  var stepW = (73 / cols.length).toFixed(3) + '%';
+  cols.forEach(function(){ var c = document.createElement('col'); c.style.width = stepW; cg.appendChild(c); });
   tb.appendChild(cg);
 
   var tr = document.createElement('tr');
