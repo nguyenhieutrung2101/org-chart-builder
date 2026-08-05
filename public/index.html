@@ -17,6 +17,7 @@
     --ink:#1F1B16; --paper:#FFFDF8; --wash:#FAF3EC; --line:#E4DACB;
     --yellow:#FFD93D; --coral:#F4645C; --blue:#6B8FE8;
     --green:#A8D989; --cyan:#7ECEE0; --lilac:#C3AEE8; --peach:#FFB98A;
+    --rose:#F0A6C0;                       /* phạm vi "Còn lại" — tách khỏi tím của Kế toán */
     --muted:#8C857A;
     --bd:2px solid var(--ink); --r:6px; --sh:2px 2px 0 var(--ink);
   }
@@ -153,6 +154,7 @@
   #tableSec{flex:none;display:flex;flex-direction:column;max-height:30vh;
             border-top:var(--bd);padding:11px 12px;background:var(--wash)}
   #tableSec.full{flex:1;max-height:none}                 /* khi ẩn sơ đồ: bảng chiếm toàn bộ */
+  #tableSec.collapsed{max-height:none}                   /* thu gọn: chỉ còn thanh tiêu đề */
   #tableSec.full #tblHost{flex:1}
   #tableSec h2{flex:none;display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 9px;
                text-transform:uppercase;letter-spacing:.06em;font-weight:800}
@@ -174,11 +176,28 @@
   td.dash{color:var(--muted);text-align:center}
 
   /* ---- Tab Định nghĩa luồng: ma trận kéo-thả ---- */
-  #tabRules{flex:1;min-height:0;overflow:auto;padding:12px;display:none}
-  #rulesWrap{display:flex;gap:16px;align-items:flex-start}
-  #rulesMain{flex:1;min-width:0}
-  #rulesSide{width:282px;flex:none;position:sticky;top:0}
-  #roleList{max-height:56vh;overflow:auto;padding-right:3px}   /* list dài tự cuộn — phần trên đứng yên */
+  /* Tab Định nghĩa: trang KHÔNG cuộn; hai cột tự cuộn riêng biệt */
+  #tabRules{flex:1;min-height:0;overflow:hidden;padding:12px;display:none}
+  #rulesWrap{display:flex;gap:16px;align-items:stretch;height:100%;min-height:0}
+  /* Cột trái: tiêu đề + toggle CIG đứng yên, chỉ thân ma trận cuộn */
+  #rulesMain{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+  #rulesHead{flex:none}
+  #ruleScroll{flex:1;min-height:0}
+  #rulesMain>.hint{flex:none;margin-top:8px}
+  /* Cột phải: cuộn độc lập; Box vai trò kéo dài hết đáy */
+  #rulesSide{width:282px;flex:none;display:flex;flex-direction:column;min-height:0;
+             overflow:auto;padding-right:3px;gap:12px}
+  #cigSec{flex:none}
+  #paletteSec{flex:1;min-height:0;display:flex;flex-direction:column}
+  #paletteBody{flex:1;min-height:0;display:flex;flex-direction:column}
+  #roleList{flex:1;min-height:0;overflow:auto;padding-right:3px}
+  /* Card thu gọn: ẩn thân + nút hành động, chỉ còn thanh tiêu đề gọn 1 dòng */
+  .flowCard.collapsed>.cardH{border-bottom:none;margin-bottom:0;white-space:nowrap}
+  .flowCard.collapsed #cigBody,.flowCard.collapsed #paletteBody{display:none}
+  #cigSec.collapsed #bAddCig{display:none}
+  #cigSec.collapsed,#paletteSec.collapsed{flex:none}
+  #cigSec>.cardH>span:first-child,#paletteSec>.cardH>span:first-child{min-width:0}
+  #cigSec>.cardH,#paletteSec>.cardH{gap:7px}
   #ruleTbl td.slot{height:90px;vertical-align:top;background:var(--paper)}
   #ruleTbl td.slot.over{background:var(--cyan)}
   #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:800;background:var(--wash)}
@@ -197,7 +216,7 @@
   .chip .sc-BO{background:var(--peach)}
   .chip .sc-IT{background:var(--cyan)}
   .chip .sc-AC{background:var(--lilac)}
-  .chip .sc-REST{background:var(--lilac)}
+  .chip .sc-REST{background:var(--rose)}
   .chip .rm,.roleCard .rm{border:none;padding:0 4px;font-size:11px;font-weight:800;cursor:pointer;
                           background:none;box-shadow:none;border-radius:3px}
   .chip .rm:hover,.roleCard .rm:hover{background:var(--coral);transform:none}
@@ -238,7 +257,20 @@
   #cigToggle button{padding:3px 10px;font-size:12px}
 
   /* ---- Tab Luồng duyệt ---- */
-  #tabFlow{flex:1;min-height:0;overflow:auto;padding:12px;display:none}
+  /* Tab Luồng duyệt: cột dọc, card kết quả nuốt hết chỗ trống còn lại */
+  #tabFlow{flex:1;min-height:0;overflow:auto;padding:12px;display:none;
+           flex-direction:column;gap:0}
+  #tabFlow>.flowTop{flex:none}
+  #resSec{flex:1;min-height:0;display:flex;flex-direction:column}
+  #resSec.collapsed{flex:none}
+  #resBody{flex:1;min-height:0;display:flex;flex-direction:column}
+  #flowResult{flex:1;min-height:0;display:flex}
+  #resBody>.hint{flex:none}
+  #resFilter{font:inherit;font-size:12.5px;padding:4px 9px;border:2px solid var(--line);
+             border-radius:5px;background:#fff;color:var(--ink);width:210px;
+             text-transform:none;letter-spacing:0;font-weight:400}
+  #resFilter:focus{border-color:var(--ink);outline:none}
+  tr.hideRow{display:none}
   .cardH{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 10px;
          text-transform:uppercase;letter-spacing:.06em;font-weight:800}
   .flowTop{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
@@ -260,7 +292,7 @@
   #grpTbl button:hover,#fcTbl button:hover{transform:translate(1px,1px)}
   /* Bảng Nhóm FC + FC: input trần trong ô, lọc nhanh, cuộn riêng ~1/2 view, hàng đầu freeze (th sticky) */
   .inScroll{max-height:48vh;overflow-x:hidden}   /* tab Luồng duyệt: chỉ cuộn dọc */
-  .resScroll{max-height:60vh;overflow-x:hidden}   /* cuộn dọc; header freeze nhờ th sticky */
+  .resScroll{flex:1;min-height:0;overflow-x:hidden}   /* cuộn dọc; header freeze nhờ th sticky */
   #fcTbl{width:100%;table-layout:fixed}          /* cột chia %, không bao giờ tràn ngang */
   #grpTbl{width:100%;table-layout:fixed}
   #fcTbl input,#fcTbl select,#grpTbl input,#grpTbl select{width:100%;font:inherit;font-size:13px;
@@ -351,14 +383,17 @@
 <div id="tabRules">
   <div id="rulesWrap">
     <div id="rulesMain">
-      <div class="cardH" data-i18n="rulesH">Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô</div>
-      <!-- Toggle scenario chi phí: luật "Chung" cho mọi CIG, hoặc luật riêng cho từng CIG -->
-      <div class="miniRow" style="margin:0 0 9px">
-        <span class="lblScen" data-i18n="scenLbl">Đang định nghĩa cho:</span>
-        <span id="cigToggle" class="grp seg"></span>
-        <span id="scenNote" class="hint"></span>
+      <!-- Phần đầu đứng yên; chỉ thân bảng cuộn (thead sticky bên trong .scrollTbl) -->
+      <div id="rulesHead">
+        <div class="cardH" data-i18n="rulesH">Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô</div>
+        <!-- Toggle scenario chi phí: luật "Chung" cho mọi CIG, hoặc luật riêng cho từng CIG -->
+        <div class="miniRow" style="margin:0 0 9px">
+          <span class="lblScen" data-i18n="scenLbl">Đang định nghĩa cho:</span>
+          <span id="cigToggle" class="grp seg"></span>
+          <span id="scenNote" class="hint"></span>
+        </div>
       </div>
-      <div class="scrollTbl">
+      <div class="scrollTbl" id="ruleScroll">
         <table id="ruleTbl" style="table-layout:fixed;width:100%;min-width:1026px">
           <colgroup>
             <col style="width:78px"><col style="width:158px"><col style="width:158px">
@@ -370,33 +405,40 @@
       </div>
       <div class="hint" style="margin-top:8px" data-i18n-html="rulesHint">
         Ô <b>🔒 CBQLNS</b> là cố định. Trên mỗi box đã thả, bấm nhãn phạm vi để xoay vòng
-        <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → Còn lại</b> — một ô chứa 1 box "Tất cả",
+        <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Kế toán → Còn lại</b> — một ô chứa 1 box "Tất cả",
         hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box (tab Sơ đồ tổ chức).
       </div>
     </div>
+    <!-- Cột phải cuộn riêng, không dính với ma trận bên trái -->
     <div id="rulesSide">
-      <div class="flowCard" style="margin-bottom:12px">
+      <section id="cigSec" class="flowCard collapsed">
         <div class="cardH"><span data-i18n="cigH">Nhóm chi phí (CIG)</span>
-          <button id="bAddCig" style="margin-left:auto" data-i18n="btnAddCig">＋ CIG</button></div>
-        <table id="cigTbl" style="width:100%;table-layout:fixed">
-          <colgroup><col style="width:33%"><col style="width:51%"><col style="width:16%"></colgroup>
-          <tbody id="cigTbody"></tbody>
-        </table>
-        <div class="hint" style="margin-top:6px" data-i18n="cigHint">Commitment Item Group — loại chi phí. Mỗi CIG có thể có bộ luật riêng (toggle phía trên ma trận).</div>
-      </div>
-      <div class="flowCard">
-      <div class="cardH" data-i18n="paletteH">Box vai trò</div>
-      <div class="miniRow">
-        <button id="bAddFreeRole" class="primary" data-i18n="btnAddFreeRole">＋ Box mới</button>
-      </div>
-      <div class="miniRow">
-        <select id="rolePick" style="flex:1;min-width:0"></select>
-        <button id="bAddNodeRole" data-i18n="btnAddNodeRole">＋ Từ sơ đồ</button>
-      </div>
-      <div class="hint" style="margin:6px 0 10px" data-i18n-html="paletteHint">Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức
-      (vd MCEO, MD) — sửa bên sơ đồ là bên này tự cập nhật. Kéo ở tay nắm ⠿ để thả vào ma trận.</div>
-      <div id="roleList"></div>
-      </div>
+          <button id="bAddCig" style="margin-left:auto" data-i18n="btnAddCig">＋ CIG</button>
+          <button id="tglCig" class="tgl">▸</button></div>
+        <div id="cigBody">
+          <table id="cigTbl" style="width:100%;table-layout:fixed">
+            <colgroup><col style="width:33%"><col style="width:51%"><col style="width:16%"></colgroup>
+            <tbody id="cigTbody"></tbody>
+          </table>
+          <div class="hint" style="margin-top:6px" data-i18n="cigHint">Commitment Item Group — loại chi phí. Mỗi CIG có thể có bộ luật riêng (toggle phía trên ma trận).</div>
+        </div>
+      </section>
+      <section id="paletteSec" class="flowCard">
+        <div class="cardH"><span data-i18n="paletteH">Box vai trò</span>
+          <button id="tglPalette" class="tgl" style="margin-left:auto">▴</button></div>
+        <div id="paletteBody">
+          <div class="miniRow">
+            <button id="bAddFreeRole" class="primary" data-i18n="btnAddFreeRole">＋ Box mới</button>
+          </div>
+          <div class="miniRow">
+            <select id="rolePick" style="flex:1;min-width:0"></select>
+            <button id="bAddNodeRole" data-i18n="btnAddNodeRole">＋ Từ sơ đồ</button>
+          </div>
+          <div class="hint" style="margin:6px 0 10px" data-i18n-html="paletteHint">Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức
+          (vd MCEO, MD) — sửa bên sơ đồ là bên này tự cập nhật. Kéo ở tay nắm ⠿ để thả vào ma trận.</div>
+          <div id="roleList"></div>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -457,8 +499,9 @@
   </div>
 
   <!-- Kết quả -->
-  <section class="flowCard">
+  <section class="flowCard" id="resSec">
     <div class="cardH"><span data-i18n="resH">Bảng luồng duyệt</span>
+      <input id="resFilter" data-i18n-ph="resFilterPh" placeholder="Tìm nhanh nhóm / Fund Center…" autocomplete="off">
       <button id="bFlowView">Đang xem: theo nhóm</button>
       <button id="bCopyFlow" data-i18n="btnCopyFlow">Copy bảng luồng</button>
       <button id="tglRes" class="tgl">▴</button>
@@ -591,6 +634,7 @@ vi: {
   inputsHint:'Ẩn khu Nhóm / Fund Center để chỉ xem bảng luồng duyệt.',
   // --- bảng kết quả ---
   resH:'Bảng luồng duyệt', btnCopyFlow:'Copy bảng luồng',
+  resFilterPh:'Tìm nhanh nhóm / Fund Center…',
   flowEmptyHint:'Thêm Fund Center (hoặc Dán từ Excel) và gán nhóm/CBQLNS để xem luồng duyệt.',
   colGroupFc:'Nhóm (FC)', colFundCenter:'Fund Center', colFlow:'Luồng', colFlowName:'Màu',
   lineCbqlns:'CBQLNS: ', lineBranch:'Nhánh: ', lineGroup:'nhóm: ',
@@ -689,6 +733,7 @@ en: {
   msgImported:'Imported {n} FCs', msgImportedGroups:', created {g} new groups',
   inputsHint:'Hide the Groups / Fund Center area to see only the approval flow table.',
   resH:'Approval flow table', btnCopyFlow:'Copy flow table',
+  resFilterPh:'Find group / Fund Center…',
   flowEmptyHint:'Add Fund Centers (or Paste from Excel) and assign groups/BMO to see approval flows.',
   colGroupFc:'Group (FC)', colFundCenter:'Fund Center', colFlow:'Flow', colFlowName:'Flow',
   lineCbqlns:'BMO: ', lineBranch:'Branch: ', lineGroup:'group: ',
@@ -1836,9 +1881,11 @@ function renderFlowResult(){
     });
   tb.appendChild(tr);
 
-  flowBlocks().forEach(function(b){
+  flowBlocks().forEach(function(b, bi){
     order.forEach(function(flow, idx){
       var trr = document.createElement('tr');
+      trr.dataset.blk = bi;                       // đánh dấu block để lọc theo tên nhóm/FC
+      trr.dataset.hay = b.head.toLowerCase();
       if (idx === 0){
         var tdf = document.createElement('td');
         tdf.rowSpan = order.length;
@@ -1875,6 +1922,15 @@ function renderFlowResult(){
     }
   }
   sc.appendChild(tb); host.appendChild(sc);
+  applyResFilter();                                // giữ nguyên từ khoá đang lọc sau khi render lại
+}
+// Lọc bảng kết quả theo tên nhóm / mã / tên Fund Center — ẩn nguyên block, không chỉ 1 dòng
+function applyResFilter(){
+  var inp = $('resFilter'); if (!inp) return;
+  var qy = (inp.value || '').trim().toLowerCase();
+  document.querySelectorAll('#flowResult tr[data-blk]').forEach(function(tr){
+    tr.classList.toggle('hideRow', !!qy && tr.dataset.hay.indexOf(qy) < 0);
+  });
 }
 function flowTsv(){
   var lines = [ [ flowViewByFc ? t('colFundCenter') : t('colGroupFc'), t('colFlow') ]
@@ -2022,18 +2078,30 @@ function setCurCig(id){
   curCig = id;
   renderRules();
 }
-function renderCigToggle(){
+// Dựng lại nút sẽ làm nút đang bị nhấn "nảy" (nút mới chưa nhận :hover) — nên chỉ
+// dựng khi danh sách CIG đổi; bấm chọn scenario chỉ đổi class .active tại chỗ.
+function renderCigToggle(rebuild){
   var host = $('cigToggle'); if (!host) return;
-  host.innerHTML = '';
-  var mk = function(id, label){
-    var b = document.createElement('button');
-    b.className = 'tabbtn' + (curCig === id ? ' active' : '');
-    b.textContent = label;
-    b.onclick = function(){ setCurCig(id); };
-    host.appendChild(b);
-  };
-  mk('', t('scenCommon'));
-  cigs.forEach(function(c){ mk(c.id, c.code || t('groupUnnamed')); });
+  var ids = [''].concat(cigs.map(function(c){ return c.id; }));
+  var cur = [].map.call(host.children, function(b){ return b.dataset.cig; });
+  if (rebuild || cur.length !== ids.length || ids.some(function(id, i){ return cur[i] !== id; })){
+    host.innerHTML = '';
+    ids.forEach(function(id){
+      var b = document.createElement('button');
+      b.className = 'tabbtn'; b.dataset.cig = id;
+      b.textContent = id ? ((cigById(id)||{}).code || t('groupUnnamed')) : t('scenCommon');
+      b.onclick = function(){ setCurCig(id); };
+      host.appendChild(b);
+    });
+  } else {
+    [].forEach.call(host.children, function(b){                 // chỉ vá nhãn, giữ nguyên phần tử
+      var id = b.dataset.cig;
+      b.textContent = id ? ((cigById(id)||{}).code || t('groupUnnamed')) : t('scenCommon');
+    });
+  }
+  [].forEach.call(host.children, function(b){
+    b.classList.toggle('active', b.dataset.cig === curCig);
+  });
   var note = $('scenNote');
   if (note) note.textContent = curCig
     ? (ruleGrids[curCig] ? tf('scenOwn', { code: (cigById(curCig)||{}).code || '' }) : '')
@@ -2060,7 +2128,7 @@ function renderCigs(){
       cigs = cigs.filter(function(x){ return x !== c; });
       delete ruleGrids[c.id];                        // luật riêng của CIG đó bỏ theo
       if (curCig === c.id) curCig = '';
-      renderRules(); renderFlowResult();
+      renderCigToggle(true); renderRules(); renderFlowResult();
     };
     td3.appendChild(del);
     tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
@@ -2070,7 +2138,7 @@ function renderCigs(){
 function addCig(){
   snap(null);
   cigs.push({ id:'c' + (cseq++), code:'', name:'' });
-  renderCigs(); renderCigToggle();
+  renderCigs(); renderCigToggle(true);
   var last = document.querySelector('#cigTbody tr:last-child input');
   if (last) last.focus();
 }
@@ -2339,9 +2407,10 @@ document.addEventListener('keydown', function(e){
 });
 
 function showTab(which){
-  $('tabOrg').style.display   = which === 'org'   ? 'flex'  : 'none';
-  $('tabRules').style.display = which === 'rules' ? 'block' : 'none';
-  $('tabFlow').style.display  = which === 'flow'  ? 'block' : 'none';
+  // cả 3 tab đều là flex-column để con bên trong giãn hết chiều cao viewport
+  $('tabOrg').style.display   = which === 'org'   ? 'flex' : 'none';
+  $('tabRules').style.display = which === 'rules' ? 'flex' : 'none';
+  $('tabFlow').style.display  = which === 'flow'  ? 'flex' : 'none';
   $('tabBtnOrg').classList.toggle('active',   which === 'org');
   $('tabBtnRules').classList.toggle('active', which === 'rules');
   $('tabBtnFlow').classList.toggle('active',  which === 'flow');
@@ -2352,16 +2421,24 @@ $('tabBtnOrg').onclick   = function(){ showTab('org'); };
 $('tabBtnRules').onclick = function(){ showTab('rules'); };
 $('tabBtnFlow').onclick  = function(){ showTab('flow'); };
 
-// Nút thu/mở dùng chung cho mọi section (▴ = đang mở, ▸ = đang thu)
-function wireCollapse(btnId, bodyId){
-  var b = $(btnId), body = $(bodyId), open = true;
-  b.onclick = function(){
-    open = !open;
+// Nút thu/mở dùng chung cho mọi section (▴ = đang mở, ▸ = đang thu).
+// secId: thêm class .collapsed lên section để CSS bỏ flex-grow khi thu.
+function wireCollapse(btnId, bodyId, secId, startOpen){
+  var b = $(btnId), body = $(bodyId), sec = secId ? $(secId) : null;
+  var open = startOpen !== false;
+  function apply(){
     body.style.display = open ? '' : 'none';
     b.textContent = open ? '▴' : '▸';
-  };
+    if (sec) sec.classList.toggle('collapsed', !open);
+  }
+  b.onclick = function(){ open = !open; apply(); };
+  apply();
 }
-wireCollapse('tglRes', 'resBody');
+wireCollapse('tglRes', 'resBody', 'resSec');
+wireCollapse('tglCig', 'cigBody', 'cigSec', false);        // CIG mặc định thu gọn
+wireCollapse('tglPalette', 'paletteBody', 'paletteSec');
+
+$('resFilter').oninput = applyResFilter;
 
 // Tab Sơ đồ: ẩn/hiện sơ đồ (bảng chiếm toàn màn hình) và ẩn/hiện panel
 var chartHidden = false, panelHidden = false;
@@ -2430,17 +2507,19 @@ $('bFlowView').onclick = function(){
 };
 $('bCopyFlow').onclick = copyFlowTable;
 
-var tblCollapsed = false;
-$('bTgl').onclick = function(){
-  tblCollapsed = !tblCollapsed;
+var tblCollapsed = true;                       // Bảng phân cấp mặc định thu gọn
+function applyTblCollapsed(){
   $('tblHost').style.display = tblCollapsed ? 'none' : 'flex';
+  $('tableSec').classList.toggle('collapsed', tblCollapsed);
   refreshStateLabels();
-};
+}
+$('bTgl').onclick = function(){ tblCollapsed = !tblCollapsed; applyTblCollapsed(); };
 
 window.onbeforeunload = function(){ return (dirty && nodes.size) ? true : null; };
 
 seedRules({});
 applyStatic();
+applyTblCollapsed();
 renderAll();
 </script>
 </body>
