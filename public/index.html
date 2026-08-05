@@ -118,12 +118,14 @@
   .node .vh.br-SM{background:var(--green)}
   .node .vh.br-BO{background:var(--peach)}
   .node .vh.br-IT{background:var(--cyan)}
+  .node .vh.br-AC{background:var(--lilac)}
   /* badge trùng màu nền box -> đảo: nền mực, chữ màu nhánh */
   .node .vh.inv{background:var(--ink)}
   .node .vh.br-VH.inv{color:var(--blue)}
   .node .vh.br-SM.inv{color:var(--green)}
   .node .vh.br-BO.inv{color:var(--peach)}
   .node .vh.br-IT.inv{color:var(--cyan)}
+  .node .vh.br-AC.inv{color:var(--lilac)}
   .node .hid{position:absolute;left:5px;bottom:4px;font-size:10.5px;font-weight:700;
              background:var(--paper);border:2px solid var(--ink);border-radius:4px;padding:0 5px;cursor:pointer}
   .node .bd{font-weight:800;font-size:11.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
@@ -194,6 +196,7 @@
   .chip .sc-SM{background:var(--green)}
   .chip .sc-BO{background:var(--peach)}
   .chip .sc-IT{background:var(--cyan)}
+  .chip .sc-AC{background:var(--lilac)}
   .chip .sc-REST{background:var(--lilac)}
   .chip .rm,.roleCard .rm{border:none;padding:0 4px;font-size:11px;font-weight:800;cursor:pointer;
                           background:none;box-shadow:none;border-radius:3px}
@@ -219,15 +222,6 @@
                   padding:4px 7px;cursor:pointer}
   .roleCard .pdCk input{width:auto;margin:0;accent-color:var(--ink)}
 
-  /* ---- Popup CBQLNS ngoài SĐTC ---- */
-  #extOverlay{position:fixed;inset:0;background:rgba(31,27,22,.45);z-index:50;
-              display:flex;align-items:center;justify-content:center}
-  #extOverlay.hidden{display:none}
-  #extCard{width:min(680px,94vw);background:var(--paper);border:var(--bd);border-radius:var(--r);
-           box-shadow:4px 4px 0 var(--ink);padding:13px}
-  #extCard input{width:100%;font:inherit;font-size:12.5px;padding:4px 7px;
-                 border:2px solid var(--line);border-radius:5px;background:#fff}
-  #extCard input:focus{border-color:var(--ink);outline:none}
   /* Bảng CIG trong sidebar tab Định nghĩa */
   #cigTbl td{border:none;padding:3px 3px 3px 0}
   #cigTbl input{width:100%;font:inherit;font-size:12.5px;padding:4px 7px;
@@ -250,8 +244,9 @@
   .flowTop{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
   .flowCard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
             background:var(--paper);padding:11px 12px}
-  #grpSec{flex:1 1 380px;min-width:320px}
-  #fcSec{flex:1.3 1 480px;min-width:420px}
+  /* Nhóm FC có 6 cột (thêm CIG) nên cần rộng hơn card Fund Center 4 cột */
+  #grpSec{flex:1.25 1 460px;min-width:400px}
+  #fcSec{flex:1 1 400px;min-width:360px}
   .miniRow{display:flex;gap:7px;align-items:center;margin-top:7px;flex-wrap:wrap}
   .miniRow input,.miniRow select{font:inherit;font-size:13px;padding:5px 8px;border:var(--bd);
                                  border-radius:var(--r);background:#fff;color:var(--ink)}
@@ -452,7 +447,7 @@
         </div>
         <div class="scrollTbl inScroll" style="margin-top:8px">
           <table id="fcTbl">
-            <colgroup><col style="width:21%"><col style="width:44%"><col style="width:28%"><col style="width:7%"></colgroup>
+            <colgroup><col style="width:23%"><col style="width:36%"><col style="width:34%"><col style="width:7%"></colgroup>
             <thead><tr><th data-i18n="thFcCode">Mã</th><th data-i18n="thFcName">Tên Fund Center</th><th data-i18n="thFcGroup">Nhóm</th><th></th></tr></thead>
             <tbody id="fcTbody"></tbody>
           </table>
@@ -476,23 +471,6 @@
       </div>
     </div>
   </section>
-</div>
-
-<!-- Popup: CBQLNS/BMO không nằm trên sơ đồ tổ chức (mở từ panel Chi tiết, tab Sơ đồ) -->
-<div id="extOverlay" class="hidden">
-  <div id="extCard">
-    <div class="cardH"><span data-i18n="extH">CBQLNS ngoài sơ đồ tổ chức</span>
-      <button id="bExtClose" class="tgl" style="margin-left:auto">✕</button></div>
-    <div class="hint" style="margin-bottom:9px" data-i18n="extHint">Người không có box trên sơ đồ nhưng vẫn là CBQLNS của một nhóm FC — sẽ xuất hiện trong lựa chọn CBQLNS (tab Luồng duyệt) và box vai trò (tab Định nghĩa luồng). Nhánh của họ mặc định là "Còn lại".</div>
-    <div class="scrollTbl" style="max-height:46vh">
-      <table style="width:100%;table-layout:fixed">
-        <colgroup><col style="width:30%"><col style="width:30%"><col style="width:31%"><col style="width:9%"></colgroup>
-        <thead><tr><th data-i18n="phExtDept">Tên phòng</th><th data-i18n="phExtTitle">Chức danh</th><th data-i18n="phExtPerson">Tên người</th><th></th></tr></thead>
-        <tbody id="extTbody"></tbody>
-      </table>
-    </div>
-    <div class="miniRow" style="margin-top:9px"><button id="bAddExt" class="primary" data-i18n="btnAddExt">＋ Thêm dòng</button></div>
-  </div>
 </div>
 
 <script>
@@ -547,8 +525,8 @@ vi: {
   // --- thuật ngữ miền (đồng nhất mọi nơi) ---
   cbqlns:'CBQLNS', cbqlnsFull:'CBQLNS (quản lý ngân sách)',
   tipStar:'CBQLNS — Cán bộ quản lý ngân sách',
-  brBadgeVH:'VH', brBadgeSM:'SM', brBadgeBO:'BO', brBadgeIT:'IT',
-  segALL:'Tất cả', segVH:'Vận hành', segSM:'Kinh doanh', segBO:'Hỗ trợ', segIT:'IT', segREST:'Còn lại',
+  brBadgeVH:'VH', brBadgeSM:'SM', brBadgeBO:'BO', brBadgeIT:'IT', brBadgeAC:'KT',
+  segALL:'Tất cả', segVH:'Vận hành', segSM:'Kinh doanh', segBO:'Hỗ trợ', segIT:'IT', segAC:'Kế toán', segREST:'Còn lại',
   brNone:'— Không đánh dấu —', lblBranch:'Nhánh (tính luồng duyệt)',
   brTipNode:'Gốc nhánh {br} — CBQLNS dưới nhánh này tính luồng theo "{br}"',
   // CIG — nhóm chi phí
@@ -562,12 +540,6 @@ vi: {
   tipGrpCig:'Bảng kết quả: 1 dòng chung cho mọi CIG, hay tách dòng theo từng CIG',
   lineCig:'CIG: ',
   // CBQLNS ngoài SĐTC
-  extBtn:'CBQLNS ngoài SĐTC…', extH:'CBQLNS ngoài sơ đồ tổ chức',
-  extHint:'Người không có box trên sơ đồ nhưng vẫn là CBQLNS của một nhóm FC — sẽ xuất hiện trong lựa chọn CBQLNS (tab Luồng duyệt) và box vai trò (tab Định nghĩa luồng). Nhánh của họ mặc định là "Còn lại".',
-  btnAddExt:'＋ Thêm dòng', tipDelExt:'Xóa',
-  phExtDept:'Tên phòng', phExtTitle:'Chức danh', phExtPerson:'Tên người',
-  extEmpty:'Chưa có ai — bấm "＋ Thêm dòng".',
-  tagExt:'(ngoài SĐTC)', tagExtRole:'ngoài SĐTC', extDeleted:'(đã xóa khỏi danh sách)',
   ckPdBelow:'CBQLNS cấp dưới tự PD',
   tipPdBelow:'Nếu CBQLNS của nhóm nằm dưới box này, chính CBQLNS đó sẽ ký ở ô có box này — '
            + 'không phải đẩy lên box này nữa.',
@@ -626,16 +598,16 @@ vi: {
   unassignedRow:'(Chưa gán nhóm — không tính được luồng) FC: ',
   msgCopiedFlow:'Đã copy bảng luồng ({view}) — dán thẳng vào Excel',
   viewByGroupWord:'theo nhóm', viewByFcWord:'theo FC',
-  resHint:'Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>. Nhánh của mỗi nhóm (Vận hành / Kinh doanh / Hỗ trợ / IT / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.',
+  resHint:'Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>. Nhánh của mỗi nhóm (Vận hành / Kinh doanh / Hỗ trợ / IT / Kế toán / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.',
   // --- tab định nghĩa luồng ---
   rulesH:'Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô',
-  rulesHint:'Ô <b>🔒 CBQLNS</b> là cố định. Bấm nhãn phạm vi trên box đã thả để xoay vòng <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Còn lại</b> — một ô chứa 1 box "Tất cả", hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box. Tick <b>"CBQLNS cấp dưới tự PD"</b> trên box vai trò lấy từ sơ đồ để CBQLNS nằm dưới box đó tự ký thay.',
+  rulesHint:'Ô <b>🔒 CBQLNS</b> là cố định. Bấm nhãn phạm vi trên box đã thả để xoay vòng <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Kế toán → Còn lại</b> — một ô chứa 1 box "Tất cả", hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box. Tick <b>"CBQLNS cấp dưới tự PD"</b> trên box vai trò lấy từ sơ đồ để CBQLNS nằm dưới box đó tự ký thay.',
   paletteH:'Box vai trò', btnAddFreeRole:'＋ Box mới', btnAddNodeRole:'＋ Từ sơ đồ',
   paletteHint:'Box "từ sơ đồ" lấy trực tiếp chức danh/người từ box trên Sơ đồ tổ chức (vd MCEO, MD) — sửa bên sơ đồ là bên này tự cập nhật. Kéo ở tay nắm ⠿ để thả vào ma trận.',
   msgCellFixed:'Ô này cố định là CBQLNS',
   msgPickBox:'Chọn một box trên sơ đồ trước', msgBoxExists:'Box này đã có trong danh sách',
   cfmDelRole:'Box "{name}" đang dùng ở {n} ô — xóa khỏi cả ma trận?',
-  tipCycleScope:'Bấm để đổi phạm vi: Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Còn lại',
+  tipCycleScope:'Bấm để đổi phạm vi: Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Kế toán → Còn lại',
   tipRemoveFromCell:'Bỏ khỏi ô',
   tipLockedChip:'Cố định: CBQLNS của nhóm (box có ★ bên tab Sơ đồ)',
   slotHint:'thả vào đây',
@@ -658,8 +630,8 @@ en: {
   orgTableEmpty:'The table updates as you draw. Each branch is one row; each column is a level row on the chart. A "—" cell means the branch passes through that level.',
   cbqlns:'BMO', cbqlnsFull:'BMO (Budget Management Officer)',
   tipStar:'BMO — Budget Management Officer',
-  brBadgeVH:'OPS', brBadgeSM:'SM', brBadgeBO:'BO', brBadgeIT:'IT',
-  segALL:'All', segVH:'Operations', segSM:'Sales', segBO:'Back office', segIT:'IT', segREST:'Others',
+  brBadgeVH:'OPS', brBadgeSM:'SM', brBadgeBO:'BO', brBadgeIT:'IT', brBadgeAC:'AC',
+  segALL:'All', segVH:'Operations', segSM:'Sales', segBO:'Back office', segIT:'IT', segAC:'Accounting', segREST:'Others',
   brNone:'— None —', lblBranch:'Branch (drives approval flow)',
   brTipNode:'Root of the {br} branch — BMOs under it use the "{br}" flow',
   cigH:'Cost groups (CIG)', btnAddCig:'＋ CIG', tipDelCig:'Delete CIG',
@@ -671,12 +643,6 @@ en: {
   thCig:'CIG', grpCigAll:'Single', grpCigSplit:'Per CIG',
   tipGrpCig:'Result table: one row for all CIGs, or split into one row per CIG',
   lineCig:'CIG: ',
-  extBtn:'BMOs outside the chart…', extH:'BMOs outside the org chart',
-  extHint:'People without a chart box who still act as a group\'s BMO — they appear in the BMO selector (Approval Flow tab) and as role boxes (Flow Rules tab). Their branch defaults to "Others".',
-  btnAddExt:'＋ Add row', tipDelExt:'Delete',
-  phExtDept:'Department', phExtTitle:'Job title', phExtPerson:'Person',
-  extEmpty:'No one yet — click "＋ Add row".',
-  tagExt:'(off-chart)', tagExtRole:'off-chart', extDeleted:'(removed from list)',
   ckPdBelow:'BMO below approves directly',
   tipPdBelow:'When a group\'s BMO sits under this box, that BMO signs the cell holding this box '
            + 'instead of escalating up to it.',
@@ -730,15 +696,15 @@ en: {
   unassignedRow:'(No group assigned — flow cannot be computed) FC: ',
   msgCopiedFlow:'Copied flow table ({view}) — paste straight into Excel',
   viewByGroupWord:'by group', viewByFcWord:'per FC',
-  resHint:'Flow rules are defined by drag-and-drop on the <b>Flow Rules</b> tab. Each group\'s branch (Operations / Sales / Back office / IT / Others) is derived from its BMO\'s position on the org chart.',
+  resHint:'Flow rules are defined by drag-and-drop on the <b>Flow Rules</b> tab. Each group\'s branch (Operations / Sales / Back office / IT / Accounting / Others) is derived from its BMO\'s position on the org chart.',
   rulesH:'Approval flow matrix — drag role boxes from the right panel into cells',
-  rulesHint:'The <b>🔒 BMO</b> cells are fixed. Click the scope tag on a placed box to cycle <b>All → Operations → Sales → Back office → IT → Others</b> — a cell holds one "All" box, or one box per branch. Mark branches with the dropdown in the Box details panel. Tick <b>"BMO below approves directly"</b> on a from-chart box to let a BMO under it sign in its place.',
+  rulesHint:'The <b>🔒 BMO</b> cells are fixed. Click the scope tag on a placed box to cycle <b>All → Operations → Sales → Back office → IT → Accounting → Others</b> — a cell holds one "All" box, or one box per branch. Mark branches with the dropdown in the Box details panel. Tick <b>"BMO below approves directly"</b> on a from-chart box to let a BMO under it sign in its place.',
   paletteH:'Role boxes', btnAddFreeRole:'＋ New box', btnAddNodeRole:'＋ From chart',
   paletteHint:'A "from chart" box pulls its title/person straight from an Org Chart box (e.g. MCEO, MD) — edit it there and it updates here. Drag by the ⠿ handle to drop into the matrix.',
   msgCellFixed:'This cell is fixed to the BMO',
   msgPickBox:'Pick a chart box first', msgBoxExists:'This box is already in the list',
   cfmDelRole:'Box "{name}" is used in {n} cells — remove it from the matrix too?',
-  tipCycleScope:'Click to cycle scope: All → Operations → Sales → Back office → IT → Others',
+  tipCycleScope:'Click to cycle scope: All → Operations → Sales → Back office → IT → Accounting → Others',
   tipRemoveFromCell:'Remove from cell',
   tipLockedChip:"Fixed: the group's BMO (★ box on the Org Chart tab)",
   slotHint:'drop here',
@@ -810,7 +776,7 @@ var fcGroups = [];          // [{id, code, name, cbqlns}]
 var fcs      = [];          // [{id, code, name, groupId}]
 
 /* Ma trận luật (tab Định nghĩa luồng)
-   - roleBoxes : box vai trò — kind 'free' (tự đặt), 'node' (link box Sơ đồ), 'ext' (CBQLNS ngoài SĐTC)
+   - roleBoxes : box vai trò — kind 'free' (tự đặt chức danh/người) hoặc 'node' (link box trên Sơ đồ)
    - ruleGrids : luật theo scenario chi phí — ruleGrids[''] = "Chung", ruleGrids[cigId] = riêng cho CIG đó.
                  Mỗi grid: grid[luồng][cột] = {ALL:'r1'} hoặc {VH:'r1', REST:'r2'} (phạm vi theo nhánh)
    - Ô CBQLNS cố định theo FIXED_CBQLNS, không nằm trong grid                                     */
@@ -820,17 +786,16 @@ var COLS   = ['TĐ1','TĐ2','TĐ3','TĐ4','TĐ*','PD'];
 var FLOW_COLORS  = {'Xanh':'#A8D989','Vàng':'#FFD93D','Đỏ':'#F4645C','Tím':'#C3AEE8','NNS':'#6B8FE8'};
 var FIXED_CBQLNS = {'Xanh':'PD','Vàng':'TĐ1','Đỏ':'TĐ1','Tím':'TĐ1','NNS':'TĐ1'};
 // Nhánh đánh dấu trên sơ đồ (một loại gán được NHIỀU box — vd Vận hành bike + Vận hành car).
-var BRANCHES = ['VH','SM','BO','IT'];
-var SCOPES   = ['ALL','VH','SM','BO','IT','REST'];   // vòng xoay phạm vi trên chip ma trận
+var BRANCHES = ['VH','SM','BO','IT','AC'];
+var SCOPES   = ['ALL','VH','SM','BO','IT','AC','REST'];   // vòng xoay phạm vi trên chip ma trận
 // Màu badge nhánh (khớp màu chip trong ma trận); nếu trùng màu nền box theo cấp -> đảo mực/màu
-var BR_COLOR = {VH:'#6B8FE8', SM:'#A8D989', BO:'#FFB98A', IT:'#7ECEE0'};
+var BR_COLOR = {VH:'#6B8FE8', SM:'#A8D989', BO:'#FFB98A', IT:'#7ECEE0', AC:'#C3AEE8'};
 
 var roleBoxes = [];
 var ruleGrids = { '': {} };
 var curCig = '';                 // scenario đang sửa ở tab Định nghĩa ('' = Chung) — view-state, không lưu
 var cigs = [];                   // [{id, code, name}] — nhóm chi phí (Commitment Item Group)
-var extBmos = [];                // [{id, dept, title, person}] — CBQLNS không nằm trên SĐTC
-var rseq = 1, cseq = 1, xseq = 1;
+var rseq = 1, cseq = 1;
 function gridFor(cigId){ return ruleGrids[cigId] || ruleGrids['']; }   // CIG chưa định nghĩa riêng -> dùng Chung
 function curGrid(){ return ruleGrids[curCig] || (ruleGrids[curCig] = {}); }
 
@@ -866,7 +831,7 @@ var undoStack = [], lastSnapKey = null, dirty = false;
 function serializeAll(){
   return { v:8, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrids:ruleGrids,
-           cigs:cigs, extBmos:extBmos };
+           cigs:cigs };
 }
 function snap(key){
   if (key !== null && key === lastSnapKey) return;
@@ -1182,11 +1147,8 @@ function renderCanvas(L){
 
 function renderPanel(){
   var p = $('panel');
-  var extBtn = '<div class="row" style="margin-top:14px"><button id="bExtBmo" class="ghost" style="flex:1">'
-             + t('extBtn') + (extBmos.length ? ' (' + extBmos.length + ')' : '') + '</button></div>';
   if (!sel || !nodes.has(sel)){
-    p.innerHTML = '<h2>' + t('panelEmptyH') + '</h2><div class="hint">' + t('panelEmptyHint') + '</div>' + extBtn;
-    $('bExtBmo').onclick = openExtModal;
+    p.innerHTML = '<h2>' + t('panelEmptyH') + '</h2><div class="hint">' + t('panelEmptyHint') + '</div>';
     return;
   }
   var n = nodes.get(sel);
@@ -1211,9 +1173,7 @@ function renderPanel(){
     + '<div class="row"><button id="bClps">' + (n.collapsed ? t('btnExpand') : t('btnCollapse')) + '</button>'
     +   '<button id="bFocus">' + (focusId === sel ? t('btnUnfocus') : t('btnFocus')) + '</button></div>'
     + '<div class="row"><button id="bL">◀</button><button id="bR">▶</button><button id="bDel" class="danger">' + t('btnDel') + '</button></div>'
-    + '<div class="hint" style="margin-top:10px">' + t('panelHint') + '</div>'
-    + extBtn;
-  $('bExtBmo').onclick = openExtModal;
+    + '<div class="hint" style="margin-top:10px">' + t('panelHint') + '</div>';
 
   var fD = $('fD'); fD.value = n.dept;
   fD.oninput = function(){
@@ -1394,15 +1354,6 @@ function applyState(d){
   }
   d.roots.forEach(function(rt){ tRoots.push(mk(rt, null)); });
 
-  // CBQLNS ngoài SĐTC (id x1, x2…) — đọc trước để select của nhóm nhận cả 2 loại id
-  var tExt = [], maxX = 0;
-  (Array.isArray(d.extBmos) ? d.extBmos : []).forEach(function(e){
-    if (!e || typeof e !== 'object') return;
-    var okId = (typeof e.id === 'string' && /^x\d+$/.test(e.id));
-    if (okId){ var v = parseInt(e.id.slice(1), 10); if (v > maxX) maxX = v; }
-    tExt.push({ id: okId ? e.id : ('x' + (++maxX)),
-                dept:String(e.dept||''), title:String(e.title||''), person:String(e.person||'') });
-  });
   var tCig = [], maxC = 0;
   (Array.isArray(d.cigs) ? d.cigs : []).forEach(function(c){
     if (!c || typeof c !== 'object') return;
@@ -1416,7 +1367,7 @@ function applyState(d){
     if (!g || typeof g !== 'object') return;
     var okId = (typeof g.id === 'string' && /^g\d+$/.test(g.id));
     if (okId){ var v = parseInt(g.id.slice(1), 10); if (v > maxG) maxG = v; }
-    var cbOk = g.cbqlns && (tN.has(g.cbqlns) || tExt.some(function(e){ return e.id === g.cbqlns; }));
+    var cbOk = g.cbqlns && tN.has(g.cbqlns);
     tG.push({ id: okId ? g.id : ('g' + (++maxG)),
               code: String(g.code||''),
               name: String(g.name||''),
@@ -1441,9 +1392,6 @@ function applyState(d){
     if (rb.kind === 'node'){
       if (typeof rb.nodeId === 'string' && tN.has(rb.nodeId))
         tRB.push({ id:id, kind:'node', nodeId:rb.nodeId, pdBelow: !!rb.pdBelow });
-    } else if (rb.kind === 'ext'){
-      if (typeof rb.extId === 'string' && tExt.some(function(e){ return e.id === rb.extId; }))
-        tRB.push({ id:id, kind:'ext', extId:rb.extId });
     } else {
       tRB.push({ id:id, kind:'free', title:String(rb.title||''), person:String(rb.person||'') });
     }
@@ -1482,7 +1430,6 @@ function applyState(d){
   nodes = tN; rootIds = tRoots; focusId = tFocus;
   fcGroups = tG; fcs = tF;
   seq = maxN + 1; gseq = maxG + 1; fseq = maxF + 1;
-  extBmos = tExt; xseq = maxX + 1;
   if (Array.isArray(d.roleBoxes)){ roleBoxes = tRB; ruleGrids = tGrids; rseq = maxR + 1; }
   else seedRules(d.finance);
   // CIG: file có danh sách riêng thì dùng, không thì seed bộ mặc định (giữ ruleGrids đã đọc)
@@ -1560,16 +1507,11 @@ function roleById(rid){
   for (var i = 0; i < roleBoxes.length; i++) if (roleBoxes[i].id === rid) return roleBoxes[i];
   return null;
 }
-function extById(id){ return extBmos.find(function(e){ return e.id === id; }) || null; }
 function roleBoxText(rb){                     // nội dung đầy đủ (nhiều dòng) cho ô kết quả
   if (!rb) return '—';
   if (rb.kind === 'node'){
     var n = nodes.get(rb.nodeId);
     return n ? roleText(n) : t('roleDeleted');
-  }
-  if (rb.kind === 'ext'){
-    var e = extById(rb.extId);
-    return e ? ([e.title || e.dept, e.person].filter(Boolean).join('\n') || t('unnamed')) : t('extDeleted');
   }
   return [rb.title, rb.person].filter(Boolean).join('\n') || t('unnamed');
 }
@@ -1580,11 +1522,6 @@ function rolePair(rb){
     var n = nodes.get(rb.nodeId);
     return n ? { t: n.title || n.dept || t('emptyBox'), p: n.person || '' }
              : { t: t('roleDeleted'), p:'' };
-  }
-  if (rb.kind === 'ext'){
-    var e = extById(rb.extId);
-    return e ? { t: e.title || e.dept || t('unnamed'), p: e.person || '' }
-             : { t: t('extDeleted'), p:'' };
   }
   return { t: rb.title || t('unnamed'), p: rb.person || '' };
 }
@@ -1660,12 +1597,6 @@ function groupRow(g){
     var o = document.createElement('option');
     o.value = n.id;
     o.textContent = (n.star ? '★ ' : t('optStarRemoved')) + dispName(n) + (n.person ? ' — ' + n.person : '');
-    selE.appendChild(o);
-  });
-  extBmos.forEach(function(e){                       // CBQLNS ngoài SĐTC (định nghĩa ở tab Sơ đồ)
-    var o = document.createElement('option');
-    o.value = e.id;
-    o.textContent = '☆ ' + (e.person || e.title || e.dept || t('emptyBox')) + ' ' + t('tagExt');
     selE.appendChild(o);
   });
   selE.value = g.cbqlns || '';
@@ -1839,11 +1770,7 @@ function importPaste(txt){
 /* ---------- [8d] BẢNG KẾT QUẢ — gộp theo nhóm / bung theo FC ---------- */
 // CBQLNS của nhóm: box ★ trên sơ đồ, hoặc người ngoài SĐTC (id dạng x*)
 function cbqlnsOf(g){
-  if (!g || !g.cbqlns) return null;
-  if (nodes.has(g.cbqlns)) return nodes.get(g.cbqlns);
-  var e = extBmos.find(function(x){ return x.id === g.cbqlns; });
-  // Pseudo-node: đủ trường cho roleText/segmentOf; không có parent -> nhánh "Còn lại"
-  return e ? { id:e.id, dept:e.dept, title:e.title, person:e.person, star:true, ext:true } : null;
+  return (g && g.cbqlns && nodes.has(g.cbqlns)) ? nodes.get(g.cbqlns) : null;
 }
 // Luồng duyệt là hàm của NHÓM (mọi FC cùng nhóm chung một luồng),
 // nên mặc định gộp theo nhóm. Nhóm bật "theo CIG" -> nhân bản block cho từng CIG với grid riêng.
@@ -2026,14 +1953,6 @@ function addFreeRole(){
 }
 function addNodeRole(){
   var nid = $('rolePick').value;
-  if (nid && extById(nid)){                        // người ngoài SĐTC -> box vai trò kind 'ext'
-    if (roleBoxes.some(function(r){ return r.kind === 'ext' && r.extId === nid; })){
-      msg(t('msgBoxExists')); return;
-    }
-    snap(null);
-    roleBoxes.push({ id:'r' + (rseq++), kind:'ext', extId:nid });
-    renderRules(); return;
-  }
   if (!nid || !nodes.has(nid)){ msg(t('msgPickBox')); return; }
   if (roleBoxes.some(function(r){ return r.kind === 'node' && r.nodeId === nid; })){
     msg(t('msgBoxExists')); return;
@@ -2091,45 +2010,6 @@ function chipEl(flow, col, scope, rid){
   if (pr.p){ var cp = document.createElement('div'); cp.className = 'cp'; cp.textContent = pr.p; ch.appendChild(cp); }
   return ch;
 }
-/* --- Popup CBQLNS ngoài SĐTC --- */
-function openExtModal(){ renderExtTbl(); $('extOverlay').classList.remove('hidden'); }
-function closeExtModal(){
-  $('extOverlay').classList.add('hidden');
-  renderPanel();                                   // cập nhật số đếm trên nút
-  renderGroups(); updateGroupCounts(); fillRolePick(); refreshFlowResultSoon();
-}
-function renderExtTbl(){
-  var tb = $('extTbody'); tb.innerHTML = '';
-  if (!extBmos.length){
-    tb.innerHTML = '<tr><td colspan="4" class="dash">' + t('extEmpty') + '</td></tr>';
-    return;
-  }
-  extBmos.forEach(function(e){
-    var tr = document.createElement('tr');
-    [['dept','phExtDept'],['title','phExtTitle'],['person','phExtPerson']].forEach(function(fld){
-      var td = document.createElement('td');
-      var inp = document.createElement('input');
-      inp.placeholder = t(fld[1]); inp.value = e[fld[0]];
-      inp.oninput = function(){ snap('ext:'+e.id+':'+fld[0]); e[fld[0]] = inp.value; };
-      td.appendChild(inp); tr.appendChild(td);
-    });
-    var td4 = document.createElement('td');
-    var del = document.createElement('button'); del.className = 'danger'; del.textContent = '✕';
-    del.title = t('tipDelExt');
-    del.onclick = function(){ snap(null); extBmos = extBmos.filter(function(x){ return x !== e; }); renderExtTbl(); };
-    td4.appendChild(del);
-    tr.appendChild(td4);
-    tb.appendChild(tr);
-  });
-}
-function addExt(){
-  snap(null);
-  extBmos.push({ id:'x' + (xseq++), dept:'', title:'', person:'' });
-  renderExtTbl();
-  var last = document.querySelector('#extTbody tr:last-child input');
-  if (last) last.focus();
-}
-
 /* --- CIG: danh sách nhóm chi phí + toggle scenario của ma trận --- */
 function cigById(id){ return cigs.find(function(c){ return c.id === id; }) || null; }
 function setCurCig(id){
@@ -2257,7 +2137,7 @@ function renderRolePalette(){
     top.appendChild(ttl);
     var tag = document.createElement('span'); tag.className = 'kindTag';
     var used = usageCount(rb.id);
-    tag.textContent = (rb.kind === 'node' ? t('tagFromChart') : rb.kind === 'ext' ? t('tagExtRole') : t('tagCustom'))
+    tag.textContent = (rb.kind === 'node' ? t('tagFromChart') : t('tagCustom'))
                     + (used ? ' · ' + tf('usedCells', { n: used }) : '');
     top.appendChild(tag);
     var del = document.createElement('button'); del.className = 'rm'; del.textContent = '✕';
@@ -2313,13 +2193,7 @@ function fillRolePick(){
     o.textContent = dispName(n) + (n.person ? ' — ' + n.person : '') + ' [' + n.t + ']';
     s.appendChild(o);
   });
-  extBmos.forEach(function(e){                    // CBQLNS ngoài SĐTC cũng chọn được làm box vai trò
-    var o = document.createElement('option');
-    o.value = e.id;
-    o.textContent = '☆ ' + (e.person || e.title || e.dept || t('emptyBox')) + ' ' + t('tagExt');
-    s.appendChild(o);
-  });
-  if (cur && (nodes.has(cur) || extById(cur))) s.value = cur;
+  if (cur && nodes.has(cur)) s.value = cur;
 }
 
 /* ============ [8f] ZOOM + MINIMAP (chỉ tab Sơ đồ, view-state tạm) ============ */
@@ -2530,9 +2404,6 @@ $('bUnfocus').onclick= clearFocus;
 $('bAddFreeRole').onclick = addFreeRole;
 $('bAddNodeRole').onclick = addNodeRole;
 $('bAddCig').onclick   = addCig;
-$('bAddExt').onclick   = addExt;
-$('bExtClose').onclick = closeExtModal;
-$('extOverlay').onclick = function(e){ if (e.target === this) closeExtModal(); };  // bấm nền tối để đóng
 
 $('bAddGrp').onclick = addGroup;
 $('bAddFc').onclick  = addFc;
