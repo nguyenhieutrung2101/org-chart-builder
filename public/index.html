@@ -322,7 +322,7 @@
 <header>
   <div id="brand">
     <h1>Org Builder</h1>
-    <div id="ver">version 8</div>
+    <div id="ver">version 9</div>
   </div>
   <div class="grp seg">
     <button id="tabBtnOrg"   class="tabbtn active" data-i18n="tabOrg">Sơ đồ tổ chức</button>
@@ -874,7 +874,7 @@ function seedRules(fin){
 var undoStack = [], lastSnapKey = null, dirty = false;
 
 function serializeAll(){
-  return { v:8, roots:rootIds.map(ser),
+  return { v:9, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrids:ruleGrids,
            cigs:cigs };
 }
