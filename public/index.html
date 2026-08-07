@@ -322,7 +322,7 @@
 <header>
   <div id="brand">
     <h1>Org Builder</h1>
-    <div id="ver">version 8</div>
+    <div id="ver">version 9</div>
   </div>
   <div class="grp seg">
     <button id="tabBtnOrg"   class="tabbtn active" data-i18n="tabOrg">Sơ đồ tổ chức</button>
@@ -874,7 +874,7 @@ function seedRules(fin){
 var undoStack = [], lastSnapKey = null, dirty = false;
 
 function serializeAll(){
-  return { v:8, roots:rootIds.map(ser),
+  return { v:9, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrids:ruleGrids,
            cigs:cigs };
 }
@@ -1032,9 +1032,25 @@ function scrollNodeIntoView(id){
   cw.scrollTop  = Math.max(0, (p.y + BH/2)*zoom - cw.clientHeight/2);
   syncMiniView();
 }
+// Chọn box: nếu box đã có trên canvas (hoặc bỏ chọn) thì chỉ VÁ class tại chỗ —
+// dựng lại canvas làm box dưới con trỏ mất :hover, nhìn như bị "nảy". Box mới tạo
+// (chưa có DOM, gọi từ addRoot/addChild/addSib) mới cần render đầy đủ.
 function select(id, focusInput){
-  sel = id; renderAll();
+  sel = id;
+  var onCanvas = !id || document.querySelector('#canvas .node[data-id="' + id + '"]');
+  if (onCanvas){ applySelDom(); renderPanel(); }
+  else renderAll();
   if (focusInput){ var f = $('fD'); if (f) f.focus(); }
+}
+function applySelDom(){
+  document.querySelectorAll('#canvas .node').forEach(function(el){
+    el.classList.toggle('sel', el.dataset.id === sel);
+  });
+  document.querySelectorAll('#miniSvg rect').forEach(function(r){
+    var s = r.getAttribute('data-id') === sel;
+    r.setAttribute('stroke', s ? '#6B8FE8' : '#1F1B16');
+    r.setAttribute('stroke-width', s ? 8 : 3);
+  });
 }
 
 /* ============ [4] HIỂN THỊ / ẨN ============ */
@@ -1148,6 +1164,7 @@ function renderCanvas(L){
     var n = nodes.get(id), pv = L.pos.get(id);
     var d = document.createElement('div');
     d.className = 'node' + (id === sel ? ' sel' : '');
+    d.dataset.id = id;                                 // cho select() vá class tại chỗ
     d.style.left = pv.x + 'px'; d.style.top = pv.y + 'px';
     d.style.background = TCOLOR[n.t] || '#ffffff';
 
@@ -2289,10 +2306,38 @@ function applyZoom(nz, ax, ay){
 function fitZoom(){
   var cw = $('canvasWrap');
   var z = Math.min(cw.clientWidth / worldW, cw.clientHeight / worldH, 1);
+  zoomAnim = null;                                  // huỷ animation dở dang
   zoom = clampZoom(z);
   applyZoomView();
   cw.scrollLeft = 0; cw.scrollTop = 0;
   syncMiniView();
+}
+
+// Zoom MƯỢT: không nhảy thẳng tới mức mới mà nội suy ease-out mỗi frame về target,
+// suốt quá trình giữ nguyên điểm world dưới con trỏ (anchor). Lăn dồn dập chỉ nâng target.
+var zoomAnim = null;
+function animateZoomTo(nz, ax, ay){
+  nz = clampZoom(nz);
+  var cw = $('canvasWrap');
+  if (ax == null){ ax = cw.clientWidth/2; ay = cw.clientHeight/2; }
+  var running = !!zoomAnim;
+  zoomAnim = { target: nz, ax: ax, ay: ay,
+               wx: (cw.scrollLeft + ax) / zoom,
+               wy: (cw.scrollTop  + ay) / zoom };
+  if (!running) requestAnimationFrame(zoomStep);
+}
+function zoomStep(){
+  var a = zoomAnim; if (!a) return;
+  var cw = $('canvasWrap');
+  var d = a.target - zoom;
+  var done = Math.abs(d) < 0.0015;
+  zoom = done ? a.target : zoom + d * 0.3;
+  applyZoomView();
+  cw.scrollLeft = a.wx * zoom - a.ax;
+  cw.scrollTop  = a.wy * zoom - a.ay;
+  syncMiniView();
+  if (done){ zoomAnim = null; return; }
+  requestAnimationFrame(zoomStep);
 }
 
 var miniScale = 1;
@@ -2302,7 +2347,11 @@ function renderMinimap(L){
   var mm = $('minimap'), svg = $('miniSvg');
   if (!mm || !svg) return;
   if (!L.vis.size){ mm.classList.add('hidden'); return; }
+  // Khung minimap co đúng theo tỉ lệ sơ đồ (MMW×MMH chỉ là ngân sách tối đa) —
+  // sơ đồ ngang dài không còn để trống một dải to bên dưới.
   miniScale = Math.min(MMW / worldW, MMH / worldH);
+  mm.style.width  = Math.round(worldW * miniScale) + 'px';
+  mm.style.height = Math.round(worldH * miniScale) + 'px';
   svg.setAttribute('viewBox', '0 0 ' + worldW + ' ' + worldH);
   svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
   var NS = 'http://www.w3.org/2000/svg';
@@ -2310,6 +2359,7 @@ function renderMinimap(L){
   L.vis.forEach(function(id){
     var n = nodes.get(id), p = L.pos.get(id);
     var r = document.createElementNS(NS, 'rect');
+    r.setAttribute('data-id', id);
     r.setAttribute('x', p.x); r.setAttribute('y', p.y);
     r.setAttribute('width', BW); r.setAttribute('height', BH);
     r.setAttribute('fill', TCOLOR[n.t] || '#ffffff');
@@ -2385,15 +2435,18 @@ function syncMiniView(){
   cw.addEventListener('pointercancel', up);
   cw.addEventListener('click', function(e){
     if (moved){ moved = false; e.stopPropagation(); e.preventDefault(); return; }
-    if (!e.target.closest('.node')){ sel = null; renderAll(); }
+    if (!e.target.closest('.node')) select(null);      // bỏ chọn: vá class, không dựng lại canvas
   }, true);
 
   // Lăn chuột = zoom quanh con trỏ (kiểu Figma/Miro). Chỉ gắn trên canvas tab Sơ đồ.
+  // Hệ số theo deltaY liên tục (exp) thay vì nấc cố định -> trackpad lẫn chuột đều mượt.
   cw.addEventListener('wheel', function(e){
     e.preventDefault();
     var rc = cw.getBoundingClientRect();
-    var factor = e.deltaY < 0 ? ZSTEP : 1/ZSTEP;
-    applyZoom(zoom * factor, e.clientX - rc.left, e.clientY - rc.top);
+    var factor = Math.exp(-e.deltaY * 0.0022);
+    factor = Math.max(0.6, Math.min(1.67, factor));
+    var base = zoomAnim ? zoomAnim.target : zoom;      // lăn dồn dập: cộng dồn vào target
+    animateZoomTo(base * factor, e.clientX - rc.left, e.clientY - rc.top);
   }, { passive:false });
 
   // Kéo nền / thanh cuộn -> đồng bộ ô viewport trên minimap
@@ -2464,9 +2517,9 @@ $('bTglPanel').onclick = function(){
 
 $('bLang').onclick = function(){ setLang(LANG === 'vi' ? 'en' : 'vi'); };
 
-$('bZoomIn').onclick    = function(){ applyZoom(zoom * ZSTEP); };
-$('bZoomOut').onclick   = function(){ applyZoom(zoom / ZSTEP); };
-$('bZoomReset').onclick = function(){ applyZoom(1); };
+$('bZoomIn').onclick    = function(){ animateZoomTo((zoomAnim ? zoomAnim.target : zoom) * ZSTEP); };
+$('bZoomOut').onclick   = function(){ animateZoomTo((zoomAnim ? zoomAnim.target : zoom) / ZSTEP); };
+$('bZoomReset').onclick = function(){ animateZoomTo(1); };
 $('bZoomFit').onclick   = fitZoom;
 
 $('bRoot').onclick   = addRoot;
