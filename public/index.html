@@ -176,6 +176,25 @@
   td.dash{color:var(--muted);text-align:center}
 
   /* ---- Tab Định nghĩa luồng: ma trận kéo-thả ---- */
+  /* ---- Tab Ngành dọc: bản gọn của tab Sơ đồ (không zoom/minimap) ---- */
+  #tabVline{flex:1;min-height:0;display:none;flex-direction:column}
+  #vlineBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+            padding:9px 12px;border-bottom:2px solid var(--line);background:var(--wash)}
+  #vmain{flex:1;min-height:0;display:flex}
+  #vcanvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none}
+  #vcanvasWrap.panning{cursor:grabbing}
+  #vcanvas{position:relative}
+  #vsvg{position:absolute;left:0;top:0;pointer-events:none}
+  #vpanel{width:238px;flex:none;border-left:var(--bd);padding:12px;overflow:auto;background:var(--paper)}
+  #vpanel h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;
+             background:var(--cyan);border:var(--bd);border-radius:var(--r);padding:5px 9px}
+  #vpanel label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:11px 0 4px}
+  #vpanel input{width:100%;font:inherit;padding:6px 8px;border:var(--bd);border-radius:var(--r);
+                background:#fff;color:var(--ink)}
+  #vpanel input:disabled{background:var(--wash);color:var(--muted)}
+  .node .vorg{position:absolute;right:5px;bottom:4px;font-size:9.5px;font-weight:800;letter-spacing:.04em;
+              border:2px solid var(--ink);border-radius:4px;padding:0 4px;background:var(--yellow)}
+
   /* Tab Định nghĩa: trang KHÔNG cuộn; hai cột tự cuộn riêng biệt */
   #tabRules{flex:1;min-height:0;overflow:hidden;padding:12px;display:none}
   #rulesWrap{display:flex;gap:16px;align-items:stretch;height:100%;min-height:0}
@@ -241,6 +260,8 @@
                   padding:4px 7px;cursor:pointer}
   .roleCard .pdCk input{width:auto;margin:0;accent-color:var(--ink)}
 
+  .chip.vlineChip{background:var(--cyan)}
+  .roleCard.vlineCard{background:var(--cyan)}
   /* Bảng CIG trong sidebar tab Định nghĩa */
   #cigTbl td{border:none;padding:3px 3px 3px 0}
   #cigTbl input{width:100%;font:inherit;font-size:12.5px;padding:4px 7px;
@@ -301,8 +322,8 @@
         border-color:var(--ink);outline:none}
   #fcTbl td,#grpTbl td{white-space:normal}
   #pasteBox{display:none;margin-top:9px}
-  #pasteBox textarea{width:100%;height:110px;font:12.5px/1.45 Consolas,monospace;border:var(--bd);
-                     border-radius:var(--r);padding:8px;background:#fff;color:var(--ink)}
+  #pasteBox textarea,#pasteBoxGrp textarea{width:100%;height:110px;font:12.5px/1.45 Consolas,monospace;
+                     border:var(--bd);border-radius:var(--r);padding:8px;background:#fff;color:var(--ink)}
   .fdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;
         border:2px solid var(--ink);vertical-align:-1px}
 
@@ -326,6 +347,7 @@
   </div>
   <div class="grp seg">
     <button id="tabBtnOrg"   class="tabbtn active" data-i18n="tabOrg">Sơ đồ tổ chức</button>
+    <button id="tabBtnVline" class="tabbtn" data-i18n="tabVline">Ngành dọc</button>
     <button id="tabBtnRules" class="tabbtn" data-i18n="tabRules">Định nghĩa luồng</button>
     <button id="tabBtnFlow"  class="tabbtn" data-i18n="tabFlow">Luồng duyệt</button>
   </div>
@@ -379,13 +401,40 @@
   </section>
 </div>
 
-<!-- ================= TAB 2: ĐỊNH NGHĨA LUỒNG ================= -->
+<!-- ================= TAB 2: NGÀNH DỌC ================= -->
+<!-- CBQLNS của thị trường gắn lên ai trên Global. Cùng phong cách tab Sơ đồ nhưng lược bỏ
+     zoom/minimap/cấp/★/nhánh — cấp = độ sâu trên cây. -->
+<div id="tabVline">
+  <div id="vlineBar">
+    <div class="grp"><button id="bVRoot" class="primary" data-i18n="btnVRoot">＋ Người global</button></div>
+    <div class="grp">
+      <select id="vImportPick" style="max-width:280px"></select>
+      <button id="bVImport" data-i18n="btnVImport">＋ CBQLNS từ SĐTC</button>
+    </div>
+    <span class="hint" data-i18n="vlineBarHint">Chọn box cha trên cây rồi import — chỉ box đã tick ★ CBQLNS mới chọn được.</span>
+  </div>
+  <main id="vmain">
+    <div id="vcanvasWrap"><div id="vcanvas"><svg id="vsvg"></svg></div></div>
+    <div id="vpanel"></div>
+  </main>
+</div>
+
+<!-- ================= TAB 3: ĐỊNH NGHĨA LUỒNG ================= -->
 <div id="tabRules">
   <div id="rulesWrap">
     <div id="rulesMain">
       <!-- Phần đầu đứng yên; chỉ thân bảng cuộn (thead sticky bên trong .scrollTbl) -->
       <div id="rulesHead">
         <div class="cardH" data-i18n="rulesH">Ma trận luồng duyệt — kéo box vai trò từ cột phải thả vào ô</div>
+        <!-- Chọn cách xử lý: theo luồng (chip phạm vi nhánh) hay theo ngành dọc (cây tab Ngành dọc) -->
+        <div class="miniRow" style="margin:0 0 7px">
+          <span class="lblScen" data-i18n="modeLbl">Xử lý theo:</span>
+          <span class="grp seg">
+            <button id="modeFlow" class="tabbtn" data-i18n="modeFlow">Luồng</button>
+            <button id="modeVline" class="tabbtn" data-i18n="modeVline">Ngành dọc</button>
+          </span>
+          <span id="modeNote" class="hint"></span>
+        </div>
         <!-- Toggle scenario chi phí: luật "Chung" cho mọi CIG, hoặc luật riêng cho từng CIG -->
         <div class="miniRow" style="margin:0 0 9px">
           <span class="lblScen" data-i18n="scenLbl">Đang định nghĩa cho:</span>
@@ -460,6 +509,13 @@
         <div class="miniRow">
           <input id="grpFilter" class="w2" data-i18n-ph="grpFilterPh" placeholder="Lọc nhanh theo mã / tên nhóm…" autocomplete="off">
           <button id="bAddGrp" data-i18n="btnAddGrp">＋ Nhóm</button>
+          <button id="bCopyGrp" data-i18n="btnCopyTbl">Copy</button>
+          <button id="bPasteGrp" data-i18n="btnPaste">Dán từ Excel</button>
+        </div>
+        <div id="pasteBoxGrp" style="display:none;margin-top:9px">
+          <div class="hint" data-i18n-html="pasteGrpHint">Dán 3 cột từ Excel: <b>Mã FCG ⇥ Tên nhóm ⇥ Tên người CBQLNS</b> (cột CBQLNS được phép trống; khớp theo tên người của box ★ trên sơ đồ, không phân biệt hoa thường).</div>
+          <textarea id="pasteTaGrp" placeholder="FCG01&#9;VH Vùng 1&#9;Nguyễn Văn A"></textarea>
+          <div class="miniRow"><button id="bPasteGrpGo" class="primary" data-i18n="btnPasteGo">Nhập</button><button id="bPasteGrpCancel" data-i18n="btnPasteCancel">Hủy</button></div>
         </div>
         <div class="scrollTbl inScroll" style="margin-top:8px">
           <table id="grpTbl">
@@ -479,6 +535,7 @@
         <div class="miniRow">
           <input id="fcFilter" class="w2" data-i18n-ph="fcFilterPh" placeholder="Lọc nhanh theo mã / tên / nhóm…" autocomplete="off">
           <button id="bAddFc">＋ Fund Center</button>
+          <button id="bCopyFc" data-i18n="btnCopyTbl">Copy</button>
           <button id="bPaste" data-i18n="btnPaste">Dán từ Excel</button>
         </div>
         <div id="pasteBox">
@@ -555,7 +612,26 @@ var LANG = (function(){ try{ return localStorage.getItem('ob_lang') || 'vi'; }ca
 var STR = {
 vi: {
   docTitle:'Org Builder — sơ đồ, bảng phân cấp & luồng duyệt',
-  tabOrg:'Sơ đồ tổ chức', tabRules:'Định nghĩa luồng', tabFlow:'Luồng duyệt',
+  tabOrg:'Sơ đồ tổ chức', tabVline:'Ngành dọc', tabRules:'Định nghĩa luồng', tabFlow:'Luồng duyệt',
+  // --- tab Ngành dọc ---
+  btnVRoot:'＋ Người global', btnVImport:'＋ CBQLNS từ SĐTC',
+  vlineBarHint:'Chọn box cha trên cây rồi import — chỉ box đã tick ★ CBQLNS mới chọn được.',
+  vpanelH:'Chi tiết', vorgTip:'Import từ Sơ đồ tổ chức — nội dung tự cập nhật theo box gốc',
+  vpanelEmptyHint:'Cây ngành dọc: mỗi CBQLNS của thị trường gắn dưới người phụ trách ngành dọc của họ trên Global.<br><br>Bắt đầu: "＋ Người global" để vẽ người global, nhập 3 trường. Chọn box đó rồi "＋ CBQLNS từ SĐTC" để gắn CBQLNS vào dưới.<br><br>Box import lấy nội dung trực tiếp từ tab Sơ đồ tổ chức — sửa bên đó là bên này đổi theo.',
+  vImportedNote:'Box import từ Sơ đồ tổ chức — muốn sửa nội dung thì sửa ở tab đó.',
+  optPickStar:'(chọn box ★ CBQLNS…)',
+  msgPickStar:'Chọn một box ★ CBQLNS trong danh sách trước',
+  msgPickVParent:'Chọn box cha trên cây ngành dọc trước (người global)',
+  // --- mode Luồng / Ngành dọc ---
+  modeLbl:'Xử lý theo:', modeFlow:'Luồng', modeVline:'Ngành dọc',
+  modeVlineNote:'Ô nào thả box "Ngành dọc của CBQLNS" sẽ tự tra cây Ngành dọc theo từng nhóm.',
+  vlineBoxName:'Ngành dọc của CBQLNS', tagFixed:'cố định',
+  vlineBoxHint:'Thả vào ô: người duyệt = cấp trên ngành dọc của CBQLNS nhóm đó (định nghĩa ở tab Ngành dọc).',
+  noVlineDef:'(chưa định nghĩa ngành dọc)',
+  // --- copy/paste bảng nhập liệu ---
+  btnCopyTbl:'Copy', msgCopiedTbl:'Đã copy bảng — dán thẳng vào Excel',
+  pasteGrpHint:'Dán 3 cột từ Excel: <b>Mã FCG ⇥ Tên nhóm ⇥ Tên người CBQLNS</b> (cột CBQLNS được phép trống; khớp theo tên người của box ★ trên sơ đồ, không phân biệt hoa thường; trùng mã FCG thì cập nhật dòng cũ).',
+  msgGrpImported:'Đã nhập {n} nhóm mới, cập nhật {u} nhóm trùng mã',
   btnSave:'Lưu JSON', btnOpen:'Mở JSON', btnUndo:'↶ Hoàn tác',
   btnRoot:'＋ Box gốc', btnCopy:'Copy bảng', btnDrawio:'Xuất .drawio',
   tipZoomOut:'Thu nhỏ', tipZoomReset:'Về 100%', tipZoomIn:'Phóng to', btnZoomFit:'Vừa màn hình',
@@ -662,7 +738,23 @@ vi: {
 },
 en: {
   docTitle:'Org Builder — org chart, hierarchy table & approval flows',
-  tabOrg:'Org Chart', tabRules:'Flow Rules', tabFlow:'Approval Flow',
+  tabOrg:'Org Chart', tabVline:'Vertical Line', tabRules:'Flow Rules', tabFlow:'Approval Flow',
+  btnVRoot:'＋ Global person', btnVImport:'＋ BMO from chart',
+  vlineBarHint:'Select a parent box on the tree, then import — only ★ BMO boxes are listed.',
+  vpanelH:'Details', vorgTip:'Imported from the Org Chart — content mirrors the source box',
+  vpanelEmptyHint:'Vertical-line tree: each market BMO hangs under their global vertical-line superior.<br><br>Start with "＋ Global person" and fill in the fields. Select that box, then "＋ BMO from chart" to attach BMOs beneath it.<br><br>Imported boxes mirror the Org Chart — edit them there.',
+  vImportedNote:'Imported from the Org Chart — edit its content on that tab.',
+  optPickStar:'(pick a ★ BMO box…)',
+  msgPickStar:'Pick a ★ BMO box from the list first',
+  msgPickVParent:'Select a parent box on the vertical-line tree first (a global person)',
+  modeLbl:'Resolve by:', modeFlow:'Flows', modeVline:'Vertical line',
+  modeVlineNote:'Cells holding the "BMO\'s vertical line" box look up the Vertical Line tree per group.',
+  vlineBoxName:"BMO's vertical line", tagFixed:'fixed',
+  vlineBoxHint:"Drop into a cell: the approver becomes that group's BMO vertical-line superior (defined on the Vertical Line tab).",
+  noVlineDef:'(vertical line not defined)',
+  btnCopyTbl:'Copy', msgCopiedTbl:'Table copied — paste straight into Excel',
+  pasteGrpHint:'Paste 3 columns from Excel: <b>FCG code ⇥ Group name ⇥ BMO person name</b> (BMO column may be blank; matched against ★ box person names, case-insensitive; existing FCG codes are updated in place).',
+  msgGrpImported:'Imported {n} new groups, updated {u} matching codes',
   btnSave:'Save JSON', btnOpen:'Open JSON', btnUndo:'↶ Undo',
   btnRoot:'＋ Root box', btnCopy:'Copy table', btnDrawio:'Export .drawio',
   tipZoomOut:'Zoom out', tipZoomReset:'Reset to 100%', tipZoomIn:'Zoom in', btnZoomFit:'Fit to screen',
@@ -837,33 +929,54 @@ var SCOPES   = ['ALL','VH','SM','BO','IT','AC','REST'];   // vòng xoay phạm v
 var BR_COLOR = {VH:'#6B8FE8', SM:'#A8D989', BO:'#FFB98A', IT:'#7ECEE0', AC:'#C3AEE8'};
 
 var roleBoxes = [];
-var ruleGrids = { '': {} };
+var VLINE = 'vline';             // id box cố định "Ngành dọc của CBQLNS" trong palette (không nằm trong roleBoxes)
+var ruleMode  = 'flow';          // 'flow' = phân theo nhánh (chip phạm vi) | 'vline' = theo ngành dọc
+var ruleGrids  = { '': {} };     // luật mode Luồng     — theo scenario CIG ('' = Chung)
+var vlineGrids = { '': {} };     // luật mode Ngành dọc — cùng cấu trúc, mỗi ô 1 box {ALL:rid}
+// Cây ngành dọc (tab Ngành dọc): node manual (tự gõ 3 trường) hoặc imported (orgId -> box ★ bên SĐTC,
+// nội dung mirror trực tiếp). CBQLNS gắn dưới ai thì người đó là "ngành dọc" của họ.
+var vnodes = new Map();
+var vroots = [];
+var vsel   = null;               // chọn trên tab Ngành dọc (view-state)
+var vseq   = 1;
 var curCig = '';                 // scenario đang sửa ở tab Định nghĩa ('' = Chung) — view-state, không lưu
 var cigs = [];                   // [{id, code, name}] — nhóm chi phí (Commitment Item Group)
 var rseq = 1, cseq = 1;
-function gridFor(cigId){ return ruleGrids[cigId] || ruleGrids['']; }   // CIG chưa định nghĩa riêng -> dùng Chung
-function curGrid(){ return ruleGrids[curCig] || (ruleGrids[curCig] = {}); }
+function gridFamily(){ return ruleMode === 'vline' ? vlineGrids : ruleGrids; }
+function gridFor(cigId){ var f = gridFamily(); return f[cigId] || f['']; }  // CIG chưa có riêng -> Chung
+function curGrid(){ var f = gridFamily(); return f[curCig] || (f[curCig] = {}); }
+// Cây ngành dọc: serialize lồng nhau như roots; imported chỉ lưu orgId (nội dung mirror lúc render)
+function vser(id){
+  var n = vnodes.get(id);
+  return { id:n.id, dept:n.dept, title:n.title, person:n.person,
+           orgId: n.orgId || undefined, children:n.children.map(vser) };
+}
+// Node hiển thị của vnode: imported thì lấy trực tiếp từ box ★ bên SĐTC
+function vdisp(n){
+  if (n.orgId && nodes.has(n.orgId)){
+    var o = nodes.get(n.orgId);
+    return { dept:o.dept, title:o.title, person:o.person, star:o.star };
+  }
+  return { dept:n.dept, title:n.title, person:n.person, star:false };
+}
+// Ngành dọc của một CBQLNS (node ★ trên SĐTC): cha trực tiếp của vnode import tương ứng
+function vlineSuperiorOf(cb){
+  if (!cb) return null;
+  var vn = null;
+  vnodes.forEach(function(x){ if (x.orgId === cb.id && !vn) vn = x; });
+  if (!vn || !vn.parent) return null;
+  return vnodes.get(vn.parent);
+}
 
 // Bộ luật khởi tạo theo ma trận chuẩn; fin = {cfo,gdtc,tptc} từ file bản cũ (nếu có) để giữ tên người
 function seedRules(fin){
-  fin = fin || {};
-  roleBoxes = [
-    {id:'r1', kind:'free', title:'Trưởng phòng Tài chính Thị trường', person:String(fin.tptc||'')},
-    {id:'r2', kind:'free', title:'MCEO',     person:''},
-    {id:'r3', kind:'free', title:'MD',       person:''},
-    {id:'r4', kind:'free', title:'Giám đốc TC Thị trường (CFO kiêm nhiệm)', person:String(fin.gdtc||'')},
-    {id:'r5', kind:'free', title:'CFO',      person:String(fin.cfo||'')},
-    {id:'r6', kind:'free', title:'DCEO Ops', person:''},
-    {id:'r7', kind:'free', title:'GCEO',     person:''},
-    {id:'r8', kind:'free', title:'PCT02',    person:''}
-  ];
-  rseq = 9;
-  ruleGrids = { '': {
-    'Vàng': { 'TĐ2':{ALL:'r1'}, 'PD':{VH:'r3', REST:'r2'} },
-    'Đỏ'  : { 'TĐ2':{ALL:'r2'}, 'TĐ3':{ALL:'r4'}, 'PD':{VH:'r6', REST:'r7'} },
-    'Tím' : { 'TĐ2':{ALL:'r2'}, 'TĐ4':{ALL:'r5'}, 'TĐ*':{ALL:'r8'}, 'PD':{VH:'r6', REST:'r7'} },
-    'NNS' : { 'TĐ2':{ALL:'r2'}, 'TĐ*':{ALL:'r8'}, 'PD':{ALL:'r5'} }
-  } };
+  // Không nạp sẵn box vai trò hay luật nào — palette chỉ có box cố định "Ngành dọc của CBQLNS",
+  // người dùng tự thêm box theo nhu cầu. (fin của file bản rất cũ được bỏ qua.)
+  roleBoxes = [];
+  rseq = 1;
+  ruleGrids  = { '': {} };
+  vlineGrids = { '': {} };
+  ruleMode = 'flow';
   curCig = '';
   cigs = [ {id:'c1', code:'CI-SM', name:'Chi phí Sales & Marketing'},
            {id:'c2', code:'CI-TE', name:'Chi phí Travel & Entertainment'},
@@ -876,6 +989,7 @@ var undoStack = [], lastSnapKey = null, dirty = false;
 function serializeAll(){
   return { v:9, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrids:ruleGrids,
+           vlineGrids:vlineGrids, ruleMode:ruleMode, vroots:vroots.map(vser),
            cigs:cigs };
 }
 function snap(key){
@@ -942,6 +1056,7 @@ function delNode(id){
   wipe(id);
   if (focusId && !nodes.has(focusId)) focusId = null;
   fcGroups.forEach(function(g){ if (g.cbqlns && !nodes.has(g.cbqlns)) g.cbqlns = null; });
+  pruneVlineOrphans();                           // node import trên cây ngành dọc trỏ box vừa xóa
   sel = null; renderAll();
 }
 function moveSib(id, dir){
@@ -1326,7 +1441,7 @@ function renderTable(L){
 function renderAll(){
   var L = layout();
   if (sel && !L.vis.has(sel)) sel = null;
-  renderCanvas(L); renderPanel(); renderTable(L); renderFlow(); renderRules();
+  renderCanvas(L); renderPanel(); renderTable(L); renderVline(); renderVPanel(); renderFlow(); renderRules();
 }
 function refreshView(){
   var L = layout();
@@ -1471,7 +1586,8 @@ function applyState(d){
         if (!a || typeof a !== 'object') return;
         var o = {};
         SCOPES.forEach(function(s){
-          if (typeof a[s] === 'string' && tRB.some(function(r){ return r.id === a[s]; })) o[s] = a[s];
+          if (typeof a[s] !== 'string') return;
+          if (a[s] === VLINE || tRB.some(function(r){ return r.id === a[s]; })) o[s] = a[s];
         });
         if (o.ALL) BRANCHES.concat('REST').forEach(function(s){ delete o[s]; });  // "Tất cả" đứng một mình
         if (SCOPES.some(function(s){ return o[s]; })) (out[fl] = out[fl] || {})[c] = o;
@@ -1479,21 +1595,50 @@ function applyState(d){
     });
     return out;
   }
-  var tGrids = { '': {} };
-  if (d.ruleGrids && typeof d.ruleGrids === 'object'){
-    Object.keys(d.ruleGrids).forEach(function(k){
-      if (k !== '' && !tCig.some(function(c){ return c.id === k; })) return;   // grid mồ côi -> bỏ
-      tGrids[k] = cleanGrid(d.ruleGrids[k]);
-    });
-  } else if (d.ruleGrid && typeof d.ruleGrid === 'object'){
-    tGrids[''] = cleanGrid(d.ruleGrid);
+  function cleanFamily(src, legacy){
+    var out = { '': {} };
+    if (src && typeof src === 'object'){
+      Object.keys(src).forEach(function(k){
+        if (k !== '' && !tCig.some(function(c){ return c.id === k; })) return;  // grid mồ côi -> bỏ
+        out[k] = cleanGrid(src[k]);
+      });
+    } else if (legacy && typeof legacy === 'object'){
+      out[''] = cleanGrid(legacy);
+    }
+    return out;
   }
+  var tGrids  = cleanFamily(d.ruleGrids, d.ruleGrid);
+  var tVGrids = cleanFamily(d.vlineGrids, null);
+
+  // Cây ngành dọc: node imported phải trỏ tới box còn tồn tại; hỏng thì hạ xuống manual rỗng? -> bỏ hẳn
+  var tVN = new Map(), tVRoots = [], maxV = 0;
+  function vmk(o, parentId){
+    if (!o || typeof o !== 'object') return null;
+    var okId = (typeof o.id === 'string' && /^v\d+$/.test(o.id) && !tVN.has(o.id));
+    if (okId){ var vv = parseInt(o.id.slice(1), 10); if (vv > maxV) maxV = vv; }
+    var id = okId ? o.id : ('v' + (++maxV));
+    var orgId = (typeof o.orgId === 'string' && tN.has(o.orgId)) ? o.orgId : null;
+    if (o.orgId && !orgId) return null;            // box SĐTC đã xóa -> bỏ node import mồ côi
+    tVN.set(id, { id:id, dept:String(o.dept||'').toUpperCase(), title:String(o.title||''),
+                  person:String(o.person||''), orgId:orgId, parent:parentId, children:[] });
+    (o.children || []).forEach(function(c){
+      var cid = vmk(c, id);
+      if (cid) tVN.get(id).children.push(cid);
+    });
+    return id;
+  }
+  (Array.isArray(d.vroots) ? d.vroots : []).forEach(function(rt){
+    var id = vmk(rt, null);
+    if (id) tVRoots.push(id);
+  });
 
   nodes = tN; rootIds = tRoots; focusId = tFocus;
   fcGroups = tG; fcs = tF;
   seq = maxN + 1; gseq = maxG + 1; fseq = maxF + 1;
-  if (Array.isArray(d.roleBoxes)){ roleBoxes = tRB; ruleGrids = tGrids; rseq = maxR + 1; }
+  if (Array.isArray(d.roleBoxes)){ roleBoxes = tRB; ruleGrids = tGrids; vlineGrids = tVGrids; rseq = maxR + 1; }
   else seedRules(d.finance);
+  vnodes = tVN; vroots = tVRoots; vseq = maxV + 1; vsel = null;
+  ruleMode = d.ruleMode === 'vline' ? 'vline' : 'flow';
   // CIG: file có danh sách riêng thì dùng, không thì seed bộ mặc định (giữ ruleGrids đã đọc)
   if (tCig.length){ cigs = tCig; cseq = maxC + 1; }
   else {
@@ -1555,6 +1700,223 @@ function exportDrawio(){
   msg(tf('msgDrawioSaved', { hidden: hidden ? tf('drawioHiddenSuffix', { n: hidden }) : '' }));
 }
 
+/* ============ [7v] TAB NGÀNH DỌC — cây CBQLNS → cấp global ============ */
+var VGY = 64;
+function vlayout(){
+  var pos = new Map(), x = PAD;
+  function walk(id, depth){
+    var n = vnodes.get(id);
+    if (!n.children.length){
+      pos.set(id, { x: x, y: PAD + depth*(BH+VGY) });
+      x += BW + GX;
+      return pos.get(id).x;
+    }
+    var xs = n.children.map(function(c){ return walk(c, depth+1); });
+    var cx = (xs[0] + xs[xs.length-1]) / 2;
+    pos.set(id, { x: cx, y: PAD + depth*(BH+VGY) });
+    return cx;
+  }
+  vroots.forEach(function(r){ walk(r, 0); });
+  return pos;
+}
+function renderVline(){
+  var cv = $('vcanvas'), svg = $('vsvg');
+  if (!cv) return;
+  var pos = vlayout();
+  var W = 300, H = 300;
+  pos.forEach(function(p){ W = Math.max(W, p.x + BW + PAD); H = Math.max(H, p.y + BH + PAD); });
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  cv.querySelectorAll('.node').forEach(function(el){ el.remove(); });
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  var NS = 'http://www.w3.org/2000/svg';
+  vnodes.forEach(function(n, id){
+    n.children.forEach(function(c){
+      var a = pos.get(id), b = pos.get(c);
+      var x1 = a.x + BW/2, y1 = a.y + BH, x2 = b.x + BW/2, y2 = b.y, m = y1 + VGY/2;
+      var p2 = document.createElementNS(NS, 'path');
+      p2.setAttribute('d', 'M '+x1+' '+y1+' V '+m+' H '+x2+' V '+y2);
+      p2.setAttribute('fill','none'); p2.setAttribute('stroke','#1F1B16'); p2.setAttribute('stroke-width','2');
+      svg.appendChild(p2);
+    });
+  });
+  vnodes.forEach(function(n, id){
+    var pv = pos.get(id), dp = vdisp(n);
+    var d = document.createElement('div');
+    d.className = 'node' + (id === vsel ? ' sel' : '');
+    d.dataset.id = id;
+    d.style.left = pv.x + 'px'; d.style.top = pv.y + 'px';
+    d.style.background = n.orgId ? 'var(--paper)' : 'var(--cyan)';   // global tự vẽ = cyan, import = trắng
+    var any = false;
+    if (dp.dept){  var e1=document.createElement('div'); e1.className='bd'; e1.textContent=dp.dept;  d.appendChild(e1); any=true; }
+    if (dp.title){ var e2=document.createElement('div'); e2.className='bt'; e2.textContent=dp.title; d.appendChild(e2); any=true; }
+    if (dp.person){var e3=document.createElement('div'); e3.className='bp'; e3.textContent=dp.person;d.appendChild(e3); any=true; }
+    if (!any){    var e0=document.createElement('div'); e0.className='be'; e0.textContent = t('emptyBox'); d.appendChild(e0); }
+    if (n.orgId){
+      var tg = document.createElement('div'); tg.className = 'vorg';
+      tg.textContent = dp.star ? '★ ' + t('cbqlns') : t('optStarRemoved').trim();
+      tg.title = t('vorgTip');
+      d.appendChild(tg);
+    }
+    d.onclick = function(e){ e.stopPropagation(); vselect(id); };
+    cv.appendChild(d);
+  });
+  fillVImportPick();
+}
+// Chọn/bỏ chọn: vá class tại chỗ (tránh dựng lại canvas làm box dưới con trỏ bị "nảy")
+function vselect(id){
+  vsel = id;
+  document.querySelectorAll('#vcanvas .node').forEach(function(el){
+    el.classList.toggle('sel', el.dataset.id === vsel);
+  });
+  renderVPanel();
+}
+function renderVPanel(){
+  var p = $('vpanel');
+  if (!p) return;
+  if (!vsel || !vnodes.has(vsel)){
+    p.innerHTML = '<h2>' + t('vpanelH') + '</h2><div class="hint">' + t('vpanelEmptyHint') + '</div>';
+    return;
+  }
+  var n = vnodes.get(vsel), dp = vdisp(n), imported = !!n.orgId;
+  p.innerHTML =
+      '<h2>' + t('vpanelH') + '</h2>'
+    + '<label>' + t('lblDept') + '</label><input id="vfD"' + (imported ? ' disabled' : '') + '>'
+    + '<label>' + t('lblTitle') + '</label><input id="vfC"' + (imported ? ' disabled' : '') + '>'
+    + '<label>' + t('lblPerson') + '</label><input id="vfP"' + (imported ? ' disabled' : '') + '>'
+    + (imported ? '<div class="hint" style="margin-top:8px">' + t('vImportedNote') + '</div>' : '')
+    + '<div class="row"><button id="vbChild">' + t('btnChild') + '</button><button id="vbSib">' + t('btnSib') + '</button></div>'
+    + '<div class="row"><button id="vbL">◀</button><button id="vbR">▶</button><button id="vbDel" class="danger">' + t('btnDel') + '</button></div>';
+  var fD = $('vfD'); fD.value = dp.dept;
+  var fC = $('vfC'); fC.value = dp.title;
+  var fP = $('vfP'); fP.value = dp.person;
+  if (!imported){
+    fD.oninput = function(){
+      snap('v:' + vsel + ':d');
+      var s0 = fD.selectionStart, up = fD.value.toUpperCase();
+      if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s0,s0); }catch(_){/**/} }
+      n.dept = fD.value; patchVNodeText(n);
+    };
+    fC.oninput = function(){ snap('v:' + vsel + ':c'); n.title = fC.value; patchVNodeText(n); };
+    fP.oninput = function(){ snap('v:' + vsel + ':p'); n.person = fP.value; patchVNodeText(n); };
+  }
+  $('vbChild').onclick = function(){ vAdd(vsel); };
+  $('vbSib').onclick   = function(){ vAddSib(vsel); };
+  $('vbL').onclick     = function(){ vMove(vsel, -1); };
+  $('vbR').onclick     = function(){ vMove(vsel, +1); };
+  $('vbDel').onclick   = function(){ vDel(vsel); };
+}
+// Gõ 3 trường -> vá chữ trong box đích danh (không đập canvas, giữ focus input)
+function patchVNodeText(n){
+  var el = document.querySelector('#vcanvas .node[data-id="' + n.id + '"]');
+  if (!el) return;
+  el.querySelectorAll('.bd,.bt,.bp,.be').forEach(function(x){ x.remove(); });
+  var dp = vdisp(n), any = false;
+  if (dp.dept){  var e1=document.createElement('div'); e1.className='bd'; e1.textContent=dp.dept;  el.appendChild(e1); any=true; }
+  if (dp.title){ var e2=document.createElement('div'); e2.className='bt'; e2.textContent=dp.title; el.appendChild(e2); any=true; }
+  if (dp.person){var e3=document.createElement('div'); e3.className='bp'; e3.textContent=dp.person;el.appendChild(e3); any=true; }
+  if (!any){    var e0=document.createElement('div'); e0.className='be'; e0.textContent = t('emptyBox'); el.appendChild(e0); }
+}
+function vnn(dept, title, person, orgId, parent){
+  var id = 'v' + (vseq++);
+  vnodes.set(id, { id:id, dept:dept, title:title, person:person, orgId:orgId||null,
+                   parent:parent||null, children:[] });
+  return id;
+}
+function vAddRoot(){
+  snap(null);
+  var id = vnn('','','',null,null);
+  vroots.push(id);
+  renderVline(); vselect(id);
+  var f = $('vfD'); if (f) f.focus();
+}
+function vAdd(pid){
+  snap(null);
+  var id = vnn('','','',null,pid);
+  vnodes.get(pid).children.push(id);
+  renderVline(); vselect(id);
+  var f = $('vfD'); if (f) f.focus();
+}
+function vAddSib(id){
+  var n = vnodes.get(id);
+  snap(null);
+  var nid = vnn('','','',null,n.parent);
+  var arr = n.parent ? vnodes.get(n.parent).children : vroots;
+  arr.splice(arr.indexOf(id) + 1, 0, nid);
+  renderVline(); vselect(nid);
+  var f = $('vfD'); if (f) f.focus();
+}
+function vMove(id, dir){
+  var n = vnodes.get(id);
+  var arr = n.parent ? vnodes.get(n.parent).children : vroots;
+  var i = arr.indexOf(id), j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  snap(null);
+  arr[i] = arr[j]; arr[j] = id;
+  renderVline(); vselect(id);
+}
+function vSubCount(id){
+  var c = 1; vnodes.get(id).children.forEach(function(x){ c += vSubCount(x); });
+  return c;
+}
+function vDel(id){
+  var n = vnodes.get(id);
+  var nm = vdisp(n);
+  if (n.children.length &&
+      !confirm(tf('cfmDelNode', { name: nm.dept || nm.title || nm.person || t('emptyBox'),
+                                  n: vSubCount(id)-1 }))) return;
+  snap(null);
+  (function rm(x){
+    vnodes.get(x).children.forEach(rm);
+    vnodes.delete(x);
+  })(id);
+  var arr = n.parent && vnodes.has(n.parent) ? vnodes.get(n.parent).children : vroots;
+  var i = arr.indexOf(id); if (i >= 0) arr.splice(i, 1);
+  vsel = null;
+  renderVline(); renderVPanel(); refreshFlowResultSoon();
+}
+// Import: chỉ box ★ CBQLNS chưa có mặt trên cây ngành dọc
+function fillVImportPick(){
+  var s = $('vImportPick'); if (!s) return;
+  var cur = s.value; s.innerHTML = '';
+  var o0 = document.createElement('option'); o0.value=''; o0.textContent = t('optPickStar');
+  s.appendChild(o0);
+  var used = new Set();
+  vnodes.forEach(function(n){ if (n.orgId) used.add(n.orgId); });
+  starredNodes().forEach(function(n){
+    if (used.has(n.id)) return;
+    var o = document.createElement('option');
+    o.value = n.id;
+    o.textContent = '★ ' + dispName(n) + (n.person ? ' — ' + n.person : '');
+    s.appendChild(o);
+  });
+  if (cur && nodes.has(cur) && !used.has(cur)) s.value = cur;
+}
+function vImport(){
+  var nid = $('vImportPick').value;
+  if (!nid || !nodes.has(nid)){ msg(t('msgPickStar')); return; }
+  if (!vsel || !vnodes.has(vsel)){ msg(t('msgPickVParent')); return; }
+  snap(null);
+  var id = vnn('','','', nid, vsel);
+  vnodes.get(vsel).children.push(id);
+  renderVline(); vselect(id); refreshFlowResultSoon();
+}
+// Box SĐTC bị xóa -> gỡ node import mồ côi (con của nó nối lên cha)
+function pruneVlineOrphans(){
+  var orphans = [];
+  vnodes.forEach(function(n){ if (n.orgId && !nodes.has(n.orgId)) orphans.push(n); });
+  orphans.forEach(function(n){
+    if (!vnodes.has(n.id)) return;
+    var arr = n.parent && vnodes.has(n.parent) ? vnodes.get(n.parent).children : vroots;
+    var i = arr.indexOf(n.id);
+    var kids = n.children.slice();
+    kids.forEach(function(c){ vnodes.get(c).parent = n.parent; });
+    if (i >= 0) arr.splice.apply(arr, [i, 1].concat(kids));
+    vnodes.delete(n.id);
+    if (vsel === n.id) vsel = null;
+  });
+}
+
 /* ============ [8] LUỒNG DUYỆT & ĐỊNH NGHĨA LUỒNG ============ */
 /* [8a] Engine: ô = CBQLNS cố định hoặc box vai trò chọn theo nhánh (Tất cả / VH / Còn lại). */
 var flowViewByFc = false;                     // false = gộp theo nhóm (mặc định)
@@ -1566,11 +1928,13 @@ function starredNodes(){
   return out;
 }
 function roleById(rid){
+  if (rid === VLINE) return { id:VLINE, kind:'vline' };   // box cố định "Ngành dọc của CBQLNS"
   for (var i = 0; i < roleBoxes.length; i++) if (roleBoxes[i].id === rid) return roleBoxes[i];
   return null;
 }
 function roleBoxText(rb){                     // nội dung đầy đủ (nhiều dòng) cho ô kết quả
   if (!rb) return '—';
+  if (rb.kind === 'vline') return t('vlineBoxName');
   if (rb.kind === 'node'){
     var n = nodes.get(rb.nodeId);
     return n ? roleText(n) : t('roleDeleted');
@@ -1580,6 +1944,7 @@ function roleBoxText(rb){                     // nội dung đầy đủ (nhiề
 // {t: chức danh, p: người} — chip/palette chỉ hiện 2 thông tin cần thiết, không kèm khối/phòng
 function rolePair(rb){
   if (!rb) return { t:'—', p:'' };
+  if (rb.kind === 'vline') return { t: t('vlineBoxName'), p:'' };
   if (rb.kind === 'node'){
     var n = nodes.get(rb.nodeId);
     return n ? { t: n.title || n.dept || t('emptyBox'), p: n.person || '' }
@@ -1605,13 +1970,20 @@ function pdDelegated(rb, cb){
 }
 // Nội dung một ô của bảng luồng duyệt
 function resolveCell(flow, col, seg, cb, grid){
-  grid = grid || ruleGrids[''];
+  grid = grid || gridFor('');
   if (FIXED_CBQLNS[flow] === col)
     return cb ? roleText(cb) + (cb.star ? '' : t('starRemoved')) : t('noCbqlns');
   var asg = (grid[flow] || {})[col];
   if (!asg) return '—';
   var rid = asg.ALL || asg[seg];
   if (!rid) return '—';
+  if (rid === VLINE){                              // ngành dọc: tra cấp trên của CBQLNS trên cây tab 2
+    if (!cb) return t('noCbqlns');
+    var sup = vlineSuperiorOf(cb);
+    if (!sup) return t('noVlineDef');
+    var dv = vdisp(sup);
+    return [dv.title || dv.dept, dv.person].filter(Boolean).join('\n') || t('emptyBox');
+  }
   var rb = roleById(rid);
   if (pdDelegated(rb, cb)) return roleText(cb) + t('pdDelegatedNote');
   return roleBoxText(rb);
@@ -1800,6 +2172,43 @@ function applyFcFilter(){
 }
 // Dán TSV 3 cột từ Excel: Mã ⇥ Tên ⇥ Tên nhóm. Nhóm khớp theo tên (không phân biệt hoa thường),
 // chưa có thì tạo mới. Dòng header (bắt đầu bằng "Mã"/"Code") tự bỏ qua.
+// Dán nhóm FCG: Mã ⇥ Tên ⇥ Tên người CBQLNS (khớp person của box ★, không phân biệt hoa thường)
+function importGrpPaste(txt){
+  var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
+  if (!lines.length){ msg(t('msgNothingImport')); return; }
+  // Nhận diện dòng tiêu đề: "Mã FCG" / "FCG code" — KHÔNG được bắt nhầm mã thật dạng FCG01
+  var first = (lines[0].split('\t')[0]||'').trim().toLowerCase();
+  if (/^(mã\b|ma\b|code\b|fcg code)/.test(first)) lines.shift();
+  if (!lines.length){ msg(t('msgNothingImport')); return; }
+  snap(null);
+  var starByPerson = {};
+  starredNodes().forEach(function(n){
+    if (n.person) starByPerson[n.person.trim().toLowerCase()] = n.id;
+  });
+  var byCode = {};
+  fcGroups.forEach(function(g){ if (g.code) byCode[g.code.trim().toLowerCase()] = g; });
+  var nG = 0, nUp = 0;
+  lines.forEach(function(l){
+    var c = l.split('\t');
+    var code = (c[0]||'').trim(), name = (c[1]||'').trim(), person = (c[2]||'').trim();
+    if (!code && !name) return;
+    var cb = person ? (starByPerson[person.toLowerCase()] || null) : null;
+    var ex = code ? byCode[code.toLowerCase()] : null;
+    if (ex){                                        // trùng mã -> cập nhật tên/CBQLNS
+      ex.name = name || ex.name;
+      if (cb) ex.cbqlns = cb;
+      nUp++;
+    } else {
+      var g = { id:'g'+(gseq++), code:code, name:name, cbqlns:cb, byCig:false };
+      fcGroups.push(g);
+      if (code) byCode[code.toLowerCase()] = g;
+      nG++;
+    }
+  });
+  $('pasteTaGrp').value = ''; $('pasteBoxGrp').style.display = 'none';
+  renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult();
+  msg(tf('msgGrpImported', { n: nG, u: nUp }));
+}
 function importPaste(txt){
   var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
   if (!lines.length){ msg(t('msgNothingImport')); return; }
@@ -1846,7 +2255,7 @@ function flowBlocks(){
                       cb: cb, seg: segmentOf(cb), grid: gridFor(c.id) });
       });
     } else {
-      blocks.push({ head: baseHead, cb: cb, seg: segmentOf(cb), grid: ruleGrids[''] });
+      blocks.push({ head: baseHead, cb: cb, seg: segmentOf(cb), grid: gridFor('') });
     }
   }
   if (!flowViewByFc){
@@ -1968,10 +2377,11 @@ function copyFlowTable(){
 }
 
 /* ---------- [8e] TAB ĐỊNH NGHĨA LUỒNG — palette box vai trò + kéo-thả vào ma trận ---------- */
-function usageCount(rid){                     // đếm trên mọi scenario (Chung + từng CIG)
+function usageCount(rid){                     // đếm trên mọi scenario, cả 2 chế độ Luồng/Ngành dọc
   var c = 0;
-  Object.keys(ruleGrids).forEach(function(k){
-    var grid = ruleGrids[k];
+  [ruleGrids, vlineGrids].forEach(function(fam){
+  Object.keys(fam).forEach(function(k){
+    var grid = fam[k];
     FLOWS.forEach(function(fl){
       var row = grid[fl] || {};
       COLS.forEach(function(col){
@@ -1979,6 +2389,7 @@ function usageCount(rid){                     // đếm trên mọi scenario (Ch
         SCOPES.forEach(function(s){ if (a[s] === rid) c++; });
       });
     });
+  });
   });
   return c;
 }
@@ -1988,6 +2399,10 @@ function dropRole(flow, col, rid){
   snap(null);
   var g = curGrid();
   var row = g[flow] || (g[flow] = {});
+  if (ruleMode === 'vline'){                        // mode Ngành dọc: mỗi ô đúng 1 box, thả là thay
+    row[col] = {ALL: rid};
+    renderRules(); renderFlowResult(); return;
+  }
   var a = row[col];
   if (!a || a.ALL){ row[col] = {ALL: rid}; return void (renderRules(), renderFlowResult()); }
   // đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết thì thay bằng "Tất cả"
@@ -2039,14 +2454,16 @@ function deleteRole(rb){
   if (used && !confirm(tf('cfmDelRole', { name: roleBoxName(rb), n: used }))) return;
   snap(null);
   roleBoxes = roleBoxes.filter(function(x){ return x !== rb; });
-  Object.keys(ruleGrids).forEach(function(k){
-    var grid = ruleGrids[k];
-    FLOWS.forEach(function(fl){
-      var row = grid[fl]; if (!row) return;
-      COLS.forEach(function(col){
-        var a = row[col]; if (!a) return;
-        SCOPES.forEach(function(s){ if (a[s] === rb.id) delete a[s]; });
-        if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
+  [ruleGrids, vlineGrids].forEach(function(fam){
+    Object.keys(fam).forEach(function(k){
+      var grid = fam[k];
+      FLOWS.forEach(function(fl){
+        var row = grid[fl]; if (!row) return;
+        COLS.forEach(function(col){
+          var a = row[col]; if (!a) return;
+          SCOPES.forEach(function(s){ if (a[s] === rb.id) delete a[s]; });
+          if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
+        });
       });
     });
   });
@@ -2067,16 +2484,20 @@ function patchRoleChips(rb){
 }
 function chipEl(flow, col, scope, rid){
   var rb = roleById(rid), pr = rolePair(rb);
-  var ch = document.createElement('div'); ch.className = 'chip'; ch.dataset.rid = rid;
+  var ch = document.createElement('div'); ch.className = 'chip' + (rid === VLINE ? ' vlineChip' : '');
+  ch.dataset.rid = rid;
   var top = document.createElement('div'); top.className = 'chipTop';
-  var sc = document.createElement('span');
-  sc.className = 'sc sc-' + scope;
-  sc.textContent = segLabel(scope);
-  sc.title = t('tipCycleScope');
-  sc.onclick = function(){ cycleScope(flow, col, scope); };
+  if (ruleMode !== 'vline'){                        // mode Ngành dọc không phân phạm vi -> ẩn nhãn
+    var sc = document.createElement('span');
+    sc.className = 'sc sc-' + scope;
+    sc.textContent = segLabel(scope);
+    sc.title = t('tipCycleScope');
+    sc.onclick = function(){ cycleScope(flow, col, scope); };
+    top.appendChild(sc);
+  }
   var rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '✕';
   rm.title = t('tipRemoveFromCell'); rm.onclick = function(){ removeAssign(flow, col, scope); };
-  top.appendChild(sc); top.appendChild(rm);
+  top.appendChild(rm);
   var cn = document.createElement('div'); cn.className = 'cn'; cn.textContent = pr.t;
   ch.title = roleBoxText(rb);
   ch.appendChild(top); ch.appendChild(cn);
@@ -2088,12 +2509,27 @@ function cigById(id){ return cigs.find(function(c){ return c.id === id; }) || nu
 function setCurCig(id){
   if (id && !cigById(id)) id = '';
   // lần đầu mở một CIG chưa có luật riêng -> chép từ "Chung" để chỉnh phần khác biệt
-  if (id && !ruleGrids[id]){
+  var fam = gridFamily();
+  if (id && !fam[id]){
     snap(null);
-    ruleGrids[id] = JSON.parse(JSON.stringify(ruleGrids[''] || {}));
+    fam[id] = JSON.parse(JSON.stringify(fam[''] || {}));
   }
   curCig = id;
   renderRules();
+}
+function setRuleMode(m){
+  if (m === ruleMode) return;
+  snap(null);
+  ruleMode = m;
+  renderRules(); renderFlowResult();
+}
+function renderModeToggle(){
+  var bF = $('modeFlow'), bV = $('modeVline');
+  if (!bF) return;
+  bF.classList.toggle('active', ruleMode === 'flow');
+  bV.classList.toggle('active', ruleMode === 'vline');
+  var note = $('modeNote');
+  if (note) note.textContent = ruleMode === 'vline' ? t('modeVlineNote') : '';
 }
 // Dựng lại nút sẽ làm nút đang bị nhấn "nảy" (nút mới chưa nhận :hover) — nên chỉ
 // dựng khi danh sách CIG đổi; bấm chọn scenario chỉ đổi class .active tại chỗ.
@@ -2161,7 +2597,7 @@ function addCig(){
 }
 
 function renderRules(){
-  renderCigToggle(); renderCigs();
+  renderModeToggle(); renderCigToggle(); renderCigs();
   var tb = $('ruleTbody'); tb.innerHTML = '';
   FLOWS.forEach(function(flow){
     var tr = document.createElement('tr');
@@ -2203,8 +2639,28 @@ function renderRules(){
 }
 function renderRolePalette(){
   var host = $('roleList'); host.innerHTML = '';
+  if (ruleMode === 'vline'){
+    // Box cố định "Ngành dọc của CBQLNS" — không xóa được, kéo thả như box thường
+    var vc = document.createElement('div'); vc.className = 'roleCard vlineCard';
+    var vtop = document.createElement('div'); vtop.className = 'topRow'; vtop.draggable = true;
+    vtop.ondragstart = function(e){ e.dataTransfer.setData('text/plain', VLINE); vtop.classList.add('dragging'); };
+    vtop.ondragend = function(){ vtop.classList.remove('dragging'); };
+    var vdh = document.createElement('span'); vdh.className = 'drag'; vdh.textContent = '⠿';
+    var vttl = document.createElement('span'); vttl.className = 'ttl'; vttl.textContent = t('vlineBoxName');
+    var vtag = document.createElement('span'); vtag.className = 'kindTag';
+    var vused = usageCount(VLINE);
+    vtag.textContent = t('tagFixed') + (vused ? ' · ' + tf('usedCells', { n: vused }) : '');
+    vtop.appendChild(vdh); vtop.appendChild(vttl); vtop.appendChild(vtag);
+    vc.appendChild(vtop);
+    var vhint = document.createElement('div'); vhint.className = 'hint'; vhint.style.marginTop = '4px';
+    vhint.textContent = t('vlineBoxHint');
+    vc.appendChild(vhint);
+    host.appendChild(vc);
+  }
   if (!roleBoxes.length){
-    host.innerHTML = '<div class="hint">' + t('paletteEmpty') + '</div>';
+    var h0 = document.createElement('div'); h0.className = 'hint';
+    h0.textContent = t('paletteEmpty');
+    host.appendChild(h0);
     return;
   }
   roleBoxes.forEach(function(rb){
@@ -2460,19 +2916,58 @@ document.addEventListener('keydown', function(e){
 });
 
 function showTab(which){
-  // cả 3 tab đều là flex-column để con bên trong giãn hết chiều cao viewport
+  // các tab đều là flex-column để con bên trong giãn hết chiều cao viewport
   $('tabOrg').style.display   = which === 'org'   ? 'flex' : 'none';
+  $('tabVline').style.display = which === 'vline' ? 'flex' : 'none';
   $('tabRules').style.display = which === 'rules' ? 'flex' : 'none';
   $('tabFlow').style.display  = which === 'flow'  ? 'flex' : 'none';
   $('tabBtnOrg').classList.toggle('active',   which === 'org');
+  $('tabBtnVline').classList.toggle('active', which === 'vline');
   $('tabBtnRules').classList.toggle('active', which === 'rules');
   $('tabBtnFlow').classList.toggle('active',  which === 'flow');
+  if (which === 'vline'){ renderVline(); renderVPanel(); }
   if (which === 'rules') renderRules();
   if (which === 'flow')  renderFlow();
 }
 $('tabBtnOrg').onclick   = function(){ showTab('org'); };
+$('tabBtnVline').onclick = function(){ showTab('vline'); };
 $('tabBtnRules').onclick = function(){ showTab('rules'); };
 $('tabBtnFlow').onclick  = function(){ showTab('flow'); };
+
+$('bVRoot').onclick   = vAddRoot;
+$('bVImport').onclick = vImport;
+$('modeFlow').onclick  = function(){ setRuleMode('flow'); };
+$('modeVline').onclick = function(){ setRuleMode('vline'); };
+// Pan tab Ngành dọc: kéo nền để di chuyển (cùng mẫu pointer-capture với tab Sơ đồ)
+(function(){
+  var cw = $('vcanvasWrap');
+  var active=false, moved=false, px=0, py=0, sx=0, sy=0, pid=null;
+  cw.addEventListener('pointerdown', function(e){
+    if (e.button !== undefined && e.button !== 0) return;
+    if (e.target.closest('.node')) return;
+    active = true; moved = false; pid = e.pointerId;
+    px = e.clientX; py = e.clientY; sx = cw.scrollLeft; sy = cw.scrollTop;
+    cw.classList.add('panning');
+    if (cw.setPointerCapture){ try{ cw.setPointerCapture(pid); }catch(_){/**/} }
+  });
+  cw.addEventListener('pointermove', function(e){
+    if (!active) return;
+    var dx = e.clientX - px, dy = e.clientY - py;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+    cw.scrollLeft = sx - dx; cw.scrollTop = sy - dy;
+  });
+  function up(){
+    active = false; cw.classList.remove('panning');
+    if (cw.releasePointerCapture && pid != null){ try{ cw.releasePointerCapture(pid); }catch(_){/**/} }
+    pid = null;
+  }
+  cw.addEventListener('pointerup', up);
+  cw.addEventListener('pointercancel', up);
+  cw.addEventListener('click', function(e){
+    if (moved){ moved = false; e.stopPropagation(); e.preventDefault(); return; }
+    if (!e.target.closest('.node')) vselect(null);
+  }, true);
+})();
 
 // Nút thu/mở dùng chung cho mọi section (▴ = đang mở, ▸ = đang thu).
 // secId: thêm class .collapsed lên section để CSS bỏ flex-grow khi thu.
@@ -2553,6 +3048,33 @@ $('bPaste').onclick  = function(){
 };
 $('bPasteGo').onclick     = function(){ importPaste($('pasteTa').value); };
 $('bPasteCancel').onclick = function(){ $('pasteTa').value=''; $('pasteBox').style.display='none'; };
+
+// Copy 2 bảng nhập liệu ra TSV (dán thẳng vào Excel) + dán nhóm FCG từ Excel
+$('bCopyGrp').onclick = function(){
+  if (!fcGroups.length){ msg(t('msgNothingCopy')); return; }
+  var lines = [ [t('thFcgCode'), t('thGrpName'), t('thCbqlns')].map(q).join('\t') ];
+  fcGroups.forEach(function(g){
+    var cb = cbqlnsOf(g);
+    lines.push([g.code || '', g.name || '', cb ? (cb.person || dispName(cb)) : ''].map(q).join('\t'));
+  });
+  copyText(lines.join('\n'), t('msgCopiedTbl'));
+};
+$('bCopyFc').onclick = function(){
+  if (!fcs.length){ msg(t('msgNothingCopy')); return; }
+  var gname = {};
+  fcGroups.forEach(function(g){ gname[g.id] = g.name || g.code || ''; });
+  var lines = [ [t('thFcCode'), t('thFcName'), t('thFcGroup')].map(q).join('\t') ];
+  fcs.forEach(function(f){
+    lines.push([f.code || '', f.name || '', f.groupId ? (gname[f.groupId] || '') : ''].map(q).join('\t'));
+  });
+  copyText(lines.join('\n'), t('msgCopiedTbl'));
+};
+$('bPasteGrp').onclick = function(){
+  var pb = $('pasteBoxGrp');
+  pb.style.display = (pb.style.display === 'none' || !pb.style.display) ? 'block' : 'none';
+};
+$('bPasteGrpGo').onclick     = function(){ importGrpPaste($('pasteTaGrp').value); };
+$('bPasteGrpCancel').onclick = function(){ $('pasteTaGrp').value=''; $('pasteBoxGrp').style.display='none'; };
 $('bFlowView').onclick = function(){
   flowViewByFc = !flowViewByFc;
   refreshStateLabels();
