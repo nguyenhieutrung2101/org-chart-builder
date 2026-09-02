@@ -30,7 +30,7 @@ Công cụ vẽ **sơ đồ tổ chức**, định nghĩa **luồng phê duyệt
 - Xem gộp theo nhóm hoặc bung theo từng FC; **copy bảng** dán thẳng vào Excel.
 
 ### 💾 Dữ liệu & xuất
-- **Lưu / Mở JSON** (schema v6): toàn bộ sơ đồ + nhóm/FC + box vai trò + ma trận luật trong 1 file. Dữ liệu **chỉ nằm trong file của bạn**, không lưu trên server. File bản cũ vẫn mở được (tự nâng cấp).
+- **Lưu / Mở JSON** (schema v10): toàn bộ sơ đồ + nhóm/FC + box vai trò + ma trận luật trong 1 file. Dữ liệu **chỉ nằm trong file của bạn**, không lưu trên server. File bản cũ vẫn mở được (tự nâng cấp).
 - **Copy bảng** (TSV, dán vào Excel không vỡ cột) và **xuất .drawio** (mở bằng [draw.io](https://app.diagrams.net) — giữ màu, vị trí, thuộc tính).
 
 ## Cách dùng

@@ -219,6 +219,7 @@
   #cigSec>.cardH,#paletteSec>.cardH{gap:7px}
   #ruleTbl td.slot{height:90px;vertical-align:top;background:var(--paper)}
   #ruleTbl td.slot.over{background:var(--cyan)}
+  body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con của ô không nhận drag event -> không bắn dragleave giả, hết nhấp nháy */
   #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:800;background:var(--wash)}
   .chip{display:block;border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
         background:var(--paper);padding:4px 7px;margin:0 0 6px;font-size:12px}
@@ -452,10 +453,12 @@
           <tbody id="ruleTbody"></tbody>
         </table>
       </div>
+      <!-- Nội dung tĩnh chỉ là fallback trước khi JS chạy; applyStatic() ghi đè bằng STR[LANG].rulesHint -->
       <div class="hint" style="margin-top:8px" data-i18n-html="rulesHint">
-        Ô <b>🔒 CBQLNS</b> là cố định. Trên mỗi box đã thả, bấm nhãn phạm vi để xoay vòng
+        Ô <b>🔒 CBQLNS</b> là cố định. Bấm nhãn phạm vi trên box đã thả để xoay vòng
         <b>Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Kế toán → Còn lại</b> — một ô chứa 1 box "Tất cả",
-        hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box (tab Sơ đồ tổ chức).
+        hoặc nhiều box mỗi nhánh một cái. Nhánh đánh dấu bằng dropdown trong panel Chi tiết box.
+        Tick <b>"CBQLNS cấp dưới tự PD"</b> trên box vai trò lấy từ sơ đồ để CBQLNS nằm dưới box đó tự ký thay.
       </div>
     </div>
     <!-- Cột phải cuộn riêng, không dính với ma trận bên trái -->
@@ -492,7 +495,7 @@
   </div>
 </div>
 
-<!-- ================= TAB 3: LUỒNG DUYỆT ================= -->
+<!-- ================= TAB 4: LUỒNG DUYỆT ================= -->
 <div id="tabFlow">
   <!-- Thanh điều khiển: ẩn/hiện khu nhập liệu -->
   <div class="miniRow" style="margin:0 0 10px">
@@ -565,9 +568,10 @@
     </div>
     <div id="resBody">
       <div id="flowResult"></div>
+      <!-- Nội dung tĩnh chỉ là fallback trước khi JS chạy; applyStatic() ghi đè bằng STR[LANG].resHint -->
       <div class="hint" style="margin-top:8px" data-i18n-html="resHint">
         Luật của từng luồng định nghĩa bằng kéo-thả ở tab <b>Định nghĩa luồng</b>.
-        Nhánh của mỗi nhóm (Vận hành / Kinh doanh / Hỗ trợ / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.
+        Nhánh của mỗi nhóm (Vận hành / Kinh doanh / Hỗ trợ / IT / Kế toán / Còn lại) suy ra từ vị trí CBQLNS trên Sơ đồ tổ chức.
       </div>
     </div>
   </section>
@@ -601,6 +605,7 @@ var BW = 176, BH = 96;
 var GX = 18,  GY = 70;
 var PAD = 20;
 var COLW_ORG  = 176;                    // độ rộng cột bảng phân cấp
+var SCHEMA_V  = 10;                     // version schema file JSON: serializeAll ghi, loadJSON cảnh báo nếu file mới hơn
 
 // Zoom sơ đồ (view-state tạm, KHÔNG lưu JSON). worldW/H = kích thước world lần render gần nhất.
 var zoom = 1, worldW = 300, worldH = 300;
@@ -690,6 +695,8 @@ vi: {
   msgBadJson:'File không phải JSON hợp lệ — giữ nguyên dữ liệu hiện tại',
   msgBadStruct:'Cấu trúc file không đúng — giữ nguyên dữ liệu hiện tại',
   msgOpened:'Đã mở file', msgReadFail:'Không đọc được file',
+  msgNewerFile:'File lưu bằng bản mới hơn (schema v{v}, app này hỗ trợ tới v{s}) — đã mở, dữ liệu lạ có thể bị bỏ qua',
+  msgRolesPruned:'Đã gỡ {n} box vai trò link tới box vừa xóa ({c} ô luật) — Ctrl+Z để hoàn tác',
   msgNothingExport:'Chưa có gì để xuất',
   msgDrawioSaved:'Đã tải orgchart.drawio{hidden}', drawioHiddenSuffix:' (theo view — đang ẩn {n} box)',
   msgCopyBlocked:'Trình duyệt chặn copy',
@@ -808,6 +815,8 @@ en: {
   msgBadJson:'Not a valid JSON file — current data kept',
   msgBadStruct:'Unexpected file structure — current data kept',
   msgOpened:'File opened', msgReadFail:'Could not read the file',
+  msgNewerFile:'Saved by a newer version (schema v{v}, this app supports up to v{s}) — opened, unknown data may be ignored',
+  msgRolesPruned:'Removed {n} role box(es) linked to the deleted box ({c} rule cells) — Ctrl+Z to undo',
   msgNothingExport:'Nothing to export',
   msgDrawioSaved:'Downloaded orgchart.drawio{hidden}', drawioHiddenSuffix:' (current view — {n} boxes hidden)',
   msgCopyBlocked:'Clipboard blocked by the browser',
@@ -887,13 +896,13 @@ var TCOLOR = {CC:'#6B8FE8',T1:'#FFB98A',T2:'#A8D989',T3:'#FFD93D',
               T4:'#7ECEE0',T5:'#C3AEE8',T6:'#FFFDF8',T7:'#FFFDF8',T8:'#FFFDF8'};
 
 function $(id){ return document.getElementById(id); }
-function rnum(t){ return LEVELS.indexOf(t); }
-function msg(t){
-  var m = $('msg'); m.textContent = t;
+function rnum(lv){ return LEVELS.indexOf(lv); }
+function msg(s){
+  var m = $('msg'); m.textContent = s;
   clearTimeout(msg._t); msg._t = setTimeout(function(){ m.textContent=''; }, 3500);
 }
 function debounce(fn, ms){                       // gõ liền mạch -> chỉ chạy 1 lần sau khi ngừng
-  var t; return function(){ clearTimeout(t); t = setTimeout(fn, ms); };
+  var tm; return function(){ clearTimeout(tm); tm = setTimeout(fn, ms); };
 }
 function dispName(n){ return n.dept || n.title || n.person || t('emptyBox'); }
 function cellText(n){
@@ -971,26 +980,30 @@ function vlineSuperiorOf(cb){
   return vnodes.get(vn.parent);
 }
 
-// Reset state luật cho tài liệu mới (fin: tham số của file bản rất cũ, giữ để tương thích chữ ký)
-function seedRules(fin){
+// Bộ CIG mặc định cho tài liệu mới và cho file cũ chưa có khái niệm CIG (dùng chung với applyState)
+function defaultCigs(){
+  return [ {id:'c1', code:'CI-SM', name:'Chi phí Sales & Marketing'},
+           {id:'c2', code:'CI-TE', name:'Chi phí Travel & Entertainment'},
+           {id:'c3', code:'CI-OP', name:'Chi phí Vận hành'} ];
+}
+// Reset state luật cho tài liệu mới
+function seedRules(){
   // Không nạp sẵn box vai trò hay luật nào — palette chỉ có box cố định "Ngành dọc của CBQLNS",
-  // người dùng tự thêm box theo nhu cầu. (fin của file bản rất cũ được bỏ qua.)
+  // người dùng tự thêm box theo nhu cầu.
   roleBoxes = [];
   rseq = 1;
   ruleGrids  = { '': {} };
   vlineGrids = { '': {} };
   ruleMode = 'flow';
   curCig = '';
-  cigs = [ {id:'c1', code:'CI-SM', name:'Chi phí Sales & Marketing'},
-           {id:'c2', code:'CI-TE', name:'Chi phí Travel & Entertainment'},
-           {id:'c3', code:'CI-OP', name:'Chi phí Vận hành'} ];
+  cigs = defaultCigs();
   cseq = 4;
 }
 
 var undoStack = [], lastSnapKey = null, dirty = false;
 
 function serializeAll(){
-  return { v:9, roots:rootIds.map(ser),
+  return { v:SCHEMA_V, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrids:ruleGrids,
            vlineGrids:vlineGrids, ruleMode:ruleMode, vroots:vroots.map(vser),
            cigs:cigs };
@@ -1011,9 +1024,9 @@ function undo(){
 }
 
 /* ============ [3] MODEL: THAO TÁC TRÊN CÂY ============ */
-function nn(dept, title, person, t, parent, id){
+function nn(dept, title, person, lv, parent, id){
   var nid = id || ('n' + (seq++));
-  nodes.set(nid, {id:nid, dept:dept, title:title, person:person, t:t,
+  nodes.set(nid, {id:nid, dept:dept, title:title, person:person, t:lv,
                   star:false, br:'', collapsed:false, parent:parent, children:[]});
   return nid;
 }
@@ -1060,7 +1073,9 @@ function delNode(id){
   if (focusId && !nodes.has(focusId)) focusId = null;
   fcGroups.forEach(function(g){ if (g.cbqlns && !nodes.has(g.cbqlns)) g.cbqlns = null; });
   pruneVlineOrphans();                           // node import trên cây ngành dọc trỏ box vừa xóa
+  var gone = pruneNodeRoles();                   // box vai trò link tới box vừa xóa (+ ô luật đang dùng nó)
   sel = null; renderAll();
+  if (gone.boxes) msg(tf('msgRolesPruned', { n: gone.boxes, c: gone.cells }));
 }
 function moveSib(id, dir){
   var n = nodes.get(id);
@@ -1464,7 +1479,10 @@ function copyText(txt, okMsg){
   function fb(){
     var ta = document.createElement('textarea'); ta.value = txt;
     document.body.appendChild(ta); ta.select();
-    try{ document.execCommand('copy'); ok(); }catch(e){ msg(t('msgCopyBlocked')); }
+    try{
+      if (!document.execCommand('copy')) throw new Error('copy failed');   // bị chặn thì trả false, không throw
+      ok();
+    }catch(e){ msg(t('msgCopyBlocked')); }
     document.body.removeChild(ta);
   }
   if (navigator.clipboard && navigator.clipboard.writeText){
@@ -1639,17 +1657,13 @@ function applyState(d){
   fcGroups = tG; fcs = tF;
   seq = maxN + 1; gseq = maxG + 1; fseq = maxF + 1;
   if (Array.isArray(d.roleBoxes)){ roleBoxes = tRB; ruleGrids = tGrids; vlineGrids = tVGrids; rseq = maxR + 1; }
-  else seedRules(d.finance);
+  else seedRules();
   vnodes = tVN; vroots = tVRoots; vseq = maxV + 1; vsel = null;
   ruleMode = d.ruleMode === 'vline' ? 'vline' : 'flow';
-  // CIG: file có danh sách riêng thì dùng, không thì seed bộ mặc định (giữ ruleGrids đã đọc)
-  if (tCig.length){ cigs = tCig; cseq = maxC + 1; }
-  else {
-    cigs = [ {id:'c1', code:'CI-SM', name:'Chi phí Sales & Marketing'},
-             {id:'c2', code:'CI-TE', name:'Chi phí Travel & Entertainment'},
-             {id:'c3', code:'CI-OP', name:'Chi phí Vận hành'} ];
-    cseq = 4;
-  }
+  // CIG: file có key cigs (kể cả mảng rỗng — người dùng đã cố ý xóa hết) thì tôn trọng;
+  // file cũ chưa có khái niệm CIG thì seed bộ mặc định (giữ ruleGrids đã đọc).
+  if (Array.isArray(d.cigs)){ cigs = tCig; cseq = maxC + 1; }
+  else { cigs = defaultCigs(); cseq = 4; }
   curCig = '';
   sel = null;
 }
@@ -1661,7 +1675,9 @@ function loadJSON(file){
     try { applyState(d); }
     catch(e){ msg(t('msgBadStruct')); return; }
     undoStack.length = 0; lastSnapKey = null; dirty = false;
-    renderAll(); msg(t('msgOpened'));
+    renderAll();
+    if (typeof d.v === 'number' && d.v > SCHEMA_V) msg(tf('msgNewerFile', { v: d.v, s: SCHEMA_V }));
+    else msg(t('msgOpened'));
   }).catch(function(){ msg(t('msgReadFail')); });
 }
 function xesc(s){
@@ -1921,7 +1937,8 @@ function pruneVlineOrphans(){
 }
 
 /* ============ [8] LUỒNG DUYỆT & ĐỊNH NGHĨA LUỒNG ============ */
-/* [8a] Engine: ô = CBQLNS cố định hoặc box vai trò chọn theo nhánh (Tất cả / VH / Còn lại). */
+/* [8a] Engine: ô = CBQLNS cố định, box vai trò chọn theo nhánh (Tất cả / VH / SM / BO / IT / KT / Còn lại),
+   hoặc ngành dọc của CBQLNS (chế độ Ngành dọc). */
 var flowViewByFc = false;                     // false = gộp theo nhóm (mặc định)
 var refreshFlowResultSoon = debounce(function(){ renderFlowResult(); }, 150);
 
@@ -2173,15 +2190,23 @@ function applyFcFilter(){
     tr.style.display = (!qy || hay.indexOf(qy) >= 0) ? '' : 'none';
   });
 }
-// Dán TSV 3 cột từ Excel: Mã ⇥ Tên ⇥ Tên nhóm. Nhóm khớp theo tên (không phân biệt hoa thường),
-// chưa có thì tạo mới. Dòng header (bắt đầu bằng "Mã"/"Code") tự bỏ qua.
-// Dán nhóm FCG: Mã ⇥ Tên ⇥ Tên người CBQLNS (khớp person của box ★, không phân biệt hoa thường)
+// Dòng tiêu đề khi dán từ Excel: ô đầu khớp đúng nhãn header mà nút Copy của app xuất ra (cả 2 ngôn ngữ),
+// hoặc là từ chung "Mã"/"Ma"/"Code"/"FC"/"FCG" đứng riêng. KHÔNG được bắt nhầm mã thật dạng FCG01.
+// Lưu ý: không dùng \b sau chữ có dấu — \b của JS chỉ hiểu ASCII nên "mã\b" không bao giờ khớp "Mã FCG".
+function isHeaderRow(line){
+  var first = (String(line||'').split('\t')[0]||'').trim().toLowerCase();
+  if (!first) return false;
+  var labels = [];
+  ['thFcgCode','thFcCode'].forEach(function(k){ labels.push(STR.vi[k].toLowerCase(), STR.en[k].toLowerCase()); });
+  if (labels.indexOf(first) >= 0) return true;
+  return /^(mã|ma|code|fcg?)(\s|$)/.test(first);
+}
+// Dán nhóm FCG: Mã ⇥ Tên ⇥ Tên người CBQLNS (khớp person của box ★, không phân biệt hoa thường);
+// trùng mã thì cập nhật dòng cũ thay vì tạo mới.
 function importGrpPaste(txt){
   var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
   if (!lines.length){ msg(t('msgNothingImport')); return; }
-  // Nhận diện dòng tiêu đề: "Mã FCG" / "FCG code" — KHÔNG được bắt nhầm mã thật dạng FCG01
-  var first = (lines[0].split('\t')[0]||'').trim().toLowerCase();
-  if (/^(mã\b|ma\b|code\b|fcg code)/.test(first)) lines.shift();
+  if (isHeaderRow(lines[0])) lines.shift();
   if (!lines.length){ msg(t('msgNothingImport')); return; }
   snap(null);
   var starByPerson = {};
@@ -2212,11 +2237,11 @@ function importGrpPaste(txt){
   renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult();
   msg(tf('msgGrpImported', { n: nG, u: nUp }));
 }
+// Dán FC: Mã ⇥ Tên ⇥ Tên nhóm. Nhóm khớp theo tên (không phân biệt hoa thường), chưa có thì tạo mới.
 function importPaste(txt){
   var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
   if (!lines.length){ msg(t('msgNothingImport')); return; }
-  var first = (lines[0].split('\t')[0]||'').trim().toLowerCase();
-  if (/^(mã|ma\b|code|fc\b)/.test(first)) lines.shift();
+  if (isHeaderRow(lines[0])) lines.shift();
   if (!lines.length){ msg(t('msgNothingImport')); return; }
   snap(null);
   var byName = {};
@@ -2457,6 +2482,12 @@ function deleteRole(rb){
   if (used && !confirm(tf('cfmDelRole', { name: roleBoxName(rb), n: used }))) return;
   snap(null);
   roleBoxes = roleBoxes.filter(function(x){ return x !== rb; });
+  scrubRole(rb.id);
+  renderRules(); renderFlowResult();
+}
+// Gỡ một box vai trò khỏi mọi ô luật (cả 2 chế độ, mọi scenario); trả về số ô đã gỡ
+function scrubRole(rid){
+  var n = 0;
   [ruleGrids, vlineGrids].forEach(function(fam){
     Object.keys(fam).forEach(function(k){
       var grid = fam[k];
@@ -2464,13 +2495,24 @@ function deleteRole(rb){
         var row = grid[fl]; if (!row) return;
         COLS.forEach(function(col){
           var a = row[col]; if (!a) return;
-          SCOPES.forEach(function(s){ if (a[s] === rb.id) delete a[s]; });
+          SCOPES.forEach(function(s){ if (a[s] === rid){ delete a[s]; n++; } });
           if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
         });
       });
     });
   });
-  renderRules(); renderFlowResult();
+  return n;
+}
+// Box vai trò "từ sơ đồ" mà box gốc không còn: gỡ ngay lúc xóa box, khớp với việc applyState bỏ chúng khi mở file
+// (trước đây luật "biến mất im lặng" sau khi lưu/mở lại). Trả về số box + số ô luật đã gỡ để báo người dùng.
+function pruneNodeRoles(){
+  var boxes = 0, cells = 0;
+  roleBoxes = roleBoxes.filter(function(rb){
+    if (rb.kind !== 'node' || nodes.has(rb.nodeId)) return true;
+    boxes++; cells += scrubRole(rb.id);
+    return false;
+  });
+  return { boxes: boxes, cells: cells };
 }
 // Gõ tên trong palette -> vá nhãn chip đích danh, không đập cả tab (giữ focus input)
 function patchRoleChips(rb){
@@ -2560,7 +2602,7 @@ function renderCigToggle(rebuild){
   });
   var note = $('scenNote');
   if (note) note.textContent = curCig
-    ? (ruleGrids[curCig] ? tf('scenOwn', { code: (cigById(curCig)||{}).code || '' }) : '')
+    ? (gridFamily()[curCig] ? tf('scenOwn', { code: (cigById(curCig)||{}).code || '' }) : '')
     : t('scenCommonNote');
 }
 function renderCigs(){
@@ -2582,7 +2624,7 @@ function renderCigs(){
     del.onclick = function(){
       snap(null);
       cigs = cigs.filter(function(x){ return x !== c; });
-      delete ruleGrids[c.id];                        // luật riêng của CIG đó bỏ theo
+      delete ruleGrids[c.id]; delete vlineGrids[c.id]; // luật riêng của CIG đó bỏ theo (cả 2 chế độ)
       if (curCig === c.id) curCig = '';
       renderCigToggle(true); renderRules(); renderFlowResult();
     };
@@ -2646,8 +2688,8 @@ function renderRolePalette(){
     // Box cố định "Ngành dọc của CBQLNS" — không xóa được, kéo thả như box thường
     var vc = document.createElement('div'); vc.className = 'roleCard vlineCard';
     var vtop = document.createElement('div'); vtop.className = 'topRow'; vtop.draggable = true;
-    vtop.ondragstart = function(e){ e.dataTransfer.setData('text/plain', VLINE); vtop.classList.add('dragging'); };
-    vtop.ondragend = function(){ vtop.classList.remove('dragging'); };
+    vtop.ondragstart = function(e){ e.dataTransfer.setData('text/plain', VLINE); vtop.classList.add('dragging'); document.body.classList.add('rdrag'); };
+    vtop.ondragend = function(){ vtop.classList.remove('dragging'); document.body.classList.remove('rdrag'); };
     var vdh = document.createElement('span'); vdh.className = 'drag'; vdh.textContent = '⠿';
     var vttl = document.createElement('span'); vttl.className = 'ttl'; vttl.textContent = t('vlineBoxName');
     var vtag = document.createElement('span'); vtag.className = 'kindTag';
@@ -2671,9 +2713,10 @@ function renderRolePalette(){
     var top = document.createElement('div'); top.className = 'topRow'; top.draggable = true;
     top.ondragstart = function(e){
       e.dataTransfer.setData('text/plain', rb.id);
+      document.body.classList.add('rdrag');
       top.classList.add('dragging');
     };
-    top.ondragend = function(){ top.classList.remove('dragging'); };
+    top.ondragend = function(){ top.classList.remove('dragging'); document.body.classList.remove('rdrag'); };
     var dh = document.createElement('span'); dh.className = 'drag'; dh.textContent = '⠿';
     top.appendChild(dh);
     var ttl = document.createElement('span'); ttl.className = 'ttl';
@@ -2901,6 +2944,7 @@ function syncMiniView(){
 
 document.addEventListener('keydown', function(e){
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && String(e.key).toLowerCase() === 'z'){
+    if (e.target && e.target.tagName === 'TEXTAREA') return;   // ô dán Excel: để trình duyệt undo gõ phím
     e.preventDefault(); undo();
   }
 });
@@ -3025,7 +3069,7 @@ $('bAddFc').onclick  = addFc;
 $('fcFilter').oninput  = applyFcFilter;
 $('grpFilter').oninput = applyGrpFilter;
 
-// Ẩn/hiện cả khu nhập liệu (Tài chính / Nhóm / FC) — chỉ còn bảng luồng duyệt
+// Ẩn/hiện cả khu nhập liệu (Nhóm FC / FC) — chỉ còn bảng luồng duyệt
 var inputsHidden = false;
 $('bTglInputs').onclick = function(){
   inputsHidden = !inputsHidden;
@@ -3082,7 +3126,7 @@ $('bTgl').onclick = function(){ tblCollapsed = !tblCollapsed; applyTblCollapsed(
 
 window.onbeforeunload = function(){ return (dirty && nodes.size) ? true : null; };
 
-seedRules({});
+seedRules();
 applyStatic();
 applyTblCollapsed();
 renderAll();
