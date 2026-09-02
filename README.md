@@ -2,9 +2,11 @@
 
 > **project affogato** — made with ❤️ by Trung
 
-Công cụ vẽ **sơ đồ tổ chức**, định nghĩa **luồng phê duyệt ngân sách** và sinh **bảng luồng duyệt** cho từng nhóm Fund Center — chạy hoàn toàn trên trình duyệt, không cần backend.
+Công cụ vẽ **sơ đồ tổ chức**, định nghĩa **luật phê duyệt ngân sách** và sinh **bảng luồng duyệt** cho từng nhóm Fund Center — chạy hoàn toàn trên trình duyệt, không cần backend, không cài gì.
 
 🌐 **Bản chạy thử:** https://org-chart-builder.nguyenhieutrung2101.workers.dev
+
+Giao diện **song ngữ Việt / Anh** (nút góc phải header, nhớ lựa chọn cho lần sau). Thuật ngữ được dịch đồng nhất: CBQLNS ↔ BMO (Budget Management Officer), TĐ1–TĐ4 ↔ R1–R4, TĐ* ↔ R*, PD ↔ Approval, Xanh / Vàng / Đỏ / Tím / NNS ↔ Green / Yellow / Red / Purple / Additional budget.
 
 ---
 
@@ -13,25 +15,37 @@ Công cụ vẽ **sơ đồ tổ chức**, định nghĩa **luồng phê duyệt
 ### 1. 🏢 Sơ đồ tổ chức
 - Vẽ cây tổ chức theo cấp **CC → T1…T8**, mỗi box gồm 3 trường: *phòng/khối* (tự IN HOA), *chức danh*, *người phụ trách*; màu nền theo cấp.
 - Ràng buộc cấp: box con tối thiểu bằng cấp box cha (tự nâng cấp dưới khi đổi cấp cha).
-- Đánh dấu **★ CBQLNS** (cán bộ quản lý ngân sách) và **nhánh VẬN HÀNH** (chỉ 1 nhánh, cả cây con kế thừa) — hai dữ liệu đầu vào cho luồng duyệt.
-- **Zoom** (lăn chuột quanh con trỏ, nút −/＋/100%/Vừa màn hình) + **minimap** góc trái với ô định vị, bấm/kéo để di chuyển nhanh.
+- Đánh dấu **★ CBQLNS** (cán bộ quản lý ngân sách) — nguồn để gán cho nhóm Fund Center và để đưa lên cây Ngành dọc.
+- Đánh dấu **nhánh** bằng dropdown trong panel: **Vận hành (VH) / Kinh doanh (SM) / Hỗ trợ (BO) / IT / Kế toán (KT)**. Một loại nhánh có thể gắn lên nhiều box; cả cây con kế thừa; box không nằm dưới nhánh nào tính là **Còn lại**. Badge nhánh tự đổi màu khi trùng màu cấp để không bị hòa lẫn.
+- **Zoom mượt 20%–200%** quanh con trỏ (lăn chuột, nút −/＋/100%/Vừa màn hình) + **minimap** góc trái tự co theo tỷ lệ sơ đồ, bấm/kéo để di chuyển nhanh.
 - Kéo nền để pan, **focus một nhánh**, thu gọn/bung cấp dưới từng box, ẩn sơ đồ/panel, **hoàn tác Ctrl+Z**.
-- **Bảng phân cấp** tự cập nhật, cột thẳng hàng theo cấp.
+- **Bảng phân cấp** (mặc định thu gọn) tự cập nhật, cột thẳng hàng theo cấp.
 
-### 2. 🧩 Định nghĩa luồng
-- **Ma trận luật** phê duyệt: hàng = 5 luồng (Xanh / Vàng / Đỏ / Tím / NNS), cột = TĐ1–TĐ4, TĐ*, PD.
-- **Kéo-thả box vai trò** từ palette vào ô; box tự đặt (chức danh + người) hoặc **link từ sơ đồ tổ chức** (sửa bên sơ đồ là tự cập nhật, ví dụ MCEO/MD).
-- Mỗi box thả vào ô mang phạm vi **Tất cả / Vận hành / Còn lại** (bấm nhãn để xoay vòng) — một ô chứa 1 box "Tất cả" hoặc cặp "Vận hành" + "Còn lại".
-- Ô **🔒 CBQLNS** cố định (Xanh ở PD, các luồng khác ở TĐ1).
+### 2. 🌐 Ngành dọc
+- Cây riêng mô tả CBQLNS thị trường **báo cáo lên ai ở Global**: vẽ **người global** (tự gõ 3 trường) rồi **import box ★ từ sơ đồ** làm cấp dưới — dropdown chỉ liệt kê box đã tick ★ và chưa có trên cây.
+- Box import **mirror trực tiếp** nội dung từ tab Sơ đồ (sửa bên đó là bên này đổi theo, panel bên này read-only). Xoá box gốc thì node import tự gỡ, con nối lên ông bà.
+- Cây này là đầu vào cho chế độ **"Xử lý theo: Ngành dọc"** ở tab Định nghĩa luồng.
 
-### 3. 📗 Luồng duyệt
-- Khai báo **Nhóm Fund Center** (mã FCG, tên, gán CBQLNS) và **Fund Center** (mã, tên, nhóm) — có lọc nhanh và **dán thẳng từ Excel**.
-- **Bảng luồng duyệt** sinh tự động: mỗi nhóm × 5 luồng, người duyệt từng bước tính từ ma trận luật + nhánh của CBQLNS (Vận hành / Còn lại).
-- Xem gộp theo nhóm hoặc bung theo từng FC; **copy bảng** dán thẳng vào Excel.
+### 3. 🧩 Định nghĩa luồng
+- **Ma trận luật**: hàng = 5 luồng (Xanh / Vàng / Đỏ / Tím / NNS), cột = TĐ1–TĐ4, TĐ*, PD. Ô **🔒 CBQLNS** cố định (Xanh ở PD, các luồng khác ở TĐ1).
+- **Box vai trò** kéo từ palette thả vào ô: box tự đặt (chức danh + người) hoặc **link từ sơ đồ tổ chức** (sửa bên sơ đồ là tự cập nhật). Box từ sơ đồ có trigger **"CBQLNS cấp dưới tự PD"**: nếu CBQLNS của nhóm nằm dưới box đó thì chính CBQLNS ký ở ô này thay vì đẩy lên.
+- Toggle **Xử lý theo: Luồng | Ngành dọc** — hai bộ luật **độc lập hoàn toàn**, không trộn lẫn:
+  - **Luồng**: mỗi box thả vào ô mang phạm vi **Tất cả → Vận hành → Kinh doanh → Hỗ trợ → IT → Kế toán → Còn lại** (bấm nhãn để xoay vòng). Một ô chứa 1 box "Tất cả" hoặc nhiều box mỗi nhánh một cái; người duyệt chọn theo nhánh của CBQLNS nhóm đó.
+  - **Ngành dọc**: mỗi ô đúng 1 box, không có nhãn phạm vi. Palette có box cố định **"Ngành dọc của CBQLNS"** — thả vào ô nào thì ô đó resolve **theo từng nhóm** = cấp trên trực tiếp của CBQLNS nhóm đó trên cây Ngành dọc. Vẫn thả box thường cho các ô đặc thù.
+- **Nhóm chi phí (CIG — Commitment Item Group)**: mặc định CI-SM / CI-TE / CI-OP, thêm/xoá tuỳ ý. Mỗi CIG có thể có **bộ luật riêng** (nút "Đang định nghĩa cho: Chung | CI-…" phía trên ma trận; mở lần đầu sẽ clone từ "Chung", sau đó sửa độc lập).
+
+### 4. 📗 Luồng duyệt
+- **Nhóm Fund Center** (mã FCG, tên, gán CBQLNS, toggle *1 luồng / Theo CIG*) và **Fund Center** (mã, tên, nhóm) — có lọc nhanh, nút **Copy** (TSV) và **Dán từ Excel** trên cả hai card:
+  - FCG: `Mã ⇥ Tên ⇥ Tên người CBQLNS` — khớp người theo tên box ★; trùng mã thì cập nhật dòng cũ.
+  - FC: `Mã ⇥ Tên ⇥ Tên nhóm` — nhóm chưa có thì tạo mới.
+  - Dòng tiêu đề (đúng nhãn app xuất ra, hoặc "Mã"/"Code"…) tự bỏ qua; mã thật dạng `FCG01` không bao giờ bị nuốt.
+- **Bảng luồng duyệt** sinh tự động: mỗi nhóm × 5 luồng, người duyệt từng bước tính từ ma trận luật của chế độ đang chọn (Luồng: theo nhánh của CBQLNS; Ngành dọc: theo cây Ngành dọc). Nhóm bật "Theo CIG" được tách thành một khối cho mỗi CIG với bộ luật tương ứng.
+- Xem gộp theo nhóm hoặc bung theo từng FC; **ô lọc nhanh** theo tên nhóm/FC; **copy bảng** dán thẳng vào Excel; nút ẩn khu nhập liệu để bảng chiếm trọn màn hình.
 
 ### 💾 Dữ liệu & xuất
-- **Lưu / Mở JSON** (schema v10): toàn bộ sơ đồ + nhóm/FC + box vai trò + ma trận luật trong 1 file. Dữ liệu **chỉ nằm trong file của bạn**, không lưu trên server. File bản cũ vẫn mở được (tự nâng cấp).
-- **Copy bảng** (TSV, dán vào Excel không vỡ cột) và **xuất .drawio** (mở bằng [draw.io](https://app.diagrams.net) — giữ màu, vị trí, thuộc tính).
+- **Lưu / Mở JSON** (schema **v10**): sơ đồ + cây Ngành dọc + nhóm/FC + box vai trò + hai bộ luật (theo CIG) + danh sách CIG trong 1 file. Dữ liệu **chỉ nằm trong file của bạn**, không lưu trên server. File bản cũ vẫn mở được (tự nâng cấp); file lưu bằng bản mới hơn sẽ có cảnh báo.
+- **Copy bảng** (TSV, dán vào Excel không vỡ cột) cho bảng phân cấp, bảng FCG/FC và bảng luồng duyệt.
+- **Xuất .drawio** (mở bằng [draw.io](https://app.diagrams.net) — giữ màu, vị trí, thuộc tính).
 
 ## Cách dùng
 
@@ -51,7 +65,9 @@ Deploy tự động lên **Cloudflare Workers** (static assets) mỗi khi merge 
 ```
 org-chart-builder/
 ├── public/
-│   └── index.html      # toàn bộ ứng dụng
+│   └── index.html      # toàn bộ ứng dụng (CSS + HTML + JS)
+├── docs/
+│   └── FUNCTIONS.md    # inventory mọi hàm: chữ ký, mục đích, ai gọi ai, side-effect
 ├── wrangler.jsonc      # cấu hình Cloudflare (assets = ./public)
 └── README.md
 ```
@@ -62,9 +78,17 @@ Deploy thủ công: `npx wrangler deploy`
 
 | Thao tác | Cách làm |
 |---|---|
-| Hoàn tác | `Ctrl/⌘ + Z` |
-| Zoom sơ đồ | Lăn chuột trên canvas (quanh con trỏ) |
+| Hoàn tác | `Ctrl/⌘ + Z` (trong ô "Dán từ Excel" vẫn là undo gõ phím của trình duyệt) |
+| Đổi ngôn ngữ | Nút **English / Tiếng Việt** ở header |
+| Zoom sơ đồ | Lăn chuột trên canvas (quanh con trỏ), hoặc nút −/＋/100%/Vừa màn hình |
 | Di chuyển vùng nhìn | Kéo nền canvas, hoặc bấm/kéo trên minimap |
 | Sửa nhanh một box | Nháy đúp vào box |
 | Đổi thứ tự box ngang hàng | Nút ◀ ▶ trong panel Chi tiết |
-| Nhập Fund Center hàng loạt | "Dán từ Excel" (Mã ⇥ Tên ⇥ Nhóm) |
+| Thả box vai trò vào ô luật | Kéo ở tay nắm ⠿ trên card trong palette |
+| Đổi phạm vi của box đã thả | Bấm nhãn phạm vi trên chip (chế độ Luồng) |
+| Nhập FCG hàng loạt | "Dán từ Excel" trên card Nhóm Fund Center (Mã ⇥ Tên ⇥ Tên người CBQLNS) |
+| Nhập Fund Center hàng loạt | "Dán từ Excel" trên card Fund Center (Mã ⇥ Tên ⇥ Nhóm) |
+
+## Tài liệu cho người sửa code
+
+`docs/FUNCTIONS.md` liệt kê toàn bộ hàm trong `public/index.html` theo từng section (số dòng, chữ ký, mục đích, gọi đến / được gọi bởi, side-effect, entry point **[PUBLIC]**) kèm nhật ký các lần dọn dead code và sửa lỗi từ code review.
