@@ -386,7 +386,7 @@
       <button id="bTglChart" class="ghost">Ẩn sơ đồ</button>
       <button id="bTglPanel" class="ghost">Ẩn panel</button>
     </div>
-    <span id="focusChip" hidden>Focus: <b id="focusName"></b> <button id="bUnfocus">✕</button></span>
+    <span id="focusChip" hidden><span data-i18n="focusLbl">Focus:</span> <b id="focusName"></b> <button id="bUnfocus">✕</button></span>
   </div>
 
   <main>
@@ -530,7 +530,7 @@
 
     <!-- Fund Center: bảng 3 cột + lọc + dán từ Excel -->
     <section id="fcSec" class="flowCard">
-      <div class="cardH">Fund Center <span id="fcCount" class="gcnt"></span></div>
+      <div class="cardH"><span data-i18n="fcH">Fund Center</span> <span id="fcCount" class="gcnt"></span></div>
       <div id="fcBody">
         <div class="miniRow">
           <input id="fcFilter" class="w2" data-i18n-ph="fcFilterPh" placeholder="Lọc nhanh theo mã / tên / nhóm…" autocomplete="off">
@@ -576,21 +576,24 @@
 <script>
 "use strict";
 /* ======================================================================
-   ORG BUILDER v5 — MỤC LỤC
-   [1] Hằng số & tiện ích nhỏ
-   [2] State toàn cục + Undo (Ctrl+Z) + cờ dirty
-   [3] Model: thao tác trên cây
-   [4] Hiển thị/ẩn: visibleSet() = focus ∩ (không nằm dưới box thu gọn)
-   [5] Layout THUẦN: hàng = (cấp, lớp thứ k)
-   [6] Render tab Sơ đồ (bảng có colgroup cố định độ rộng cột)
-   [7] Xuất & Lưu: TSV, JSON (atomic), .drawio
-   [8] Luồng duyệt & Định nghĩa luồng:
-       [8a] engine: box vai trò + ma trận luật + nhánh (Vận hành / Kinh doanh / Hỗ trợ / Còn lại)
+   ORG BUILDER — MỤC LỤC
+   [1]  Hằng số & tiện ích nhỏ
+   [1b] i18n: từ điển STR{vi,en}, t()/tf(), applyStatic()
+   [2]  State toàn cục + Undo (Ctrl+Z) + cờ dirty
+   [3]  Model: thao tác trên cây
+   [4]  Hiển thị/ẩn: visibleSet() = focus ∩ (không nằm dưới box thu gọn)
+   [5]  Layout THUẦN: hàng = (cấp, lớp thứ k)
+   [6]  Render tab Sơ đồ (bảng có colgroup cố định độ rộng cột)
+   [7]  Xuất & Lưu: TSV, JSON (atomic), .drawio
+   [7v] Tab Ngành dọc: cây người global + CBQLNS import từ sơ đồ
+   [8]  Luồng duyệt & Định nghĩa luồng:
+       [8a] engine: box vai trò + ma trận luật + nhánh (VH / SM / BO / IT / KT / Còn lại) + ngành dọc
        [8b] Nhóm FC  — render + CẬP NHẬT ĐÍCH DANH (không đập cả tab)
        [8c] Fund Center — bảng + lọc + dán từ Excel
        [8d] Bảng kết quả — gộp theo nhóm (mặc định) / bung theo FC + copy TSV
-       [8e] Tab Định nghĩa luồng — palette box vai trò + kéo-thả vào ma trận
-   [9] Pan + phím tắt + nối sự kiện + các nút thu/mở section
+       [8e] Tab Định nghĩa luồng — palette box vai trò + kéo-thả vào ma trận, CIG, mode Luồng/Ngành dọc
+   [8f] Zoom + minimap (chỉ tab Sơ đồ)
+   [9]  Pan + phím tắt + nối sự kiện + các nút thu/mở section
    ====================================================================== */
 
 /* ============ [1] HẰNG SỐ & TIỆN ÍCH ============ */
@@ -642,7 +645,7 @@ vi: {
   orgTableH:'Bảng phân cấp (cột thẳng hàng theo cấp)',
   orgTableEmpty:'Bảng sẽ tự cập nhật khi bạn vẽ. Mỗi nhánh là một dòng; mỗi cột là một hàng cấp trên chart. Ô "—" nghĩa là nhánh đi xuyên qua cấp đó.',
   // --- thuật ngữ miền (đồng nhất mọi nơi) ---
-  cbqlns:'CBQLNS', cbqlnsFull:'CBQLNS (quản lý ngân sách)',
+  cbqlns:'CBQLNS',
   tipStar:'CBQLNS — Cán bộ quản lý ngân sách',
   brBadgeVH:'VH', brBadgeSM:'SM', brBadgeBO:'BO', brBadgeIT:'IT', brBadgeAC:'KT',
   segALL:'Tất cả', segVH:'Vận hành', segSM:'Kinh doanh', segBO:'Hỗ trợ', segIT:'IT', segAC:'Kế toán', segREST:'Còn lại',
@@ -658,7 +661,7 @@ vi: {
   thCig:'CIG', grpCigAll:'1 luồng', grpCigSplit:'Theo CIG',
   tipGrpCig:'Bảng kết quả: 1 dòng chung cho mọi CIG, hay tách dòng theo từng CIG',
   lineCig:'CIG: ',
-  // CBQLNS ngoài SĐTC
+  // Trigger "CBQLNS cấp dưới tự PD" trên box vai trò link từ sơ đồ
   ckPdBelow:'CBQLNS cấp dưới tự PD',
   tipPdBelow:'Nếu CBQLNS của nhóm nằm dưới box này, chính CBQLNS đó sẽ ký ở ô có box này — '
            + 'không phải đẩy lên box này nữa.',
@@ -670,7 +673,7 @@ vi: {
   lblLevel:'Cấp', lblLevelMin:' (tối thiểu {L} theo cấp cha)',
   ckCbqlns:'★ CBQLNS (quản lý ngân sách)',
   btnChild:'＋ Cấp dưới', btnSib:'＋ Ngang hàng', btnCollapse:'Thu gọn cấp dưới', btnExpand:'Bung cấp dưới',
-  btnFocus:'Focus nhánh', btnUnfocus:'Bỏ focus', btnDel:'Xóa',
+  btnFocus:'Focus nhánh', btnUnfocus:'Bỏ focus', btnDel:'Xóa', focusLbl:'Focus:',
   panelHint:'◀ ▶ đổi thứ tự với box ngang hàng. Chữ dài quá khung sẽ thu gọn bằng "…", rê chuột vào box để xem đủ.',
   emptyBox:'(chưa nhập)', unnamed:'(chưa đặt tên)',
   hidTip:'Đang ẩn {n} box cấp dưới — bấm để bung',
@@ -695,7 +698,7 @@ vi: {
   groupUnnamed:'(nhóm chưa đặt tên)',
   // --- nhóm FC / FC ---
   phFcg:'FCG…', phGrpName:'Tên nhóm', optNoCbqlns:'(chưa gán CBQLNS)', optStarRemoved:'(đã bỏ ★) ',
-  tipDelGroup:'Xóa nhóm', grpH:'Nhóm Fund Center',
+  tipDelGroup:'Xóa nhóm', grpH:'Nhóm Fund Center', fcH:'Fund Center',
   grpFilterPh:'Lọc nhanh theo mã / tên nhóm…', btnAddGrp:'＋ Nhóm',
   thFcgCode:'Mã FCG', thGrpName:'Tên nhóm', thCbqlns:'CBQLNS (★)',
   grpHint:'Mỗi nhóm gán 1 CBQLNS (box có ★ bên tab Sơ đồ). Luồng duyệt tính theo nhóm.',
@@ -764,7 +767,7 @@ en: {
   lblViewByGroup:'View: by group', lblViewByFc:'View: per FC',
   orgTableH:'Hierarchy table (columns aligned by level)',
   orgTableEmpty:'The table updates as you draw. Each branch is one row; each column is a level row on the chart. A "—" cell means the branch passes through that level.',
-  cbqlns:'BMO', cbqlnsFull:'BMO (Budget Management Officer)',
+  cbqlns:'BMO',
   tipStar:'BMO — Budget Management Officer',
   brBadgeVH:'OPS', brBadgeSM:'SM', brBadgeBO:'BO', brBadgeIT:'IT', brBadgeAC:'AC',
   segALL:'All', segVH:'Operations', segSM:'Sales', segBO:'Back office', segIT:'IT', segAC:'Accounting', segREST:'Others',
@@ -789,7 +792,7 @@ en: {
   lblLevel:'Level', lblLevelMin:' (min {L}, from parent)',
   ckCbqlns:'★ BMO (Budget Management Officer)',
   btnChild:'＋ Child', btnSib:'＋ Sibling', btnCollapse:'Collapse children', btnExpand:'Expand children',
-  btnFocus:'Focus branch', btnUnfocus:'Unfocus', btnDel:'Delete',
+  btnFocus:'Focus branch', btnUnfocus:'Unfocus', btnDel:'Delete', focusLbl:'Focus:',
   panelHint:'◀ ▶ reorder among siblings. Long text is clipped with "…" — hover a box to see it in full.',
   emptyBox:'(empty)', unnamed:'(unnamed)',
   hidTip:'Hiding {n} descendant boxes — click to expand',
@@ -811,7 +814,7 @@ en: {
   roleDeleted:'(chart box deleted)', starRemoved:'\n(★ removed from box)', noCbqlns:'(no BMO assigned)',
   groupUnnamed:'(unnamed group)',
   phFcg:'FCG…', phGrpName:'Group name', optNoCbqlns:'(no BMO assigned)', optStarRemoved:'(★ removed) ',
-  tipDelGroup:'Delete group', grpH:'Fund Center Groups',
+  tipDelGroup:'Delete group', grpH:'Fund Center Groups', fcH:'Fund Centers',
   grpFilterPh:'Quick filter by code / group name…', btnAddGrp:'＋ Group',
   thFcgCode:'FCG code', thGrpName:'Group name', thCbqlns:'BMO (★)',
   grpHint:'Each group is assigned one BMO (★ box on the Org Chart tab). Flows are computed per group.',
@@ -968,7 +971,7 @@ function vlineSuperiorOf(cb){
   return vnodes.get(vn.parent);
 }
 
-// Bộ luật khởi tạo theo ma trận chuẩn; fin = {cfo,gdtc,tptc} từ file bản cũ (nếu có) để giữ tên người
+// Reset state luật cho tài liệu mới (fin: tham số của file bản rất cũ, giữ để tương thích chữ ký)
 function seedRules(fin){
   // Không nạp sẵn box vai trò hay luật nào — palette chỉ có box cố định "Ngành dọc của CBQLNS",
   // người dùng tự thêm box theo nhu cầu. (fin của file bản rất cũ được bỏ qua.)
@@ -1456,16 +1459,16 @@ function tsv(){
   g.rows.forEach(function(r){ lines.push(r.map(q).join('\t')); });
   return lines.join('\n');
 }
-function copyText(t, okMsg){
+function copyText(txt, okMsg){
   function ok(){ msg(okMsg); }
   function fb(){
-    var ta = document.createElement('textarea'); ta.value = t;
+    var ta = document.createElement('textarea'); ta.value = txt;
     document.body.appendChild(ta); ta.select();
     try{ document.execCommand('copy'); ok(); }catch(e){ msg(t('msgCopyBlocked')); }
     document.body.removeChild(ta);
   }
   if (navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(t).then(ok, fb);
+    navigator.clipboard.writeText(txt).then(ok, fb);
   } else fb();
 }
 function copyTable(){
@@ -2239,7 +2242,7 @@ function importPaste(txt){
 }
 
 /* ---------- [8d] BẢNG KẾT QUẢ — gộp theo nhóm / bung theo FC ---------- */
-// CBQLNS của nhóm: box ★ trên sơ đồ, hoặc người ngoài SĐTC (id dạng x*)
+// CBQLNS của nhóm: box ★ trên sơ đồ (null nếu box đã bị xoá)
 function cbqlnsOf(g){
   return (g && g.cbqlns && nodes.has(g.cbqlns)) ? nodes.get(g.cbqlns) : null;
 }
@@ -2746,19 +2749,6 @@ function applyZoomView(){
   var lbl = $('zoomLbl'); if (lbl) lbl.textContent = Math.round(zoom*100) + '%';
 }
 function clampZoom(z){ return Math.min(ZMAX, Math.max(ZMIN, z)); }
-// Zoom quanh 1 điểm màn hình (ax,ay tính theo viewport của canvasWrap); giữ điểm world dưới đó cố định.
-function applyZoom(nz, ax, ay){
-  nz = clampZoom(nz);
-  var cw = $('canvasWrap');
-  if (ax == null){ ax = cw.clientWidth/2;  ay = cw.clientHeight/2; }
-  var wx = (cw.scrollLeft + ax) / zoom;             // toạ độ world dưới con trỏ
-  var wy = (cw.scrollTop  + ay) / zoom;
-  zoom = nz;
-  applyZoomView();
-  cw.scrollLeft = wx*zoom - ax;                     // đưa điểm world về đúng chỗ dưới con trỏ
-  cw.scrollTop  = wy*zoom - ay;
-  syncMiniView();
-}
 function fitZoom(){
   var cw = $('canvasWrap');
   var z = Math.min(cw.clientWidth / worldW, cw.clientHeight / worldH, 1);
