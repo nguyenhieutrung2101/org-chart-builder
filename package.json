@@ -1,0 +1,12 @@
+{
+  "name": "org-chart-builder",
+  "private": true,
+  "description": "Org Builder — sơ đồ tổ chức, luật phê duyệt và bảng luồng duyệt. App tĩnh một trang, không build step.",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "check": "for f in public/js/*.js; do node --check \"$f\" || exit 1; done && echo syntax ok"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}
