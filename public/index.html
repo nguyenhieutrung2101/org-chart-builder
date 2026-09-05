@@ -1467,7 +1467,13 @@ function refreshView(){
 }
 
 /* ============ [7] XUẤT & LƯU ============ */
-function q(s){ return /[\t\n"]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; }
+// Ô TSV cho Excel: quote ô có tab / xuống dòng / ngoặc kép; ô bắt đầu bằng = + - @ thêm dấu ' để Excel
+// hiểu là text thay vì công thức (chặn formula injection; "-abc" cũng khỏi thành #NAME?). Dùng cho MỌI đường copy.
+function q(s){
+  s = String(s == null ? '' : s);
+  if (/^\s*[=+\-@]/.test(s)) s = "'" + s;
+  return /[\t\r\n"]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
 function tsv(){
   var g = buildGrid(layout());
   var lines = [ g.header.map(q).join('\t') ];
@@ -2020,8 +2026,17 @@ function groupOption(g){
   o.value = g.id; o.textContent = groupLabel(g);
   return o;
 }
-// Sửa mã/tên nhóm -> vá NHÃN option trong mọi select của bảng FC ngay tại chỗ
-// (đây là chỗ trước đây bị sót khiến dropdown FC hiện tên cũ)
+// Dropdown nhóm của một dòng FC. Bình thường chỉ chứa "Không" + nhóm đang chọn (DOM = F + G thay vì F × G —
+// 2.000 FC × 50 nhóm từng sinh 100.000 option, render 2,4 s); focus/mousedown mới nạp đủ danh sách, blur gọn lại.
+// Nhờ vậy thêm nhóm không phải bơm option vào từng dropdown nữa.
+function fillGroupSelect(sel, groupId, full){
+  sel.innerHTML = '';
+  var o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('optNoGroup');
+  sel.appendChild(o0);
+  fcGroups.forEach(function(g){ if (full || g.id === groupId) sel.appendChild(groupOption(g)); });
+  sel.value = groupId || '';
+}
+// Sửa mã/tên nhóm -> vá NHÃN option trong những select của bảng FC đang chứa nhóm đó
 function patchGroupOptionLabels(g){
   document.querySelectorAll('#fcTbody select option[value="' + g.id + '"]').forEach(function(o){
     o.textContent = groupLabel(g);
@@ -2099,9 +2114,6 @@ function addGroup(){
   fcGroups.push(g);
   var empty = $('grpEmpty'); if (empty) empty.remove();
   $('grpTbody').appendChild(groupRow(g));                      // append 1 hàng, không đập cả bảng
-  document.querySelectorAll('#fcTbody select').forEach(function(s){  // mọi dropdown FC nhận option mới NGAY
-    s.appendChild(groupOption(g));
-  });
   updateGroupCounts();
   renderFlowResult();
 }
@@ -2110,9 +2122,8 @@ function delGroup(g, rowEl){
   fcGroups = fcGroups.filter(function(x){ return x !== g; });
   fcs.forEach(function(f){ if (f.groupId === g.id) f.groupId = null; });
   if (rowEl) rowEl.remove();
-  document.querySelectorAll('#fcTbody select').forEach(function(s){
-    var o = s.querySelector('option[value="' + g.id + '"]');
-    if (o){ if (s.value === g.id) s.value = ''; o.remove(); }
+  document.querySelectorAll('#fcTbody select').forEach(function(s){   // dòng FC đang thuộc nhóm này -> về "Không"
+    if (s.value === g.id) fillGroupSelect(s, null, false);
   });
   if (!fcGroups.length) renderGroups();
   updateGroupCounts();
@@ -2120,8 +2131,9 @@ function delGroup(g, rowEl){
 }
 function applyGrpFilter(){
   var qy = ($('grpFilter').value || '').toLowerCase();
+  var byId = new Map(fcGroups.map(function(g){ return [g.id, g]; }));
   document.querySelectorAll('#grpTbody tr[data-gid]').forEach(function(tr){
-    var g = fcGroups.find(function(x){ return x.id === tr.dataset.gid; });
+    var g = byId.get(tr.dataset.gid);
     if (!g) return;
     var hay = ((g.code || '') + ' ' + (g.name || '')).toLowerCase();
     tr.style.display = (!qy || hay.indexOf(qy) >= 0) ? '' : 'none';
@@ -2151,10 +2163,9 @@ function fcRow(f){
   td2.appendChild(name);
   var td3 = document.createElement('td');
   var selE = document.createElement('select');
-  var o0 = document.createElement('option'); o0.value=''; o0.textContent = t('optNoGroup');
-  selE.appendChild(o0);
-  fcGroups.forEach(function(g){ selE.appendChild(groupOption(g)); });
-  selE.value = f.groupId || '';
+  fillGroupSelect(selE, f.groupId, false);
+  selE.onmousedown = selE.onfocus = function(){ if (selE.options.length !== fcGroups.length + 1) fillGroupSelect(selE, f.groupId, true); };
+  selE.onblur = function(){ fillGroupSelect(selE, f.groupId, false); };
   selE.onchange = function(){ snap(null); f.groupId = selE.value || null; updateGroupCounts(); renderFlowResult(); };
   td3.appendChild(selE);
   var td4 = document.createElement('td');
@@ -2183,8 +2194,9 @@ function applyFcFilter(){
   var qy = ($('fcFilter').value || '').toLowerCase();
   var gname = {};
   fcGroups.forEach(function(g){ gname[g.id] = (g.name||'').toLowerCase(); });
+  var byId = new Map(fcs.map(function(f){ return [f.id, f]; }));
   document.querySelectorAll('#fcTbody tr').forEach(function(tr){
-    var f = fcs.find(function(x){ return x.id === tr.dataset.fcid; });
+    var f = byId.get(tr.dataset.fcid);
     if (!f) return;
     var hay = (f.code + ' ' + f.name + ' ' + (f.groupId ? (gname[f.groupId]||'') : '')).toLowerCase();
     tr.style.display = (!qy || hay.indexOf(qy) >= 0) ? '' : 'none';
@@ -2287,10 +2299,15 @@ function flowBlocks(){
     }
   }
   if (!flowViewByFc){
+    var codesByGroup = new Map();                 // gom mã FC theo nhóm 1 lượt, thay vì lọc lại cho mỗi nhóm
+    fcs.forEach(function(f){
+      if (!f.groupId) return;
+      if (!codesByGroup.has(f.groupId)) codesByGroup.set(f.groupId, []);
+      codesByGroup.get(f.groupId).push(f.code || t('noCode'));
+    });
     fcGroups.forEach(function(g){
       var cb = cbqlnsOf(g);
-      var codes = fcs.filter(function(f){ return f.groupId === g.id; })
-                     .map(function(f){ return f.code || t('noCode'); });
+      var codes = codesByGroup.get(g.id) || [];
       var head = groupLabel(g)
         + '\n' + t('lineCbqlns') + (cb ? (cb.person || dispName(cb)) : t('unassigned'))
         + '\n' + segLine(cb)
@@ -2298,8 +2315,9 @@ function flowBlocks(){
       pushSplit(head, cb, g.byCig);
     });
   } else {
+    var groupById = new Map(fcGroups.map(function(g){ return [g.id, g]; }));
     fcs.forEach(function(f){
-      var g  = fcGroups.find(function(x){ return x.id === f.groupId; }) || null;
+      var g  = groupById.get(f.groupId) || null;
       var cb = cbqlnsOf(g);
       var head = (f.code || t('noCodeLong')) + '\n' + (f.name || '')
         + '\n' + (g ? (t('lineGroup') + groupLabel(g)) : t('optNoGroup'))
@@ -3124,7 +3142,7 @@ function applyTblCollapsed(){
 }
 $('bTgl').onclick = function(){ tblCollapsed = !tblCollapsed; applyTblCollapsed(); };
 
-window.onbeforeunload = function(){ return (dirty && nodes.size) ? true : null; };
+window.onbeforeunload = function(){ return dirty ? true : null; };   // dirty đã bao trùm mọi dữ liệu (FC, luật, ngành dọc…), không chỉ box sơ đồ
 
 seedRules();
 applyStatic();
