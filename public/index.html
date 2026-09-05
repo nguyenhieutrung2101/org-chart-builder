@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Org Builder — sơ đồ, bảng phân cấp &amp; luồng duyệt</title>
 <link rel="stylesheet" href="css/app.css">
+<style id="printPage"></style>   <!-- @page theo khổ giấy đang chọn, module Trình bày ghi khi in -->
 </head>
 <body>
 
@@ -12,9 +13,10 @@
 <header>
   <div id="brand">
     <h1>Org Builder</h1>
-    <div id="ver">version 10</div>
+    <div id="ver">version 11</div>
   </div>
-  <div class="grp seg">
+  <div class="grp"><button id="bHome" class="ghost" data-i18n="btnHome" data-i18n-title="tipHome" title="Về màn hình chọn module">⌂ Module</button></div>
+  <div class="grp seg" id="flowTabs">
     <button id="tabBtnOrg"   class="tabbtn active" data-i18n="tabOrg">Sơ đồ tổ chức</button>
     <button id="tabBtnVline" class="tabbtn" data-i18n="tabVline">Ngành dọc</button>
     <button id="tabBtnRules" class="tabbtn" data-i18n="tabRules">Định nghĩa luồng</button>
@@ -35,7 +37,21 @@
   <div id="credit"><b>project affogato</b><br>made with ❤️ by Trung</div>
 </header>
 
-<!-- ================= TAB 1: SƠ ĐỒ TỔ CHỨC ================= -->
+<!-- ================= LANDING: chọn module ================= -->
+<div id="landing">
+  <div id="landingBox">
+    <h2 data-i18n="landingTitle">Chọn module</h2>
+    <div id="landingCards">
+      <button class="modCard" id="bModDoc"><span class="modIcon">📄</span><b data-i18n="modDocH">Trình bày sơ đồ</b>
+        <span class="hint" data-i18n="modDocD">Vẽ và căn chỉnh sơ đồ tổ chức trên trang in: khổ giấy, font, bảng màu, ghi chú, định biên, in / PDF.</span></button>
+      <button class="modCard" id="bModFlow"><span class="modIcon">📗</span><b data-i18n="modFlowH">Luồng duyệt</b>
+        <span class="hint" data-i18n="modFlowD">Sơ đồ tổ chức, ngành dọc, ma trận luật và bảng luồng duyệt theo nhóm Fund Center.</span></button>
+    </div>
+    <div class="hint" data-i18n="landingHint">Hai module dùng chung một cây tổ chức và một file JSON — vẽ ở module nào cũng cập nhật ở cả hai.</div>
+  </div>
+</div>
+
+<!-- ================= MODULE LUỒNG DUYỆT — TAB 1: SƠ ĐỒ TỔ CHỨC ================= -->
 <div id="tabOrg">
   <div id="orgBar">
     <div class="grp"><button id="bRoot" class="primary" data-i18n="btnRoot">＋ Box gốc</button></div>
@@ -245,6 +261,37 @@
   </section>
 </div>
 
+<!-- ================= MODULE TRÌNH BÀY SƠ ĐỒ: trang in SVG (mm) ================= -->
+<div id="tabDoc">
+  <div id="docBar">
+    <div class="grp"><button id="bDocRoot" class="primary" data-i18n="btnRoot">＋ Box gốc</button></div>
+    <div class="grp seg">
+      <button id="bDZoomOut" class="ghost" data-i18n-title="tipZoomOut" title="Thu nhỏ">−</button>
+      <button id="bDZoomReset" class="ghost" data-i18n-title="tipZoomReset" title="Về 100%"><span id="dzoomLbl">100%</span></button>
+      <button id="bDZoomIn" class="ghost" data-i18n-title="tipZoomIn" title="Phóng to">＋</button>
+    </div>
+    <div class="grp"><button id="bDZoomFit" class="ghost" data-i18n="btnZoomFit">Vừa màn hình</button></div>
+    <div class="grp">
+      <button id="bPrint" data-i18n="btnPrint">🖨 In / Save as PDF</button>
+      <button id="bPdf" data-i18n="btnPdf">⬇ Tải PDF</button>
+    </div>
+    <div class="grp"><button id="bTglDPanel" class="ghost">Ẩn panel</button></div>
+  </div>
+  <main id="dmain">
+    <div id="docWrap"><div id="docPage"></div></div>
+    <div id="dpanel">
+      <section id="dBoxSec" class="dcard">
+        <div class="cardH"><span data-i18n="docBoxH">Box</span><button id="tglDBox" class="tgl" style="margin-left:auto">▴</button></div>
+        <div id="dBoxBody"></div>
+      </section>
+      <section id="dPageSec" class="dcard">
+        <div class="cardH"><span data-i18n="docPageH">Trang</span><button id="tglDPage" class="tgl" style="margin-left:auto">▴</button></div>
+        <div id="dPageBody"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
 <script src="js/01-consts.js"></script>
 <script src="js/02-i18n.js"></script>
 <script src="js/03-state.js"></script>
@@ -255,6 +302,7 @@
 <script src="js/08-flow.js"></script>
 <script src="js/09-rules.js"></script>
 <script src="js/10-zoom.js"></script>
-<script src="js/11-wiring.js"></script>
+<script src="js/11-doc.js"></script>
+<script src="js/12-wiring.js"></script>
 </body>
 </html>

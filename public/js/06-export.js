@@ -47,6 +47,11 @@ function ser(id){
            br: n.br || undefined,
            collapsed: n.collapsed || undefined,
            focus: (id === focusId) || undefined,
+           hc: n.hc == null ? undefined : n.hc,
+           annot: n.annot || undefined,
+           desc: n.desc || undefined,
+           dx: n.dx || undefined,
+           wp: (n.wp && n.wp.length) ? n.wp : undefined,
            children: n.children.map(ser) };
 }
 function saveJSON(){
@@ -68,13 +73,23 @@ function applyState(d){
     });
   })(d.roots);
   function genId(){ do { maxN++; } while (used.has('n'+maxN)); return 'n'+maxN; }
+  function cleanWp(wp){                          // điểm gấp khúc: mảng cặp số hữu hạn, khác thì bỏ (về tự động)
+    if (!Array.isArray(wp) || !wp.length) return null;
+    var out = [];
+    for (var i = 0; i < wp.length; i++){
+      var q = wp[i];
+      if (!Array.isArray(q) || q.length !== 2 || !isFinite(q[0]) || !isFinite(q[1])) return null;
+      out.push([+q[0], +q[1]]);
+    }
+    return out;
+  }
 
   var tN = new Map(), tRoots = [], tFocus = null;
   function mk(o, parentId){
     if (!o || typeof o !== 'object') throw new Error('bad node');
     var pr = parentId ? rnum(tN.get(parentId).t) : 0;
     var r  = rnum(o.t);
-    if (r < 0) r = parentId ? Math.min(8, pr+1) : 0;
+    if (r < 0) r = parentId ? Math.min(LMAX, pr+1) : rnum('CC');
     if (parentId && r < pr) r = pr;
     var id = (typeof o.id === 'string' && /^n\d+$/.test(o.id) && !tN.has(o.id)) ? o.id : genId();
     // file cũ (v≤7) dùng cờ boolean vh -> quy về nhánh 'VH'; một loại nhánh gán được nhiều box
@@ -85,7 +100,12 @@ function applyState(d){
                  person:String(o.person|| ''),
                  t: LEVELS[r],
                  star: !!o.star, br: br, collapsed: !!o.collapsed,
-                 parent: parentId, children: [] });
+                 parent: parentId, children: [],
+                 hc: (typeof o.hc === 'number' && isFinite(o.hc) && o.hc >= 0) ? Math.round(o.hc) : null,
+                 annot: String(o.annot || '').slice(0, 3),
+                 desc: String(o.desc || ''),
+                 dx: (typeof o.dx === 'number' && isFinite(o.dx)) ? o.dx : 0,
+                 wp: cleanWp(o.wp) });
     if (o.focus && !tFocus) tFocus = id;
     (o.children || []).forEach(function(c){ tN.get(id).children.push(mk(c, id)); });
     return id;
@@ -205,6 +225,7 @@ function applyState(d){
   if (Array.isArray(d.cigs)){ cigs = tCig; cseq = maxC + 1; }
   else { cigs = defaultCigs(); cseq = 4; }
   curCig = '';
+  doc = cleanDoc(d.doc);
   sel = null;
 }
 function loadJSON(file){

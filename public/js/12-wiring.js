@@ -1,5 +1,5 @@
 "use strict";
-/* [9] Pan, phím tắt, nối sự kiện, thu/mở section, khởi động — Org Builder. Các file js/ dùng chung state global, nạp theo thứ tự trong index.html. */
+/* [9] Pan, phím tắt, nối sự kiện, thu/mở section, landing + chuyển module, khởi động — Org Builder. Các file js/ dùng chung state global, nạp theo thứ tự trong index.html. */
 /* ============ [9] PAN + PHÍM TẮT + NỐI SỰ KIỆN ============ */
 (function(){
   var cw = $('canvasWrap');
@@ -52,7 +52,9 @@ document.addEventListener('keydown', function(e){
   }
 });
 
+var curTab = 'org';                            // tab đang mở của module Luồng duyệt
 function showTab(which){
+  curTab = which;
   // các tab đều là flex-column để con bên trong giãn hết chiều cao viewport
   $('tabOrg').style.display   = which === 'org'   ? 'flex' : 'none';
   $('tabVline').style.display = which === 'vline' ? 'flex' : 'none';
@@ -131,6 +133,7 @@ var chartHidden = false, panelHidden = false;
 function refreshStateLabels(){
   $('bTglChart').textContent  = chartHidden   ? t('lblShowChart')  : t('lblHideChart');
   $('bTglPanel').textContent  = panelHidden   ? t('lblShowPanel')  : t('lblHidePanel');
+  $('bTglDPanel').textContent = dpanelHidden  ? t('lblShowPanel')  : t('lblHidePanel');
   $('bTgl').textContent       = tblCollapsed  ? t('lblTblExpand')  : t('lblTblCollapse');
   $('bTglInputs').textContent = inputsHidden  ? t('lblShowInputs') : t('lblHideInputs');
   $('bFlowView').textContent  = flowViewByFc  ? t('lblViewByFc')   : t('lblViewByGroup');
@@ -227,9 +230,58 @@ function applyTblCollapsed(){
 }
 $('bTgl').onclick = function(){ tblCollapsed = !tblCollapsed; applyTblCollapsed(); };
 
+/* ---------- [10] Landing + module Trình bày sơ đồ ---------- */
+// MOD: 'landing' | 'flow' | 'doc'. renderAll()/select()/refreshView() rẽ nhánh theo MOD nên mọi thao tác model dùng chung.
+var MOD = 'landing', dzoomInit = false, dpanelHidden = false;
+function showModule(m){
+  MOD = m;
+  $('landing').style.display  = m === 'landing' ? 'flex' : 'none';
+  $('tabDoc').style.display   = m === 'doc' ? 'flex' : 'none';
+  $('flowTabs').style.display = m === 'flow' ? '' : 'none';
+  if (m === 'flow'){ renderAll(); showTab(curTab); }
+  else ['tabOrg', 'tabVline', 'tabRules', 'tabFlow'].forEach(function(id){ $(id).style.display = 'none'; });
+  if (m === 'doc'){ renderDocAll(); if (!dzoomInit){ dZoomFit(); dzoomInit = true; } }
+  var want = m === 'landing' ? '' : '#' + m;
+  if (location.hash !== want) history.replaceState(null, '', location.pathname + location.search + want);
+}
+function moduleFromHash(){ var m = /^#(doc|flow)$/.exec(location.hash); return m ? m[1] : 'landing'; }
+window.addEventListener('hashchange', function(){ var m = moduleFromHash(); if (m !== MOD) showModule(m); });
+$('bModDoc').onclick  = function(){ showModule('doc'); };
+$('bModFlow').onclick = function(){ showModule('flow'); };
+$('bHome').onclick    = function(){ showModule('landing'); };
+$('bDocRoot').onclick   = addRoot;
+$('bDZoomIn').onclick    = function(){ dZoomTo(dzoom * ZSTEP); };
+$('bDZoomOut').onclick   = function(){ dZoomTo(dzoom / ZSTEP); };
+$('bDZoomReset').onclick = function(){ dZoomTo(1); };
+$('bDZoomFit').onclick   = dZoomFit;
+$('bPrint').onclick = docPrint;
+$('bPdf').onclick   = docPdf;
+$('bTglDPanel').onclick = function(){ dpanelHidden = !dpanelHidden; $('dpanel').style.display = dpanelHidden ? 'none' : ''; refreshStateLabels(); };
+wireCollapse('tglDBox',  'dBoxBody',  'dBoxSec');
+wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
+// Kéo-thả trên trang: pointer capture trên #docPage (svg bị dựng lại mỗi lần render nên không capture trên svg)
+(function(){
+  var host = $('docPage'), drag = null;
+  host.addEventListener('pointerdown', function(e){
+    if (e.button !== 0) return;
+    var box = e.target.closest('.dbox'), hit = e.target.classList.contains('dedge-hit') ? e.target : null;
+    if (box){ var id = box.getAttribute('data-id'); if (sel !== id) select(id); drag = startBoxDrag(id, e); }
+    else if (hit) drag = startEdgeDrag(hit.getAttribute('data-id'), +hit.getAttribute('data-seg'), e);
+    else { if (sel) select(null); return; }
+    try{ host.setPointerCapture(e.pointerId); }catch(_){/**/}
+    e.preventDefault();
+  });
+  host.addEventListener('pointermove', function(e){ if (drag) moveDrag(drag, e); });
+  function up(){ if (!drag) return; var d = drag; drag = null; endDrag(d); }
+  host.addEventListener('pointerup', up);
+  host.addEventListener('pointercancel', up);
+  host.addEventListener('dblclick', function(e){ var box = e.target.closest('.dbox'); if (box) select(box.getAttribute('data-id'), true); });
+})();
+
 window.onbeforeunload = function(){ return dirty ? true : null; };   // dirty đã bao trùm mọi dữ liệu (FC, luật, ngành dọc…), không chỉ box sơ đồ
 
 seedRules();
 applyStatic();
 applyTblCollapsed();
 renderAll();
+showModule(moduleFromHash());

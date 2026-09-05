@@ -329,3 +329,62 @@ tr.hideRow{display:none}
   #rulesWrap{flex-direction:column}
   #rulesSide{width:auto}
 }
+
+/* ---- Landing: chọn module ---- */
+#landing{flex:1;display:none;align-items:center;justify-content:center;padding:24px}
+#landingBox{max-width:780px;width:100%;text-align:center}
+#landingBox h2{font-size:17px;font-weight:800;margin:0 0 18px;letter-spacing:.06em;text-transform:uppercase}
+#landingCards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.modCard{flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 18px;
+         text-align:center;font:inherit;border:var(--bd);border-radius:var(--r);box-shadow:4px 4px 0 var(--ink);cursor:pointer}
+.modCard:hover{transform:translate(4px,4px);box-shadow:none}
+.modCard .modIcon{font-size:36px;line-height:1}
+.modCard b{font-size:15px}
+.modCard .hint{white-space:normal;font-weight:400;color:var(--ink);opacity:.8}
+#bModDoc{background:var(--cyan)}
+#bModFlow{background:var(--yellow)}
+
+/* ---- Module Trình bày sơ đồ: trang in SVG ---- */
+#tabDoc{flex:1;min-height:0;display:none;flex-direction:column}
+#docBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:var(--bd);background:var(--paper)}
+#dmain{flex:1;min-height:0;display:flex}
+#docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px}
+#docPage{display:inline-block;vertical-align:top}
+#docPage svg{display:block;background:#fff;border:var(--bd);box-shadow:4px 4px 0 var(--ink)}
+#dpanel{width:300px;flex:none;overflow:auto;border-left:var(--bd);background:var(--wash);padding:10px;display:flex;flex-direction:column;gap:10px}
+.dcard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);background:var(--paper);padding:10px}
+.dcard.collapsed>.cardH{border-bottom:none;margin-bottom:0}
+.dcard label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:9px 0 4px}
+.dcard input,.dcard select,.dcard textarea{width:100%;font:inherit;padding:6px 8px;border:var(--bd);border-radius:var(--r);background:#fff;color:var(--ink)}
+.dcard textarea{resize:vertical;min-height:88px;font-size:12.5px;line-height:1.4}
+.dcard .ck{display:flex;gap:7px;align-items:center;margin-top:7px;font-size:13px;font-weight:600}
+.dcard .ck input{width:auto;accent-color:var(--coral)}
+.dcard .row2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.dcard .noteRow{display:flex;gap:6px;margin-top:6px;align-items:center}
+.dcard .noteRow input.k{width:44px;flex:none;text-align:center;font-weight:800}
+.dcard .noteRow button{padding:3px 7px;flex:none}
+#dfD{text-transform:uppercase;font-weight:800}
+#dfC{font-weight:700}
+#dfP{font-style:italic}
+/* Tương tác trên SVG (đơn vị mm) */
+.dbox{cursor:grab}
+.dbox.sel rect.bg{stroke:#6B8FE8;stroke-width:0.9}
+.dedge-hit{stroke:transparent;stroke-width:3.5;fill:none;pointer-events:stroke}
+.dedge-hit:hover{stroke:rgba(107,143,232,.35)}
+.dedge-hit.hor{cursor:ns-resize}
+.dedge-hit.ver{cursor:ew-resize}
+@media print{
+  html,body{background:#fff}
+  body>*:not(#tabDoc){display:none!important}
+  .dbox.sel rect.bg{stroke:#1F1B16;stroke-width:0.35}   /* không in viền chọn */
+  #tabDoc{display:block!important;height:auto}
+  #docBar,#dpanel{display:none!important}
+  #dmain{display:block}
+  #docWrap{overflow:visible;padding:0;background:#fff}
+  #docPage{display:block}
+  html,body{height:100%;overflow:hidden}
+  #tabDoc,#dmain,#docWrap,#docPage{height:100%;overflow:hidden}
+  /* @page = đúng khổ trang nên svg phủ trọn viewport in -> đúng 1 trang, không dư trang trắng */
+  #docPage svg{border:none!important;box-shadow:none!important;width:100vw!important;height:100vh!important}
+  .dedge-hit{display:none}
+}

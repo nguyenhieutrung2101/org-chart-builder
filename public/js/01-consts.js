@@ -5,7 +5,7 @@ var BW = 176, BH = 96;
 var GX = 18,  GY = 70;
 var PAD = 20;
 var COLW_ORG  = 176;                    // độ rộng cột bảng phân cấp
-var SCHEMA_V  = 10;                     // version schema file JSON: serializeAll ghi, loadJSON cảnh báo nếu file mới hơn
+var SCHEMA_V  = 11;                     // version schema file JSON: serializeAll ghi, loadJSON cảnh báo nếu file mới hơn
 
 // Zoom sơ đồ (view-state tạm, KHÔNG lưu JSON). worldW/H = kích thước world lần render gần nhất.
 var zoom = 1, worldW = 300, worldH = 300;

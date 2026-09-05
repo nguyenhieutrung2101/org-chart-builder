@@ -88,7 +88,7 @@ function renderPanel(){
   var n = nodes.get(sel);
   var minR = n.parent ? rnum(nodes.get(n.parent).t) : 0;
   var opts = '';
-  for (var i = minR; i <= 8; i++) opts += '<option>' + LEVELS[i] + '</option>';
+  for (var i = minR; i <= LMAX; i++) opts += '<option>' + LEVELS[i] + '</option>';
   var brOpts = '<option value="">' + t('brNone') + '</option>';
   BRANCHES.forEach(function(k){
     brOpts += '<option value="' + k + '">' + segLabel(k) + '</option>';
@@ -101,6 +101,8 @@ function renderPanel(){
     + '<label>' + t('lblPerson') + '</label><input id="fP" autocomplete="off">'
     + '<label>' + t('lblLevel') + (minR > 0 ? tf('lblLevelMin', { L: LEVELS[minR] }) : '') + '</label>'
     + '<select id="fT">' + opts + '</select>'
+    + '<label>' + t('lblHc') + '</label><input id="fHc" type="number" min="0" step="1" autocomplete="off"' + (n.children.length ? ' disabled' : '') + '>'
+    + '<div class="hint">' + (n.children.length ? t('hcAutoNote') : t('hcLeafNote')) + '</div>'
     + '<div class="ck"><input type="checkbox" id="fStar"><label for="fStar" style="margin:0">' + t('ckCbqlns') + '</label></div>'
     + '<label>' + t('lblBranch') + '</label><select id="fBr">' + brOpts + '</select>'
     + '<div class="row"><button id="bChild" class="primary">' + t('btnChild') + '</button><button id="bSib">' + t('btnSib') + '</button></div>'
@@ -123,6 +125,8 @@ function renderPanel(){
 
   var sT = $('fT'); sT.value = n.t;
   sT.onchange = function(){ setT(sel, sT.value); };
+  var fHc = $('fHc'); fHc.value = n.children.length ? hcOf(sel) : (n.hc == null ? '' : n.hc);
+  fHc.oninput = function(){ setHc(sel, fHc.value); };
   var ck = $('fStar'); ck.checked = !!n.star;
   ck.onchange = function(){ toggleStar(sel); };
   var sBr = $('fBr'); sBr.value = n.br || '';
@@ -196,11 +200,13 @@ function renderTable(L){
 }
 
 function renderAll(){
+  if (MOD === 'doc'){ renderDocAll(); return; }
   var L = layout();
   if (sel && !L.vis.has(sel)) sel = null;
   renderCanvas(L); renderPanel(); renderTable(L); renderVline(); renderVPanel(); renderFlow(); renderRules();
 }
 function refreshView(){
+  if (MOD === 'doc'){ renderDoc(); return; }
   var L = layout();
   renderCanvas(L); renderTable(L); refreshFlowResultSoon();
 }

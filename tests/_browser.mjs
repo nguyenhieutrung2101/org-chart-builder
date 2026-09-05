@@ -34,7 +34,7 @@ export async function openApp(opts){
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await page.goto(url + 'index.html' + (opts.hash || ''));
+  await page.goto(url + 'index.html' + (opts.hash != null ? opts.hash : '#flow'));   // mặc định vào thẳng module Luồng duyệt (bỏ qua landing)
   return { page, errors, browser, url, close: async function(){ await browser.close(); srv.close(); } };
 }
 

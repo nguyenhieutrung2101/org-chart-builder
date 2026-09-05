@@ -86,13 +86,38 @@ function seedRules(){
   cseq = 4;
 }
 
+// Lớp trình bày của module "Trình bày sơ đồ" — không ảnh hưởng luồng duyệt
+function defaultDoc(){
+  return { page:'A4', orient:'L', font:'app', scheme:'pastel', header:'',
+           code:{ code:'', date:'', author:'', reviewer:'', approver:'' },
+           notes:[],
+           show:{ legend:true, code:true, notes:true, hc:true, desc:true, fit:true } };
+}
+// Đọc lớp doc từ file: sai kiểu / thiếu -> mặc định (file cũ chưa có doc mở bình thường)
+function cleanDoc(src){
+  var d = defaultDoc();
+  if (!src || typeof src !== 'object') return d;
+  if (PAGE_MM[src.page]) d.page = src.page;
+  if (src.orient === 'P' || src.orient === 'L') d.orient = src.orient;
+  if (DOC_FONTS[src.font]) d.font = src.font;
+  if (src.scheme === 'classic' || src.scheme === 'pastel') d.scheme = src.scheme;
+  d.header = String(src.header || '');
+  Object.keys(d.code).forEach(function(k){ if (src.code && src.code[k] != null) d.code[k] = String(src.code[k]); });
+  if (Array.isArray(src.notes)) src.notes.forEach(function(n){
+    if (n && typeof n === 'object') d.notes.push({ key:String(n.key || '').slice(0, 3), text:String(n.text || '') });
+  });
+  Object.keys(d.show).forEach(function(k){ if (src.show && typeof src.show[k] === 'boolean') d.show[k] = src.show[k]; });
+  return d;
+}
+var doc = defaultDoc();
+
 var undoStack = [], lastSnapKey = null, dirty = false;
 
 function serializeAll(){
   return { v:SCHEMA_V, roots:rootIds.map(ser),
            fcGroups:fcGroups, fcs:fcs, roleBoxes:roleBoxes, ruleGrids:ruleGrids,
            vlineGrids:vlineGrids, ruleMode:ruleMode, vroots:vroots.map(vser),
-           cigs:cigs };
+           cigs:cigs, doc:doc };
 }
 function snap(key){
   if (key !== null && key === lastSnapKey) return;

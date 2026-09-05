@@ -49,7 +49,7 @@ const c2 = await ev(() => {
 });
 check('#2 cigs:[] stays empty after reload', c2.afterEmpty === 0, String(c2.afterEmpty));
 check('#2 legacy file without cigs gets 3 defaults', JSON.stringify(c2.afterLegacy) === JSON.stringify(['CI-SM', 'CI-TE', 'CI-OP']), JSON.stringify(c2.afterLegacy));
-check('#8 serializeAll writes v:10', c2.v === 10, String(c2.v));
+check('#8 serializeAll writes v:SCHEMA_V (11)', c2.v === 11, String(c2.v));
 
 // ---------- #3 CIG delete clears both families; scenOwn note reads current family ----------
 const c3 = await ev(() => {
@@ -132,14 +132,14 @@ check('#7 palette dragstart/dragend toggle body.rdrag', c7.viaEvents === true, S
 // ---------- #8 newer-file warning via loadJSON ----------
 const c8 = await page.evaluate(async () => {
   const mk = (o) => new File([JSON.stringify(o)], 'x.json', { type: 'application/json' });
-  loadJSON(mk({ v: 11, roots: [] })); await new Promise(r => setTimeout(r, 100));
+  loadJSON(mk({ v: 12, roots: [] })); await new Promise(r => setTimeout(r, 100));
   const t11 = document.getElementById('msg').textContent;
-  loadJSON(mk({ v: 10, roots: [] })); await new Promise(r => setTimeout(r, 100));
+  loadJSON(mk({ v: 11, roots: [] })); await new Promise(r => setTimeout(r, 100));
   const t10 = document.getElementById('msg').textContent;
-  return { t11, t10, exp11: tf('msgNewerFile', { v: 11, s: 10 }), exp10: t('msgOpened') };
+  return { t11, t10, exp11: tf('msgNewerFile', { v: 12, s: 11 }), exp10: t('msgOpened') };
 });
-check('#8 v:11 file warns', c8.t11 === c8.exp11, c8.t11);
-check('#8 v:10 file opens normally', c8.t10 === c8.exp10, c8.t10);
+check('#8 v:12 file warns', c8.t11 === c8.exp11, c8.t11);
+check('#8 v:11 file opens normally', c8.t10 === c8.exp10, c8.t10);
 
 // ---------- misc ----------
 const misc = await ev(() => ({
@@ -147,7 +147,7 @@ const misc = await ev(() => ({
   rnum: rnum('T2'), lvl: (addRoot(), nodes.get(rootIds[rootIds.length - 1]).t),
 }));
 check('vi/en key sets identical', misc.keys.length === 0, misc.keys.join(','));
-check('rnum/nn still work after param rename', misc.rnum === 2 && misc.lvl === 'CC', JSON.stringify(misc));
+check('rnum/nn still work after param rename', misc.rnum === 3 && misc.lvl === 'CC', JSON.stringify(misc));
 check('no page/console errors', errors.length === 0, errors.join(' | '));
 
 await close();

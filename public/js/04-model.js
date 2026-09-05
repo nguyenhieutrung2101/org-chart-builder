@@ -1,10 +1,13 @@
 "use strict";
 /* [3] Model cây + [4] visibleSet + [5] layout thuần — Org Builder. Các file js/ dùng chung state global, nạp theo thứ tự trong index.html. */
 /* ============ [3] MODEL: THAO TÁC TRÊN CÂY ============ */
+// Trường trình bày (module Trình bày sơ đồ): hc định biên tự nhập (null = trống), annot chữ cái badge,
+// desc mô tả chức năng, dx lệch ngang thủ công (mm), wp điểm gấp khúc đường nối từ box cha (mm, null = tự động)
 function nn(dept, title, person, lv, parent, id){
   var nid = id || ('n' + (seq++));
   nodes.set(nid, {id:nid, dept:dept, title:title, person:person, t:lv,
-                  star:false, br:'', collapsed:false, parent:parent, children:[]});
+                  star:false, br:'', collapsed:false, parent:parent, children:[],
+                  hc:null, annot:'', desc:'', dx:0, wp:null});
   return nid;
 }
 function addRoot(){
@@ -17,7 +20,7 @@ function addChild(pid){
   snap(null);
   var p = nodes.get(pid);
   p.collapsed = false;
-  var r = Math.min(8, rnum(p.t) + 1);
+  var r = Math.min(LMAX, rnum(p.t) + 1);
   var id = nn('','','', LEVELS[r], pid);
   p.children.push(id); select(id, true);
 }
@@ -146,6 +149,7 @@ function scrollNodeIntoView(id){
 // dựng lại canvas làm box dưới con trỏ mất :hover, nhìn như bị "nảy". Box mới tạo
 // (chưa có DOM, gọi từ addRoot/addChild/addSib) mới cần render đầy đủ.
 function select(id, focusInput){
+  if (MOD === 'doc'){ dSelect(id, focusInput); return; }
   sel = id;
   var onCanvas = !id || document.querySelector('#canvas .node[data-id="' + id + '"]');
   if (onCanvas){ applySelDom(); renderPanel(); }
@@ -187,15 +191,18 @@ function visibleSet(){
 }
 
 /* ============ [5] LAYOUT THUẦN ============ */
-function layout(){
-  var vis = visibleSet();
+// dim (tuỳ chọn): {bw,bh,gx,gy,pad} kích thước riêng (module Trình bày dùng mm), all=true: vẽ mọi box (bỏ qua focus/thu gọn)
+function layout(dim){
+  dim = dim || {};
+  var bw = dim.bw || BW, bh = dim.bh || BH, gx = dim.gx || GX, gy = dim.gy || GY, pad = dim.pad != null ? dim.pad : PAD;
+  var vis = dim.all ? new Set(nodes.keys()) : visibleSet();
   var rank = new Map(), layer = new Map(), codes = new Set();
 
   function pass1(id){
     if (!vis.has(id)) return;
     var n = nodes.get(id);
     var p = (n.parent && vis.has(n.parent)) ? n.parent : null;
-    var r = rnum(n.t); if (r < 0) r = 1;
+    var r = rnum(n.t); if (r < 0) r = rnum('CC');
     var k = (p && rank.get(p) === r) ? layer.get(p) + 1 : 1;
     rank.set(id, r); layer.set(id, k);
     codes.add(r * 1000 + k);
@@ -228,12 +235,24 @@ function layout(){
 
   var pos = new Map();
   vis.forEach(function(id){
-    pos.set(id, { x: PAD + X.get(id)*(BW+GX),
-                  y: PAD + row.get(id)*(BH+GY) });
+    pos.set(id, { x: pad + X.get(id)*(bw+gx),
+                  y: pad + row.get(id)*(bh+gy) });
   });
   return { vis:vis, row:row, pos:pos, keys:keys };
 }
 function keyLabel(kk){
   var L = LEVELS[kk.r];
   return kk.k === 1 ? L : (L + ' (' + kk.k + ')');
+}
+
+// Định biên: box lá = số tự nhập (trống = 1, chính nó); box có con = 1 (chính nó) + tổng định biên các box con
+function hcOf(id){
+  var n = nodes.get(id);
+  if (!n.children.length) return n.hc == null ? 1 : n.hc;
+  return 1 + n.children.reduce(function(s, c){ return s + hcOf(c); }, 0);
+}
+function setHc(id, v){
+  snap('e:' + id + ':hc');
+  nodes.get(id).hc = (v === '' || v == null || !isFinite(+v)) ? null : Math.max(0, Math.round(+v));
+  refreshView();
 }

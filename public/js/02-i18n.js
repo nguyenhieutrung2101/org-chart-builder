@@ -9,6 +9,27 @@ var STR = {
 vi: {
   docTitle:'Org Builder — sơ đồ, bảng phân cấp & luồng duyệt',
   tabOrg:'Sơ đồ tổ chức', tabVline:'Ngành dọc', tabRules:'Định nghĩa luồng', tabFlow:'Luồng duyệt',
+  // --- landing + module ---
+  landingTitle:'Chọn module', btnHome:'⌂ Module', tipHome:'Về màn hình chọn module',
+  modDocH:'Trình bày sơ đồ', modDocD:'Vẽ và căn chỉnh sơ đồ tổ chức trên trang in: khổ giấy, font, bảng màu, ghi chú, định biên, in / PDF.',
+  modFlowH:'Luồng duyệt', modFlowD:'Sơ đồ tổ chức, ngành dọc, ma trận luật và bảng luồng duyệt theo nhóm Fund Center.',
+  landingHint:'Hai module dùng chung một cây tổ chức và một file JSON — vẽ ở module nào cũng cập nhật ở cả hai.',
+  // --- cấp + định biên ---
+  lvlDB:'Đặc biệt', lvlCC:'Cao cấp',
+  lblHc:'Định biên', hcAutoNote:'Tự cộng: 1 (box này) + tổng định biên các box con.', hcLeafNote:'Box không có box con: nhập số (trống = 1, chính nó).',
+  // --- module trình bày ---
+  docPageH:'Trang', docBoxH:'Box', lblPage:'Khổ giấy', lblOrient:'Hướng', orientL:'Ngang', orientP:'Dọc',
+  lblFont:'Font', fontApp:'Font của app', lblScheme:'Bảng màu', schemePastel:'Pastel (app)', schemeClassic:'Gốc văn bản',
+  lblHeader:'Tiêu đề trang', phHeader:'VD: SƠ ĐỒ TỔ CHỨC CÔNG TY …',
+  docCodeH:'Khối mã văn bản', dcCode:'Mã văn bản', dcDate:'Ngày áp dụng', dcAuthor:'Người soạn thảo', dcReviewer:'Người thẩm định (*)', dcApprover:'Người phê duyệt',
+  notesH:'Ghi chú', btnAddNote:'＋ Ghi chú', phNoteText:'Báo cáo đồng thời cho …', tipDelNote:'Xóa ghi chú',
+  showH:'Hiển thị', ckLegend:'Bảng màu cấp (góc phải)', ckCode:'Khối mã văn bản (góc trái)', ckNotes:'Danh sách ghi chú',
+  ckHc:'Số định biên trên box', ckDesc:'Cụm mô tả chức năng', ckFit:'Tự co sơ đồ cho vừa trang',
+  btnPrint:'🖨 In / Save as PDF', btnPdf:'⬇ Tải PDF', msgPdfLoading:'Đang chuẩn bị PDF (nạp font)…', msgPdfDone:'Đã tạo PDF', msgPdfFail:'Không tạo được PDF',
+  lblAnnot:'Ghi chú (chữ cái góc trái box)', lblDesc:'Mô tả chức năng (hiện dưới sơ đồ)', descHint:'Dòng bắt đầu bằng "# " thành tiêu đề đậm gạch chân.',
+  btnResetPos:'Về vị trí tự động', btnResetEdge:'Nối lại tự động',
+  docEmptyHint:'Bấm một box để sửa. Kéo box sang ngang để dịch trong hàng; kéo một đoạn đường nối để bẻ gấp khúc.',
+  docNoTree:'Chưa có box nào — bấm "＋ Box gốc".',
   // --- tab Ngành dọc ---
   btnVRoot:'＋ Người global', btnVImport:'＋ CBQLNS từ SĐTC',
   vlineBarHint:'Chọn box cha trên cây rồi import — chỉ box đã tick ★ CBQLNS mới chọn được.',
@@ -137,6 +158,24 @@ vi: {
 en: {
   docTitle:'Org Builder — org chart, hierarchy table & approval flows',
   tabOrg:'Org Chart', tabVline:'Vertical Line', tabRules:'Flow Rules', tabFlow:'Approval Flow',
+  landingTitle:'Choose a module', btnHome:'⌂ Modules', tipHome:'Back to module selection',
+  modDocH:'Chart layout', modDocD:'Lay out the org chart on a printable page: paper size, fonts, colour scheme, notes, headcount, print / PDF.',
+  modFlowH:'Approval flow', modFlowD:'Org chart, vertical line, rule matrix and approval-flow tables per Fund Center group.',
+  landingHint:'Both modules share one org tree and one JSON file — edits in either module show up in both.',
+  lvlDB:'Special', lvlCC:'Senior',
+  lblHc:'Headcount', hcAutoNote:'Auto: 1 (this box) + sum of the child boxes.', hcLeafNote:'Leaf box: enter a number (blank = 1, itself).',
+  docPageH:'Page', docBoxH:'Box', lblPage:'Paper', lblOrient:'Orientation', orientL:'Landscape', orientP:'Portrait',
+  lblFont:'Font', fontApp:'App font', lblScheme:'Colour scheme', schemePastel:'Pastel (app)', schemeClassic:'Classic (document)',
+  lblHeader:'Page header', phHeader:'e.g. COMPANY ORGANISATION CHART',
+  docCodeH:'Document code block', dcCode:'Document code', dcDate:'Effective date', dcAuthor:'Prepared by', dcReviewer:'Reviewed by (*)', dcApprover:'Approved by',
+  notesH:'Notes', btnAddNote:'＋ Note', phNoteText:'Also reports to …', tipDelNote:'Delete note',
+  showH:'Show', ckLegend:'Level legend (top right)', ckCode:'Document code block (top left)', ckNotes:'Notes list',
+  ckHc:'Headcount on boxes', ckDesc:'Function descriptions', ckFit:'Shrink chart to fit the page',
+  btnPrint:'🖨 Print / Save as PDF', btnPdf:'⬇ Download PDF', msgPdfLoading:'Preparing PDF (loading fonts)…', msgPdfDone:'PDF created', msgPdfFail:'Could not create the PDF',
+  lblAnnot:'Note key (top-left badge)', lblDesc:'Function description (shown below the chart)', descHint:'Lines starting with "# " become bold underlined headings.',
+  btnResetPos:'Reset position', btnResetEdge:'Reset connector',
+  docEmptyHint:'Click a box to edit it. Drag a box sideways within its row; drag a connector segment to bend it.',
+  docNoTree:'No boxes yet — click "＋ Root box".',
   btnVRoot:'＋ Global person', btnVImport:'＋ BMO from chart',
   vlineBarHint:'Select a parent box on the tree, then import — only ★ BMO boxes are listed.',
   vpanelH:'Details', vorgTip:'Imported from the Org Chart — content mirrors the source box',
@@ -278,9 +317,10 @@ function setLang(l){
   renderAll();
 }
 
-var LEVELS = ['CC','T1','T2','T3','T4','T5','T6','T7','T8'];
+var LEVELS = ['ĐB','CC','T1','T2','T3','T4','T5','T6','T7','T8'];   // ĐB = Đặc biệt (trên Cao cấp)
+var LMAX = LEVELS.length - 1;
 // Màu cấp — pastel, cùng hệ với bảng màu UI (xem :root trong CSS)
-var TCOLOR = {CC:'#6B8FE8',T1:'#FFB98A',T2:'#A8D989',T3:'#FFD93D',
+var TCOLOR = {'ĐB':'#F0A6C0',CC:'#6B8FE8',T1:'#FFB98A',T2:'#A8D989',T3:'#FFD93D',
               T4:'#7ECEE0',T5:'#C3AEE8',T6:'#FFFDF8',T7:'#FFFDF8',T8:'#FFFDF8'};
 
 function $(id){ return document.getElementById(id); }
