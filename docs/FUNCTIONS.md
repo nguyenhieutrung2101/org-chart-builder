@@ -7,7 +7,7 @@
 
 | File | Lines | Role |
 |---|---|---|
-| `public/index.html` | 3135 | **The entire application** — single-file app: CSS (l.7–339), HTML (l.341–578), JS (l.580–3133). Served as-is by Cloudflare Workers static assets. |
+| `public/index.html` | 3153 | **The entire application** — single-file app: CSS (l.7–339), HTML (l.341–578), JS (l.580–3151). Served as-is by Cloudflare Workers static assets. |
 | `wrangler.jsonc` | ~10 | Cloudflare Workers config (`assets: ./public`). No code. |
 | `README.md` | ~70 | Documentation. No code. |
 
@@ -110,146 +110,147 @@ Conventions used below:
 | `renderAll` [PUBLIC] | 1459 | `() → void` | **Master re-render**: layout once, then canvas, panel, table, vline tab, flow tab, rules tab; drops invalid `sel` | `layout`, `renderCanvas`, `renderPanel`, `renderTable`, `renderVline`, `renderVPanel`, `renderFlow`, `renderRules` / ~14 callers (all model mutations, undo, load, setLang, init) | **DOM**, **state** (`sel`) |
 | `refreshView` | 1464 | `() → void` | Light re-render while typing in the panel (canvas + table + debounced result) | `layout`, `renderCanvas`, `renderTable`, `refreshFlowResultSoon` / panel field `oninput` | **DOM** |
 
-## [7] Export & persistence (l.1469–1720)
+## [7] Export & persistence (l.1469–1726)
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| `q` | 1470 | `(s: string) → string` | TSV-quote a cell (tabs/newlines/quotes) | — / all TSV builders | pure |
-| `tsv` | 1471 | `() → string` | Hierarchy table as TSV | `buildGrid`, `layout`, `q` / `copyTable` | pure |
-| `copyText` | 1477 | `(txt: string, okMsg: string) → void` | Clipboard write with `execCommand` fallback (a `false` return counts as failure → blocked toast); inner `ok`, `fb` | `navigator.clipboard`, `msg` / `copyTable`, `copyFlowTable`, `#bCopyGrp`, `#bCopyFc` | **CB**, **DOM** (temp textarea) |
-| `copyTable` [PUBLIC] | 1492 | `() → void` | Copy hierarchy TSV with hidden-count note | `layout`, `tsv`, `copyText`, `tf` / `#bCopy` | **CB** |
-| `dl` | 1498 | `(blob: Blob, name: string) → void` | Trigger a browser download | — / `saveJSON`, `exportDrawio` | **DL** |
-| `ser` | 1503 | `(id: NodeId) → object` | Recursively serialize an org subtree | rec. / `serializeAll` | pure |
-| `saveJSON` [PUBLIC] | 1512 | `() → void` | Download `orgchart.json`; clears `dirty` | `serializeAll`, `dl`, `msg` / `#bSave` | **DL**, **state** |
-| `applyState` | 1517 | `(d: object) → void  (throws)` | Validate + load a whole document; migrates legacy shapes (`vh`→`br`, `ruleGrid`→`ruleGrids['']`, missing `cigs` key → `defaultCigs()`; an explicit empty `cigs: []` is respected), regenerates broken ids, prunes orphan refs. Inner: `scan`, `genId`, `mk`, `cleanGrid`, `cleanFamily`, `vmk` | `rnum`, `seedRules` (legacy), `defaultCigs` / `undo`, `loadJSON` | **state** (replaces all) |
-| `loadJSON` [PUBLIC] | 1670 | `(file: File) → void` | Read file → parse → `applyState` → reset undo → render; error toasts keep current data; warns (instead of "opened") when the file's `v` is newer than `SCHEMA_V` | `applyState`, `renderAll`, `msg`, `tf` / `#fileIn` change | file **I/O** (read), **state**, **DOM** |
-| `xesc` | 1683 | `(s: any) → string` | XML-escape | — / `exportDrawio` | pure |
-| `exportDrawio` [PUBLIC] | 1687 | `() → void` | Build draw.io mxGraph XML of current view (positions, colors, custom attrs) and download | `layout`, `xesc`, `dl`, `msg` / `#bDrawio` | **DL** |
+| `q` | 1472 | `(s: any) → string` | TSV cell for Excel: quotes tabs/newlines/quotes; prefixes `'` when the cell starts with `=`, `+`, `-`, `@` so spreadsheets treat it as text (formula-injection guard). Single choke point for every copy path | — / `tsv`, `flowTsv`, `#bCopyGrp`, `#bCopyFc` | pure |
+| `tsv` | 1477 | `() → string` | Hierarchy table as TSV | `buildGrid`, `layout`, `q` / `copyTable` | pure |
+| `copyText` | 1483 | `(txt: string, okMsg: string) → void` | Clipboard write with `execCommand` fallback (a `false` return counts as failure → blocked toast); inner `ok`, `fb` | `navigator.clipboard`, `msg` / `copyTable`, `copyFlowTable`, `#bCopyGrp`, `#bCopyFc` | **CB**, **DOM** (temp textarea) |
+| `copyTable` [PUBLIC] | 1498 | `() → void` | Copy hierarchy TSV with hidden-count note | `layout`, `tsv`, `copyText`, `tf` / `#bCopy` | **CB** |
+| `dl` | 1504 | `(blob: Blob, name: string) → void` | Trigger a browser download | — / `saveJSON`, `exportDrawio` | **DL** |
+| `ser` | 1509 | `(id: NodeId) → object` | Recursively serialize an org subtree | rec. / `serializeAll` | pure |
+| `saveJSON` [PUBLIC] | 1518 | `() → void` | Download `orgchart.json`; clears `dirty` | `serializeAll`, `dl`, `msg` / `#bSave` | **DL**, **state** |
+| `applyState` | 1523 | `(d: object) → void  (throws)` | Validate + load a whole document; migrates legacy shapes (`vh`→`br`, `ruleGrid`→`ruleGrids['']`, missing `cigs` key → `defaultCigs()`; an explicit empty `cigs: []` is respected), regenerates broken ids, prunes orphan refs. Inner: `scan`, `genId`, `mk`, `cleanGrid`, `cleanFamily`, `vmk` | `rnum`, `seedRules` (legacy), `defaultCigs` / `undo`, `loadJSON` | **state** (replaces all) |
+| `loadJSON` [PUBLIC] | 1676 | `(file: File) → void` | Read file → parse → `applyState` → reset undo → render; error toasts keep current data; warns (instead of "opened") when the file's `v` is newer than `SCHEMA_V` | `applyState`, `renderAll`, `msg`, `tf` / `#fileIn` change | file **I/O** (read), **state**, **DOM** |
+| `xesc` | 1689 | `(s: any) → string` | XML-escape | — / `exportDrawio` | pure |
+| `exportDrawio` [PUBLIC] | 1693 | `() → void` | Build draw.io mxGraph XML of current view (positions, colors, custom attrs) and download | `layout`, `xesc`, `dl`, `msg` / `#bDrawio` | **DL** |
 
-## [7v] Vertical-line tab (l.1722–1937)
-
-| Function | Line | Signature | Purpose | Calls / Called by | Side effects |
-|---|---|---|---|---|---|
-| `vlayout` | 1724 | `() → Map<VNodeId,{x,y}>` | Depth-based tidy tree layout (leaves packed L→R, parents centered); inner `walk` | rec. / `renderVline` | pure |
-| `renderVline` | 1741 | `() → void` | Full rebuild of vline canvas: connectors, node divs (cyan = manual global, paper = imported w/ ★ tag), refresh import picker | `vlayout`, `vdisp`, `fillVImportPick`; wires click → `vselect` / `renderAll`, `showTab`, v* mutations | **DOM** |
-| `vselect` [PUBLIC] | 1786 | `(id: VNodeId\|null) → void` | Surgical selection on vline canvas (patch classes only) + panel | `renderVPanel` / node click, bg click, v* mutations | **state** (`vsel`), **DOM** |
-| `renderVPanel` | 1793 | `() → void` | Vline right panel: empty hint or 3 fields (disabled when imported) + actions; wires handlers | `vdisp`; handlers → `snap`, `patchVNodeText`, `vAdd`, `vAddSib`, `vMove`, `vDel` / `vselect`, `renderAll`, `showTab` | **DOM** |
-| `patchVNodeText` | 1829 | `(n: VNode) → void` | Patch one vline box's text in place while typing (keeps input focus) | `vdisp` / `renderVPanel` field handlers | **DOM** |
-| `vnn` | 1839 | `(dept,title,person, orgId, parent) → VNodeId` | Create vnode in `vnodes` | — / `vAddRoot`, `vAdd`, `vAddSib`, `vImport` | **state** |
-| `vAddRoot` [PUBLIC] | 1845 | `() → void` | New manual global-person root | `snap`, `vnn`, `renderVline`, `vselect` / `#bVRoot` | **state**, **undo**, **DOM** |
-| `vAdd` [PUBLIC] | 1852 | `(pid) → void` | New manual child | same / vpanel `#vbChild` | **state**, **undo**, **DOM** |
-| `vAddSib` [PUBLIC] | 1859 | `(id) → void` | New manual sibling after `id` | same / vpanel `#vbSib` | **state**, **undo**, **DOM** |
-| `vMove` [PUBLIC] | 1868 | `(id, dir: ±1) → void` | Reorder among siblings | `snap`, `renderVline`, `vselect` / vpanel `◀▶` | **state**, **undo**, **DOM** |
-| `vSubCount` | 1877 | `(id) → number` | Subtree size | rec. / `vDel` confirm | pure |
-| `vDel` [PUBLIC] | 1881 | `(id) → void` | Delete vnode subtree (confirm if children); inner `rm` | `vdisp`, `snap`, `refreshFlowResultSoon` / vpanel `#vbDel` | **state**, **undo**, **DOM** |
-| `fillVImportPick` | 1898 | `() → void` | Import dropdown = ★ boxes not yet on the tree | `starredNodes`, `dispName` / `renderVline` | **DOM** |
-| `vImport` [PUBLIC] | 1914 | `() → void` | Import selected ★ box as child of `vsel` (guards: valid pick + parent selected) | `msg`, `snap`, `vnn`, `renderVline`, `vselect`, `refreshFlowResultSoon` / `#bVImport` | **state**, **undo**, **DOM** |
-| `pruneVlineOrphans` | 1924 | `() → void` | Remove imported vnodes whose org box was deleted; reattach their children to the grandparent | — / `delNode` | **state** |
-
-## [8a] Flow engine (l.1939–2014)
+## [7v] Vertical-line tab (l.1728–1943)
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| `refreshFlowResultSoon` | 1943 | `() → void` (debounced 150ms) | Debounced `renderFlowResult` for typing paths | `renderFlowResult` / `refreshView`, row inputs, vline edits | **DOM** (delayed) |
-| `starredNodes` | 1945 | `() → Node[]` | All ★ boxes | — / group row, grp paste, `fillVImportPick` | pure |
-| `roleById` | 1950 | `(rid: string) → RoleBox\|pseudo\|null` | Resolve role-box id; `'vline'` returns the fixed pseudo box | — / `dropRole`, `resolveCell`, `chipEl` | pure |
-| `roleBoxText` | 1955 | `(rb) → string` | Full multi-line text of a role box (vline / node-linked / free) | `roleText`, `t` / `resolveCell`, `chipEl` title, `patchRoleChips` | pure |
-| `rolePair` | 1965 | `(rb) → {t, p}` | Title+person pair for chips/palette | `t` / `chipEl`, `patchRoleChips`, `renderRolePalette`, `roleBoxName` | pure |
-| `roleBoxName` | 1975 | `(rb) → string` | Short name (title part) | `rolePair` / palette, `deleteRole` confirm | pure |
-| `segmentOf` | 1977 | `(cb: Node\|null) → ScopeKey` | BMO's branch: nearest flagged ancestor's `br`, else `REST` | — / `flowBlocks` | pure |
-| `pdDelegated` | 1987 | `(rb, cb) → boolean` | "BMO below approves directly": node-linked box with `pdBelow` and cb in its subtree | `isAncestor` / `resolveCell` | pure |
-| `resolveCell` | 1992 | `(flow, col, seg, cb, grid) → string` | **Core resolution** of one result cell: fixed-BMO cell, `—`, VLINE lookup (`vlineSuperiorOf`), pd-delegation, or role-box text | `roleText`, `vlineSuperiorOf`, `vdisp`, `roleById`, `pdDelegated`, `roleBoxText`, `t` / `renderFlowResult`, `flowTsv` | pure |
-| `renderFlow` | 2014 | `() → void` | Rebuild whole Approval-Flow tab | `renderGroups`, `renderFcs`, `updateGroupCounts`, `renderFlowResult` / `renderAll`, `showTab` | **DOM** |
+| `vlayout` | 1730 | `() → Map<VNodeId,{x,y}>` | Depth-based tidy tree layout (leaves packed L→R, parents centered); inner `walk` | rec. / `renderVline` | pure |
+| `renderVline` | 1747 | `() → void` | Full rebuild of vline canvas: connectors, node divs (cyan = manual global, paper = imported w/ ★ tag), refresh import picker | `vlayout`, `vdisp`, `fillVImportPick`; wires click → `vselect` / `renderAll`, `showTab`, v* mutations | **DOM** |
+| `vselect` [PUBLIC] | 1792 | `(id: VNodeId\|null) → void` | Surgical selection on vline canvas (patch classes only) + panel | `renderVPanel` / node click, bg click, v* mutations | **state** (`vsel`), **DOM** |
+| `renderVPanel` | 1799 | `() → void` | Vline right panel: empty hint or 3 fields (disabled when imported) + actions; wires handlers | `vdisp`; handlers → `snap`, `patchVNodeText`, `vAdd`, `vAddSib`, `vMove`, `vDel` / `vselect`, `renderAll`, `showTab` | **DOM** |
+| `patchVNodeText` | 1835 | `(n: VNode) → void` | Patch one vline box's text in place while typing (keeps input focus) | `vdisp` / `renderVPanel` field handlers | **DOM** |
+| `vnn` | 1845 | `(dept,title,person, orgId, parent) → VNodeId` | Create vnode in `vnodes` | — / `vAddRoot`, `vAdd`, `vAddSib`, `vImport` | **state** |
+| `vAddRoot` [PUBLIC] | 1851 | `() → void` | New manual global-person root | `snap`, `vnn`, `renderVline`, `vselect` / `#bVRoot` | **state**, **undo**, **DOM** |
+| `vAdd` [PUBLIC] | 1858 | `(pid) → void` | New manual child | same / vpanel `#vbChild` | **state**, **undo**, **DOM** |
+| `vAddSib` [PUBLIC] | 1865 | `(id) → void` | New manual sibling after `id` | same / vpanel `#vbSib` | **state**, **undo**, **DOM** |
+| `vMove` [PUBLIC] | 1874 | `(id, dir: ±1) → void` | Reorder among siblings | `snap`, `renderVline`, `vselect` / vpanel `◀▶` | **state**, **undo**, **DOM** |
+| `vSubCount` | 1883 | `(id) → number` | Subtree size | rec. / `vDel` confirm | pure |
+| `vDel` [PUBLIC] | 1887 | `(id) → void` | Delete vnode subtree (confirm if children); inner `rm` | `vdisp`, `snap`, `refreshFlowResultSoon` / vpanel `#vbDel` | **state**, **undo**, **DOM** |
+| `fillVImportPick` | 1904 | `() → void` | Import dropdown = ★ boxes not yet on the tree | `starredNodes`, `dispName` / `renderVline` | **DOM** |
+| `vImport` [PUBLIC] | 1920 | `() → void` | Import selected ★ box as child of `vsel` (guards: valid pick + parent selected) | `msg`, `snap`, `vnn`, `renderVline`, `vselect`, `refreshFlowResultSoon` / `#bVImport` | **state**, **undo**, **DOM** |
+| `pruneVlineOrphans` | 1930 | `() → void` | Remove imported vnodes whose org box was deleted; reattach their children to the grandparent | — / `delNode` | **state** |
 
-## [8b] FC Groups (l.2016–2139)
-
-| Function | Line | Signature | Purpose | Calls / Called by | Side effects |
-|---|---|---|---|---|---|
-| `groupLabel` | 2017 | `(g) → string` | `"CODE · Name"` label | `t` / options, result heads | pure |
-| `groupOption` | 2018 | `(g) → <option>` | Build an option element for a group | `groupLabel` / `fcRow`, `addGroup` | pure (creates el) |
-| `patchGroupOptionLabels` | 2025 | `(g) → void` | Patch this group's label in every FC dropdown in place | `groupLabel` / group row inputs | **DOM** |
-| `groupRow` | 2031 | `(g) → <tr>` | One group row: code/name inputs, BMO select (★ boxes), FC count, per-CIG toggle, delete; wires all handlers | `starredNodes`, `dispName`; handlers → `snap`, `patchGroupOptionLabels`, `refreshFlowResultSoon`, `renderFlowResult`, `delGroup` / `renderGroups`, `addGroup` | pure (creates el; handlers mutate) |
-| `renderGroups` | 2087 | `() → void` | Rebuild groups table (or empty hint) | `groupRow`, `applyGrpFilter` / `renderFlow`, pastes, `delGroup` (empty) | **DOM** |
-| `addGroup` [PUBLIC] | 2096 | `() → void` | Append one group + inject option into every FC dropdown immediately | `snap`, `groupRow`, `groupOption`, `updateGroupCounts`, `renderFlowResult` / `#bAddGrp` | **state**, **undo**, **DOM** |
-| `delGroup` | 2108 | `(g, rowEl) → void` | Delete group; detach FCs; remove options in place | `snap`, `renderGroups`, `updateGroupCounts`, `renderFlowResult` / row ✕ | **state**, **undo**, **DOM** |
-| `applyGrpFilter` [PUBLIC] | 2121 | `() → void` | Show/hide group rows by filter text | — / `#grpFilter` input, `renderGroups` | **DOM** |
-| `updateGroupCounts` | 2130 | `() → void` | Refresh per-group FC counts + card counters | — / many mutation paths | **DOM** |
-
-## [8c] Fund Centers (l.2141–2267)
+## [8a] Flow engine (l.1945–2020)
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| `fcRow` | 2142 | `(f) → <tr>` | One FC row (code/name inputs, group select, delete) with handlers | `groupOption`; handlers → `snap`, `refreshFlowResultSoon`, `updateGroupCounts`, `renderFlowResult` / `renderFcs`, `addFc` | pure (creates el) |
-| `renderFcs` | 2168 | `() → void` | Rebuild FC table | `fcRow`, `applyFcFilter` / `renderFlow`, pastes | **DOM** |
-| `addFc` [PUBLIC] | 2173 | `() → void` | Append one FC row | `snap`, `fcRow`, `updateGroupCounts`, `applyFcFilter`, `renderFlowResult` / `#bAddFc` | **state**, **undo**, **DOM** |
-| `applyFcFilter` [PUBLIC] | 2182 | `() → void` | Show/hide FC rows by filter (matches code/name/group name) | — / `#fcFilter` input, `renderFcs` | **DOM** |
-| `isHeaderRow` | 2196 | `(line: string) → boolean` | Is a pasted TSV line a header row? True when the first cell equals one of the header labels the Copy buttons emit (both locales) or is a bare `Mã`/`Ma`/`Code`/`FC`/`FCG`; never for real codes like `FCG01` (no `\b` after non-ASCII letters) | `STR` / `importGrpPaste`, `importPaste` | pure |
-| `importGrpPaste` [PUBLIC] | 2206 | `(txt: string) → void` | Paste FCG TSV (code⇥name⇥BMO person). Header row skipped via `isHeaderRow`; matches BMO by ★ person name; same code ⇒ update in place | `isHeaderRow`, `msg`, `snap`, `starredNodes`, `renderGroups`, `renderFcs`, `updateGroupCounts`, `renderFlowResult`, `tf` / `#bPasteGrpGo` | **state**, **undo**, **DOM** |
-| `importPaste` [PUBLIC] | 2241 | `(txt: string) → void` | Paste FC TSV (code⇥name⇥group name); header row skipped via `isHeaderRow`; creates unknown groups, matches by name case-insensitively | `isHeaderRow`, same pattern as above / `#bPasteGo` | **state**, **undo**, **DOM** |
+| `refreshFlowResultSoon` | 1949 | `() → void` (debounced 150ms) | Debounced `renderFlowResult` for typing paths | `renderFlowResult` / `refreshView`, row inputs, vline edits | **DOM** (delayed) |
+| `starredNodes` | 1951 | `() → Node[]` | All ★ boxes | — / group row, grp paste, `fillVImportPick` | pure |
+| `roleById` | 1956 | `(rid: string) → RoleBox\|pseudo\|null` | Resolve role-box id; `'vline'` returns the fixed pseudo box | — / `dropRole`, `resolveCell`, `chipEl` | pure |
+| `roleBoxText` | 1961 | `(rb) → string` | Full multi-line text of a role box (vline / node-linked / free) | `roleText`, `t` / `resolveCell`, `chipEl` title, `patchRoleChips` | pure |
+| `rolePair` | 1971 | `(rb) → {t, p}` | Title+person pair for chips/palette | `t` / `chipEl`, `patchRoleChips`, `renderRolePalette`, `roleBoxName` | pure |
+| `roleBoxName` | 1981 | `(rb) → string` | Short name (title part) | `rolePair` / palette, `deleteRole` confirm | pure |
+| `segmentOf` | 1983 | `(cb: Node\|null) → ScopeKey` | BMO's branch: nearest flagged ancestor's `br`, else `REST` | — / `flowBlocks` | pure |
+| `pdDelegated` | 1993 | `(rb, cb) → boolean` | "BMO below approves directly": node-linked box with `pdBelow` and cb in its subtree | `isAncestor` / `resolveCell` | pure |
+| `resolveCell` | 1998 | `(flow, col, seg, cb, grid) → string` | **Core resolution** of one result cell: fixed-BMO cell, `—`, VLINE lookup (`vlineSuperiorOf`), pd-delegation, or role-box text | `roleText`, `vlineSuperiorOf`, `vdisp`, `roleById`, `pdDelegated`, `roleBoxText`, `t` / `renderFlowResult`, `flowTsv` | pure |
+| `renderFlow` | 2020 | `() → void` | Rebuild whole Approval-Flow tab | `renderGroups`, `renderFcs`, `updateGroupCounts`, `renderFlowResult` / `renderAll`, `showTab` | **DOM** |
 
-## [8d] Result table (l.2269–2405)
-
-| Function | Line | Signature | Purpose | Calls / Called by | Side effects |
-|---|---|---|---|---|---|
-| `cbqlnsOf` | 2271 | `(g) → Node\|null` | The group's BMO node (must exist in `nodes`) | — / `flowBlocks`, copy-group | pure |
-| `flowBlocks` | 2276 | `() → Block[]` | Result blocks: per group (default) or per FC; per-CIG splitting duplicates a block per CIG with that CIG's grid. Inner `segLine`, `pushSplit` | `cbqlnsOf`, `segmentOf`, `segLabel`, `groupLabel`, `gridFor`, `dispName`, `t` / `renderFlowResult`, `flowTsv` | pure |
-| `renderFlowResult` | 2312 | `() → void` | Rebuild result table: %-width colgroup, sticky header, one 5-flow block per entry (rows carry `data-blk`/`data-hay` for filtering), unassigned-FC notice; re-applies filter | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `applyResFilter` / **~18 callers** | **DOM** |
-| `applyResFilter` [PUBLIC] | 2382 | `() → void` | Hide/show whole result blocks by search text | — / `#resFilter` input, `renderFlowResult` | **DOM** |
-| `flowTsv` | 2389 | `() → string` | Result table as TSV (same labels as UI) | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `q` / `copyFlowTable` | pure |
-| `copyFlowTable` [PUBLIC] | 2402 | `() → void` | Copy result TSV | `flowTsv`, `copyText`, `tf` / `#bCopyFlow` | **CB** |
-
-## [8e] Flow-Rules tab (l.2407–2784)
+## [8b] FC Groups (l.2022–2151)
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| `usageCount` | 2408 | `(rid) → number` | Count assignments of a role box across **both** grid families and all scenarios | — / palette tags, `deleteRole` | pure |
-| `dropRole` [PUBLIC] | 2424 | `(flow, col, rid) → void` | Drop a box into a cell. Vline mode: replace cell (`{ALL:rid}`). Flow mode: fill first free scope, else replace with All | `roleById`, `snap`, `curGrid`, `renderRules`, `renderFlowResult`, `msg` / cell `ondrop` | **state**, **undo**, **DOM** |
-| `cycleScope` [PUBLIC] | 2441 | `(flow, col, scope) → void` | Cycle a chip's scope All→VH→SM→BO→IT→AC→REST, skipping occupied scopes | `snap`, `curGrid`, `renderRules`, `renderFlowResult` / chip scope tag click | **state**, **undo**, **DOM** |
-| `removeAssign` [PUBLIC] | 2456 | `(flow, col, scope) → void` | Remove one assignment; drop empty cell object | `snap`, `curGrid`, renders / chip ✕ | **state**, **undo**, **DOM** |
-| `addFreeRole` [PUBLIC] | 2463 | `() → void` | New empty custom role box, focus its input | `snap`, `renderRules` / `#bAddFreeRole` | **state**, **undo**, **DOM** |
-| `addNodeRole` [PUBLIC] | 2470 | `() → void` | Add chart-linked role box from picker (dupe-guarded) | `msg`, `snap`, `renderRules` / `#bAddNodeRole` | **state**, **undo**, **DOM** |
-| `deleteRole` [PUBLIC] | 2480 | `(rb) → void` | Delete role box (+confirm if used) and scrub it from every grid in both families | `usageCount`, `roleBoxName`, `snap`, `scrubRole`, renders / palette ✕ | **state**, **undo**, **DOM** |
-| `scrubRole` | 2489 | `(rid: string) → number` | Remove every assignment of a role box across both grid families and all scenarios, dropping emptied cells; returns how many were removed | — / `deleteRole`, `pruneNodeRoles` | **state** |
-| `pruneNodeRoles` | 2508 | `() → {boxes:number, cells:number}` | Drop node-linked role boxes whose chart box no longer exists, plus their cells — keeps in-session state identical to what `applyState` would load back | `scrubRole` / `delNode` | **state** |
-| `patchRoleChips` | 2518 | `(rb) → void` | Patch all matrix chips for a box while typing (keeps input focus) | `rolePair`, `roleBoxText` / palette input handlers | **DOM** |
-| `chipEl` | 2530 | `(flow, col, scope, rid) → <div>` | Build one matrix chip (scope tag hidden in vline mode; VLINE chip tinted) | `roleById`, `rolePair`, `segLabel`, `roleBoxText`; wires `cycleScope`, `removeAssign` / `renderRules` | pure (creates el) |
-| `cigById` | 2553 | `(id) → Cig\|null` | Lookup CIG | — / toggle, `setCurCig` | pure |
-| `setCurCig` [PUBLIC] | 2554 | `(id: string) → void` | Switch editing scenario; clone Common into a CIG on first open (per current mode's family) | `cigById`, `gridFamily`, `snap`, `renderRules` / toggle buttons | **state**, **undo**, **DOM** |
-| `setRuleMode` [PUBLIC] | 2565 | `(m: 'flow'\|'vline') → void` | Switch resolve-by mode | `snap`, `renderRules`, `renderFlowResult` / `#modeFlow`, `#modeVline` | **state**, **undo**, **DOM** |
-| `renderModeToggle` | 2571 | `() → void` | Patch mode buttons' active state + note | `t` / `renderRules` | **DOM** |
-| `renderCigToggle` | 2581 | `(rebuild?: boolean) → void` | Scenario buttons; rebuilds only when CIG list changed, otherwise patches labels/active in place (prevents pressed-button "bounce"); "own rules" note reads the current mode's family | `cigById`, `gridFamily`, `setCurCig` (wire), `tf` / `renderRules`, `renderCigs` input, `addCig` | **DOM** |
-| `renderCigs` | 2608 | `() → void` | CIG table (code/name inputs + delete) with handlers; delete drops the CIG's grid from **both** families | handlers → `snap`, `renderCigToggle`, `refreshFlowResultSoon`, delete → renders / `renderRules` | **DOM** |
-| `addCig` [PUBLIC] | 2636 | `() → void` | Append CIG, focus its code input | `snap`, `renderCigs`, `renderCigToggle(true)` / `#bAddCig` | **state**, **undo**, **DOM** |
-| `renderRules` | 2644 | `() → void` | Rebuild rules matrix for current mode+scenario: mode/CIG toggles, 5 flow rows × 6 cols (locked BMO cells, chips, drop targets), palette, picker | `renderModeToggle`, `renderCigToggle`, `renderCigs`, `flowLabel`, `chipEl`, `curGrid`, `dropRole` (wire), `renderRolePalette`, `fillRolePick` / **~14 callers** | **DOM** |
-| `renderRolePalette` | 2685 | `() → void` | Palette: fixed VLINE card (vline mode only, undeletable, draggable), then user boxes (drag, usage tag, delete, editable fields, pd-below checkbox when ★ below) | `usageCount`, `roleBoxName`, `rolePair`, `hasStarBelow`, `tf`; wires drag + `deleteRole` + `patchRoleChips` | **DOM** |
-| `fillRolePick` | 2770 | `() → void` | "From chart" picker: all org boxes sorted by name | `dispName` / `renderRules` | **DOM** |
+| `groupLabel` | 2023 | `(g) → string` | `"CODE · Name"` label | `t` / options, result heads | pure |
+| `groupOption` | 2024 | `(g) → <option>` | Build an option element for a group | `groupLabel` / `fcRow`, `addGroup` | pure (creates el) |
+| `fillGroupSelect` | 2032 | `(sel: HTMLSelectElement, groupId: string\|null, full: boolean) → void` | Populate one FC row's group dropdown: compact (no-group + the chosen group only) by default, full list while focused — keeps the DOM at F + G options instead of F × G | `groupOption`, `t` / `fcRow` (+ its focus/mousedown/blur handlers), `delGroup` | **DOM** |
+| `patchGroupOptionLabels` | 2040 | `(g) → void` | Patch this group's label in every FC dropdown that currently holds it | `groupLabel` / group row inputs | **DOM** |
+| `groupRow` | 2046 | `(g) → <tr>` | One group row: code/name inputs, BMO select (★ boxes), FC count, per-CIG toggle, delete; wires all handlers | `starredNodes`, `dispName`; handlers → `snap`, `patchGroupOptionLabels`, `refreshFlowResultSoon`, `renderFlowResult`, `delGroup` / `renderGroups`, `addGroup` | pure (creates el; handlers mutate) |
+| `renderGroups` | 2102 | `() → void` | Rebuild groups table (or empty hint) | `groupRow`, `applyGrpFilter` / `renderFlow`, pastes, `delGroup` (empty) | **DOM** |
+| `addGroup` [PUBLIC] | 2111 | `() → void` | Append one group row (FC dropdowns pick it up lazily on focus — no per-row injection) | `snap`, `groupRow`, `updateGroupCounts`, `renderFlowResult` / `#bAddGrp` | **state**, **undo**, **DOM** |
+| `delGroup` | 2120 | `(g, rowEl) → void` | Delete group; detach its FCs and reset their dropdowns to "no group" | `snap`, `fillGroupSelect`, `renderGroups`, `updateGroupCounts`, `renderFlowResult` / row ✕ | **state**, **undo**, **DOM** |
+| `applyGrpFilter` [PUBLIC] | 2132 | `() → void` | Show/hide group rows by filter text (id → group `Map` built once) | — / `#grpFilter` input, `renderGroups` | **DOM** |
+| `updateGroupCounts` | 2142 | `() → void` | Refresh per-group FC counts + card counters | — / many mutation paths | **DOM** |
 
-## [8f] Zoom + minimap (l.2786–2898)
+## [8c] Fund Centers (l.2153–2279)
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| `applyZoomView` | 2788 | `() → void` | Apply current zoom: sizer = world×zoom, canvas `scale()`, % label | — / `renderCanvas`, `fitZoom`, `zoomStep` | **DOM** |
-| `clampZoom` | 2794 | `(z) → number` | Clamp to [0.2, 2] | — / zoom fns | pure |
-| `fitZoom` [PUBLIC] | 2795 | `() → void` | Fit whole chart in viewport (instant; cancels pending animation) | `clampZoom`, `applyZoomView`, `syncMiniView` / `#bZoomFit` | **state**, **DOM** |
-| `animateZoomTo` [PUBLIC] | 2808 | `(nz, ax?, ay?) → void` | Set animation target (anchor-preserving); starts rAF loop if idle | `clampZoom` / wheel handler, `#bZoomIn/Out/Reset` | **state** (`zoomAnim`) |
-| `zoomStep` | 2818 | `() → void` | One animation frame: ease 30% toward target, keep anchor, loop until <0.0015 | `applyZoomView`, `syncMiniView`, rAF / `animateZoomTo` | **state**, **DOM** |
-| `renderMinimap` | 2835 | `(L: Layout) → void` | Minimap snapshot: box sizes itself to chart aspect within 200×150 budget; one rect per visible node | `syncMiniView` / `renderCanvas` | **DOM**, **state** (`miniScale`) |
-| `syncMiniView` | 2862 | `() → void` | Position viewport rectangle; auto-hide minimap when whole chart fits | — / scroll listener, zoom fns, `scrollNodeIntoView`, minimap drag | **DOM** |
-| *(IIFE)* minimap drag | 2875 | — | Pointer-capture click/drag on minimap → center viewport at world point; inner `jump`, `up` | `syncMiniView` / user input | **DOM** (scroll) |
+| `fcRow` | 2154 | `(f) → <tr>` | One FC row (code/name inputs, compact group select that expands on focus/mousedown and compacts on blur, delete) with handlers | `fillGroupSelect`; handlers → `snap`, `refreshFlowResultSoon`, `updateGroupCounts`, `renderFlowResult` / `renderFcs`, `addFc` | pure (creates el) |
+| `renderFcs` | 2179 | `() → void` | Rebuild FC table | `fcRow`, `applyFcFilter` / `renderFlow`, pastes | **DOM** |
+| `addFc` [PUBLIC] | 2184 | `() → void` | Append one FC row | `snap`, `fcRow`, `updateGroupCounts`, `applyFcFilter`, `renderFlowResult` / `#bAddFc` | **state**, **undo**, **DOM** |
+| `applyFcFilter` [PUBLIC] | 2193 | `() → void` | Show/hide FC rows by filter (matches code/name/group name); id → FC `Map` built once, so filtering is linear | — / `#fcFilter` input, `renderFcs` | **DOM** |
+| `isHeaderRow` | 2208 | `(line: string) → boolean` | Is a pasted TSV line a header row? True when the first cell equals one of the header labels the Copy buttons emit (both locales) or is a bare `Mã`/`Ma`/`Code`/`FC`/`FCG`; never for real codes like `FCG01` (no `\b` after non-ASCII letters) | `STR` / `importGrpPaste`, `importPaste` | pure |
+| `importGrpPaste` [PUBLIC] | 2218 | `(txt: string) → void` | Paste FCG TSV (code⇥name⇥BMO person). Header row skipped via `isHeaderRow`; matches BMO by ★ person name; same code ⇒ update in place | `isHeaderRow`, `msg`, `snap`, `starredNodes`, `renderGroups`, `renderFcs`, `updateGroupCounts`, `renderFlowResult`, `tf` / `#bPasteGrpGo` | **state**, **undo**, **DOM** |
+| `importPaste` [PUBLIC] | 2253 | `(txt: string) → void` | Paste FC TSV (code⇥name⇥group name); header row skipped via `isHeaderRow`; creates unknown groups, matches by name case-insensitively | `isHeaderRow`, same pattern as above / `#bPasteGo` | **state**, **undo**, **DOM** |
 
-## [9] Wiring & shell (l.2900–3132)
+## [8d] Result table (l.2281–2423)
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| *(IIFE)* org-canvas pan | 2901 | — | Pointer-capture background drag-to-pan (5px threshold), click-to-deselect, wheel→`animateZoomTo`, scroll→`syncMiniView`; inner `up` | `select(null)`, `animateZoomTo`, `syncMiniView` | **DOM** |
-| *(listener)* keydown | 2945 | — | Ctrl/⌘+Z → `undo()` (skipped inside `<textarea>` so the paste boxes keep native undo) | `undo` | — |
-| `showTab` [PUBLIC] | 2952 | `(which: 'org'\|'vline'\|'rules'\|'flow') → void` | Switch visible tab + active button; re-render target tab | `renderVline`, `renderVPanel`, `renderRules`, `renderFlow` / 4 tab buttons | **DOM** |
-| *(IIFE)* vline pan | 2976 | — | Same pan pattern for vline canvas; click bg → `vselect(null)`; inner `up` | `vselect` | **DOM** |
-| `wireCollapse` | 3008 | `(btnId, bodyId, secId?, startOpen?) → void` | Generic section collapse toggle (▴/▸ + `.collapsed` class); inner `apply`. Used for result card, CIG card (starts collapsed), palette card | — / init (3 calls) | **DOM** |
-| `refreshStateLabels` | 3028 | `() → void` | Re-derive all state-dependent button labels (i18n-safe) | `t` / toggles, `applyStatic`, `applyTblCollapsed` | **DOM** |
-| `applyTblCollapsed` | 3120 | `() → void` | Apply hierarchy-table collapsed state (defaults collapsed) | `refreshStateLabels` / `#bTgl`, init | **DOM** |
-| *(~34 anonymous handlers)* | 2966–3125 | — | Direct wiring: tab buttons, `bVRoot/bVImport`, mode buttons, `resFilter`, chart/panel toggles, `bLang`, zoom buttons, `bRoot/bSave/bOpen/fileIn/bCopy/bDrawio/bUndo/bUnfocus`, palette/CIG/group/FC adds, filters, inputs toggle, both paste-box toggles + go/cancel, **`bCopyGrp`/`bCopyFc` (inline TSV builders)**, `bFlowView`, `bCopyFlow`, `bTgl`, `onbeforeunload` (dirty guard) | respective functions | **DOM**/**state**/**CB** |
-| *(init)* | 3129–3132 | — | `seedRules(); applyStatic(); applyTblCollapsed(); renderAll();` | — | boots app |
+| `cbqlnsOf` | 2283 | `(g) → Node\|null` | The group's BMO node (must exist in `nodes`) | — / `flowBlocks`, copy-group | pure |
+| `flowBlocks` | 2288 | `() → Block[]` | Result blocks: per group (default) or per FC; per-CIG splitting duplicates a block per CIG with that CIG's grid. Builds one index per view (FC codes by group / group by id) instead of rescanning arrays per row. Inner `segLine`, `pushSplit` | `cbqlnsOf`, `segmentOf`, `segLabel`, `groupLabel`, `gridFor`, `dispName`, `t` / `renderFlowResult`, `flowTsv` | pure |
+| `renderFlowResult` | 2330 | `() → void` | Rebuild result table: %-width colgroup, sticky header, one 5-flow block per entry (rows carry `data-blk`/`data-hay` for filtering), unassigned-FC notice; re-applies filter | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `applyResFilter` / **~18 callers** | **DOM** |
+| `applyResFilter` [PUBLIC] | 2400 | `() → void` | Hide/show whole result blocks by search text | — / `#resFilter` input, `renderFlowResult` | **DOM** |
+| `flowTsv` | 2407 | `() → string` | Result table as TSV (same labels as UI) | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `q` / `copyFlowTable` | pure |
+| `copyFlowTable` [PUBLIC] | 2420 | `() → void` | Copy result TSV | `flowTsv`, `copyText`, `tf` / `#bCopyFlow` | **CB** |
+
+## [8e] Flow-Rules tab (l.2425–2802)
+
+| Function | Line | Signature | Purpose | Calls / Called by | Side effects |
+|---|---|---|---|---|---|
+| `usageCount` | 2426 | `(rid) → number` | Count assignments of a role box across **both** grid families and all scenarios | — / palette tags, `deleteRole` | pure |
+| `dropRole` [PUBLIC] | 2442 | `(flow, col, rid) → void` | Drop a box into a cell. Vline mode: replace cell (`{ALL:rid}`). Flow mode: fill first free scope, else replace with All | `roleById`, `snap`, `curGrid`, `renderRules`, `renderFlowResult`, `msg` / cell `ondrop` | **state**, **undo**, **DOM** |
+| `cycleScope` [PUBLIC] | 2459 | `(flow, col, scope) → void` | Cycle a chip's scope All→VH→SM→BO→IT→AC→REST, skipping occupied scopes | `snap`, `curGrid`, `renderRules`, `renderFlowResult` / chip scope tag click | **state**, **undo**, **DOM** |
+| `removeAssign` [PUBLIC] | 2474 | `(flow, col, scope) → void` | Remove one assignment; drop empty cell object | `snap`, `curGrid`, renders / chip ✕ | **state**, **undo**, **DOM** |
+| `addFreeRole` [PUBLIC] | 2481 | `() → void` | New empty custom role box, focus its input | `snap`, `renderRules` / `#bAddFreeRole` | **state**, **undo**, **DOM** |
+| `addNodeRole` [PUBLIC] | 2488 | `() → void` | Add chart-linked role box from picker (dupe-guarded) | `msg`, `snap`, `renderRules` / `#bAddNodeRole` | **state**, **undo**, **DOM** |
+| `deleteRole` [PUBLIC] | 2498 | `(rb) → void` | Delete role box (+confirm if used) and scrub it from every grid in both families | `usageCount`, `roleBoxName`, `snap`, `scrubRole`, renders / palette ✕ | **state**, **undo**, **DOM** |
+| `scrubRole` | 2507 | `(rid: string) → number` | Remove every assignment of a role box across both grid families and all scenarios, dropping emptied cells; returns how many were removed | — / `deleteRole`, `pruneNodeRoles` | **state** |
+| `pruneNodeRoles` | 2526 | `() → {boxes:number, cells:number}` | Drop node-linked role boxes whose chart box no longer exists, plus their cells — keeps in-session state identical to what `applyState` would load back | `scrubRole` / `delNode` | **state** |
+| `patchRoleChips` | 2536 | `(rb) → void` | Patch all matrix chips for a box while typing (keeps input focus) | `rolePair`, `roleBoxText` / palette input handlers | **DOM** |
+| `chipEl` | 2548 | `(flow, col, scope, rid) → <div>` | Build one matrix chip (scope tag hidden in vline mode; VLINE chip tinted) | `roleById`, `rolePair`, `segLabel`, `roleBoxText`; wires `cycleScope`, `removeAssign` / `renderRules` | pure (creates el) |
+| `cigById` | 2571 | `(id) → Cig\|null` | Lookup CIG | — / toggle, `setCurCig` | pure |
+| `setCurCig` [PUBLIC] | 2572 | `(id: string) → void` | Switch editing scenario; clone Common into a CIG on first open (per current mode's family) | `cigById`, `gridFamily`, `snap`, `renderRules` / toggle buttons | **state**, **undo**, **DOM** |
+| `setRuleMode` [PUBLIC] | 2583 | `(m: 'flow'\|'vline') → void` | Switch resolve-by mode | `snap`, `renderRules`, `renderFlowResult` / `#modeFlow`, `#modeVline` | **state**, **undo**, **DOM** |
+| `renderModeToggle` | 2589 | `() → void` | Patch mode buttons' active state + note | `t` / `renderRules` | **DOM** |
+| `renderCigToggle` | 2599 | `(rebuild?: boolean) → void` | Scenario buttons; rebuilds only when CIG list changed, otherwise patches labels/active in place (prevents pressed-button "bounce"); "own rules" note reads the current mode's family | `cigById`, `gridFamily`, `setCurCig` (wire), `tf` / `renderRules`, `renderCigs` input, `addCig` | **DOM** |
+| `renderCigs` | 2626 | `() → void` | CIG table (code/name inputs + delete) with handlers; delete drops the CIG's grid from **both** families | handlers → `snap`, `renderCigToggle`, `refreshFlowResultSoon`, delete → renders / `renderRules` | **DOM** |
+| `addCig` [PUBLIC] | 2654 | `() → void` | Append CIG, focus its code input | `snap`, `renderCigs`, `renderCigToggle(true)` / `#bAddCig` | **state**, **undo**, **DOM** |
+| `renderRules` | 2662 | `() → void` | Rebuild rules matrix for current mode+scenario: mode/CIG toggles, 5 flow rows × 6 cols (locked BMO cells, chips, drop targets), palette, picker | `renderModeToggle`, `renderCigToggle`, `renderCigs`, `flowLabel`, `chipEl`, `curGrid`, `dropRole` (wire), `renderRolePalette`, `fillRolePick` / **~14 callers** | **DOM** |
+| `renderRolePalette` | 2703 | `() → void` | Palette: fixed VLINE card (vline mode only, undeletable, draggable), then user boxes (drag, usage tag, delete, editable fields, pd-below checkbox when ★ below) | `usageCount`, `roleBoxName`, `rolePair`, `hasStarBelow`, `tf`; wires drag + `deleteRole` + `patchRoleChips` | **DOM** |
+| `fillRolePick` | 2788 | `() → void` | "From chart" picker: all org boxes sorted by name | `dispName` / `renderRules` | **DOM** |
+
+## [8f] Zoom + minimap (l.2804–2916)
+
+| Function | Line | Signature | Purpose | Calls / Called by | Side effects |
+|---|---|---|---|---|---|
+| `applyZoomView` | 2806 | `() → void` | Apply current zoom: sizer = world×zoom, canvas `scale()`, % label | — / `renderCanvas`, `fitZoom`, `zoomStep` | **DOM** |
+| `clampZoom` | 2812 | `(z) → number` | Clamp to [0.2, 2] | — / zoom fns | pure |
+| `fitZoom` [PUBLIC] | 2813 | `() → void` | Fit whole chart in viewport (instant; cancels pending animation) | `clampZoom`, `applyZoomView`, `syncMiniView` / `#bZoomFit` | **state**, **DOM** |
+| `animateZoomTo` [PUBLIC] | 2826 | `(nz, ax?, ay?) → void` | Set animation target (anchor-preserving); starts rAF loop if idle | `clampZoom` / wheel handler, `#bZoomIn/Out/Reset` | **state** (`zoomAnim`) |
+| `zoomStep` | 2836 | `() → void` | One animation frame: ease 30% toward target, keep anchor, loop until <0.0015 | `applyZoomView`, `syncMiniView`, rAF / `animateZoomTo` | **state**, **DOM** |
+| `renderMinimap` | 2853 | `(L: Layout) → void` | Minimap snapshot: box sizes itself to chart aspect within 200×150 budget; one rect per visible node | `syncMiniView` / `renderCanvas` | **DOM**, **state** (`miniScale`) |
+| `syncMiniView` | 2880 | `() → void` | Position viewport rectangle; auto-hide minimap when whole chart fits | — / scroll listener, zoom fns, `scrollNodeIntoView`, minimap drag | **DOM** |
+| *(IIFE)* minimap drag | 2893 | — | Pointer-capture click/drag on minimap → center viewport at world point; inner `jump`, `up` | `syncMiniView` / user input | **DOM** (scroll) |
+
+## [9] Wiring & shell (l.2918–3150)
+
+| Function | Line | Signature | Purpose | Calls / Called by | Side effects |
+|---|---|---|---|---|---|
+| *(IIFE)* org-canvas pan | 2919 | — | Pointer-capture background drag-to-pan (5px threshold), click-to-deselect, wheel→`animateZoomTo`, scroll→`syncMiniView`; inner `up` | `select(null)`, `animateZoomTo`, `syncMiniView` | **DOM** |
+| *(listener)* keydown | 2963 | — | Ctrl/⌘+Z → `undo()` (skipped inside `<textarea>` so the paste boxes keep native undo) | `undo` | — |
+| `showTab` [PUBLIC] | 2970 | `(which: 'org'\|'vline'\|'rules'\|'flow') → void` | Switch visible tab + active button; re-render target tab | `renderVline`, `renderVPanel`, `renderRules`, `renderFlow` / 4 tab buttons | **DOM** |
+| *(IIFE)* vline pan | 2994 | — | Same pan pattern for vline canvas; click bg → `vselect(null)`; inner `up` | `vselect` | **DOM** |
+| `wireCollapse` | 3026 | `(btnId, bodyId, secId?, startOpen?) → void` | Generic section collapse toggle (▴/▸ + `.collapsed` class); inner `apply`. Used for result card, CIG card (starts collapsed), palette card | — / init (3 calls) | **DOM** |
+| `refreshStateLabels` | 3046 | `() → void` | Re-derive all state-dependent button labels (i18n-safe) | `t` / toggles, `applyStatic`, `applyTblCollapsed` | **DOM** |
+| `applyTblCollapsed` | 3138 | `() → void` | Apply hierarchy-table collapsed state (defaults collapsed) | `refreshStateLabels` / `#bTgl`, init | **DOM** |
+| *(~34 anonymous handlers)* | 2984–3143 | — | Direct wiring: tab buttons, `bVRoot/bVImport`, mode buttons, `resFilter`, chart/panel toggles, `bLang`, zoom buttons, `bRoot/bSave/bOpen/fileIn/bCopy/bDrawio/bUndo/bUnfocus`, palette/CIG/group/FC adds, filters, inputs toggle, both paste-box toggles + go/cancel, **`bCopyGrp`/`bCopyFc` (inline TSV builders)**, `bFlowView`, `bCopyFlow`, `bTgl`, `onbeforeunload` (warns whenever `dirty`, regardless of whether the chart has boxes) | respective functions | **DOM**/**state**/**CB** |
+| *(init)* | 3147–3150 | — | `seedRules(); applyStatic(); applyTblCollapsed(); renderAll();` | — | boots app |
 
 ---
 
@@ -280,6 +281,15 @@ The first pass of this inventory (commit `fe0ad60`) flagged the items below; all
 | Parameters named `t` in `nn`/`rnum`/`msg`/`debounce` shadowed the i18n helper (same bug class as `copyText`) | **Renamed** (`lv`, `s`, `tm`). The i18n helper keeps its name; the node field `n.t` stays for file-format stability. |
 | Stale comments/hints (duplicate "TAB 3", `[8a]` branch list, "Tài chính", static fallback hints behind `STR`) | **Refreshed**; static hints now carry a comment that `applyStatic` overwrites them. |
 
+### Second external review (third follow-up commit)
+
+| Finding | Verdict | Resolution |
+|---|---|---|
+| "Legacy JSON migration silently drops rules" (`ruleGrid` present but `roleBoxes` absent) | **Not a bug** — both keys were introduced in the same commit (`db8f708`, v6); no shipped version ever wrote one without the other. v5 files carried no user-defined rules. | No change. |
+| `onbeforeunload` only warned when the chart had boxes, so unsaved FCs/rules with an empty chart were lost silently | Real, minor | **Fixed** — warns on `dirty` alone. |
+| FC table quadratic: every row's group `<select>` held every group (F × G options), plus `find`/`filter` inside loops | Real — measured 2.4 s render / 0.3 s per filter keystroke at 2,000 FC × 50 groups | **Fixed** — `fillGroupSelect` keeps dropdowns compact until focused; `Map` indexes in the filters and `flowBlocks`. After: 0.42 s / 11 ms at the same size; 5,000 × 300 went from 31 s to 0.97 s. |
+| TSV export lets cells starting with `=`/`+`/`-`/`@` reach Excel as formulas | Real class, low risk here | **Fixed** in `q()`, the single choke point for all four copy paths. |
+
 Remaining observation (not a defect): `debounce` has exactly one consumer (`refreshFlowResultSoon`).
 
-*Every entry above was verified against the actual source during a full read (lines 1–3135). Nothing is inferred from memory of earlier revisions.*
+*Every entry above was verified against the actual source during a full read (lines 1–3153). Nothing is inferred from memory of earlier revisions.*
