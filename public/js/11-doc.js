@@ -1,28 +1,30 @@
 "use strict";
 /* [10] Module "Trình bày sơ đồ" — Org Builder. Trang in SVG theo mm: tiêu đề, khối mã văn bản, bảng màu cấp,
-   ghi chú, box (chữ nhiều dòng, co giãn chiều cao, badge chữ cái, định biên), đường nối theo 2 kiểu
-   (dàn ngang / nhóm xếp dọc), cụm mô tả chức năng; zoom mượt + pan; in qua trình duyệt / tải PDF.
+   ghi chú, box cao cố định (chữ tự co), xếp theo HÀNG như kệ sách (người dùng đẩy box lên/xuống hàng),
+   đường nối 2 kiểu (dàn ngang / nhóm xếp dọc), cụm mô tả chức năng; zoom mượt + pan; in / tải PDF.
    Dùng chung cây `nodes` với module Luồng duyệt; chỉ đọc/ghi thêm các trường trình bày + `doc`. */
 
-var PAGE_MM = { A4:[210, 297], A3:[297, 420] };          // [cạnh ngắn, cạnh dài] mm
+var PAGE_MM = { A4:[210, 297], A3:[297, 420], A2:[420, 594] };   // [cạnh ngắn, cạnh dài] mm
 var DOC_M   = 10;                                        // lề trang (mm)
-// w: bề rộng box; hMin: cao tối thiểu; gx: giữa các cột; gy: cha → con dàn ngang; gy1: cha → nhóm xếp dọc treo dưới;
-// gyS: giữa các box trong nhóm xếp dọc; stub: đường dọc → cạnh trái box; sx: đường dọc lệch trái so với box cha
-var DBOX    = { w:46, hMin:19, gx:5, gy:12, gy1:6, gyS:4.5, stub:4, sx:4 };
+// h: cao box cố định (~5 dòng); wMin/wMax: giới hạn bề rộng box (doc.boxW); gx: giữa các cột;
+// gy: khoảng giữa hai HÀNG (đủ chỗ cho thanh ngang + badge chữ cái); stub: đường dọc → cạnh trái box; sx: đường dọc lệch trái box cha
+var DBOX    = { h:23, wMin:30, wMax:80, gx:5, gy:11, stub:4, sx:4 };
 var DOC_FONTS = {                                        // css: hiển thị; pdf: tên họ font nhúng khi tải PDF
   app:   { css:'system-ui, "Segoe UI", Arial, sans-serif',          pdf:'DocSans'  },
   arial: { css:'Arial, "Liberation Sans", Helvetica, sans-serif',    pdf:'DocSans'  },
   times: { css:'"Times New Roman", "Liberation Serif", Times, serif', pdf:'DocSerif' }
 };
-// Bảng màu "gốc văn bản" (theo bảng màu của sơ đồ tổ chức đang dùng); pastel = TCOLOR của app
-var TCOLOR_CLASSIC = { 'ĐB':'#C9BE2A', CC:'#5A7BE3', T1:'#E89347', T2:'#8DC63F', T3:'#F5D5B7',
-                       T4:'#6EDFE8', T5:'#B8DAF2', T6:'#FFFFFF', T7:'#FFFFFF', T8:'#FFFFFF' };
+// Bảng màu "gốc văn bản" (mã màu chuẩn của sơ đồ tổ chức đang dùng); pastel = TCOLOR của app
+var TCOLOR_CLASSIC = { 'ĐB':'#c8c82d', CC:'#5e8cf9', T1:'#ea9651', T2:'#92d050', T3:'#f6d5b9',
+                       T4:'#77e3f2', T5:'#cfc8dd', T6:'#ffffff', T7:'#ffffff', T8:'#ffffff' };
 var PX_PER_MM = 96 / 25.4;
 var INK = '#1F1B16';
 var SVGNS = 'http://www.w3.org/2000/svg';
 var DOC_PAD = 22;                                        // padding của #docWrap (px) — dùng cho toán zoom quanh con trỏ
 var dzoom = 1, dzoomAnim = null;                         // zoom màn hình của trang (view-state, không lưu) + animation
-var docView = { scale:1, pos:new Map(), box:new Map() }; // sơ đồ nằm đâu trong trang ở lần render gần nhất (cho kéo-thả)
+// Kết quả render gần nhất: tỉ lệ co sơ đồ, gốc sơ đồ trong trang, vị trí box, hàng tự nhiên, chiều cao trang thực tế
+var docView = { scale:1, tx:0, ty:0, pos:new Map(), rowBase:new Map(), maxRow:0, pageH:0, chartW:0 };
+var docRowDrag = null;                                   // đang kéo box đổi hàng -> vẽ đường kẻ hàng hướng dẫn
 
 function docPageSize(){
   var s = PAGE_MM[doc.page] || PAGE_MM.A4;
@@ -31,6 +33,7 @@ function docPageSize(){
 function docColors(){ return doc.scheme === 'pastel' ? TCOLOR : TCOLOR_CLASSIC; }
 function docFont(){ return DOC_FONTS[doc.font] || DOC_FONTS.app; }
 function docLevelName(L){ return L === 'ĐB' ? t('lvlDB') : L === 'CC' ? t('lvlCC') : L; }
+function rowPitch(){ return DBOX.h + DBOX.gy; }
 
 /* ---------- đo chữ bằng canvas — mọi kích thước theo mm ---------- */
 var _mctx = null;
@@ -69,20 +72,22 @@ function fitLines(str, maxW, size, minSize, maxLines, weight, style, fam){
     s = Math.max(minSize, s - 0.2);
   }
 }
-// Nội dung 3 khối của một box + chiều cao box theo số dòng:
-// tên phòng: tối đa 2 dòng ở cỡ chuẩn, dài hơn thì co chữ; chức danh (+ cấp) 1 dòng co chữ; người phụ trách: mỗi dòng nhập = ≥1 dòng vẽ
-function boxContent(n, fam){
-  var maxW = DBOX.w - 3;
-  var dept = n.dept ? fitLines(n.dept, maxW, 3.1, 2.3, 2, 'bold', 'normal', fam) : { lines:[], size:3.1 };
-  var ttl = n.title || '';
-  if (!n.hideLv) ttl = ttl ? ttl + ' (' + n.t + ')' : '(' + n.t + ')';
-  var title = ttl ? fitLines(ttl, maxW, 2.9, 2.3, 1, 'bold', 'normal', fam) : { lines:[], size:2.9 };
-  var person = n.person ? { lines:wrapText(n.person, maxW, 2.9, 'normal', 'italic', fam), size:2.9 } : { lines:[], size:2.9 };
-  var blocks = [dept, title, person].filter(function(b){ return b.lines.length; });
-  var contentH = 0;
-  blocks.forEach(function(b){ contentH += b.lines.length * b.size * 1.2; });
-  contentH += Math.max(0, blocks.length - 1) * 0.5;
-  return { dept:dept, title:title, person:person, contentH:contentH, h:Math.max(DBOX.hMin, contentH + 4.6) };
+// Nội dung 3 khối của một box trong chiều cao cố định DBOX.h (~5 dòng): tên phòng ≤ 2 dòng rồi co; chức danh (+cấp) 1 dòng rồi co;
+// người phụ trách mỗi dòng nhập = ≥1 dòng vẽ. Tổng quá cao -> co đồng loạt cả 3 khối (giữ tỉ lệ) tới khi vừa, không phình box.
+function boxContent(n, fam, W){
+  var maxW = W - 3, limit = DBOX.h - 3.2, best = null;
+  for (var f = 1; f >= 0.5; f -= 0.05){
+    var dept = n.dept ? fitLines(n.dept, maxW, 3.1 * f, 2.3 * f, 2, 'bold', 'normal', fam) : { lines:[], size:3.1 * f };
+    var ttl = n.title || '';
+    if (!n.hideLv) ttl = ttl ? ttl + ' (' + n.t + ')' : '(' + n.t + ')';
+    var title = ttl ? fitLines(ttl, maxW, 2.9 * f, 2.3 * f, 1, 'bold', 'normal', fam) : { lines:[], size:2.9 * f };
+    var person = n.person ? { lines:wrapText(n.person, maxW, 2.9 * f, 'normal', 'italic', fam), size:2.9 * f } : { lines:[], size:2.9 * f };
+    var blocks = [dept, title, person].filter(function(b){ return b.lines.length; });
+    var contentH = blocks.reduce(function(s, b){ return s + b.lines.length * b.size * 1.2; }, 0) + Math.max(0, blocks.length - 1) * 0.5;
+    best = { dept:dept, title:title, person:person, contentH:contentH, scale:f };
+    if (contentH <= limit) break;
+  }
+  return best;
 }
 
 /* ---------- tạo phần tử SVG ---------- */
@@ -105,58 +110,56 @@ function svText(parent, x, y, str, o){
   return e;
 }
 
-/* ---------- layout theo cây con (không ép cùng cấp cùng hàng) ----------
-   Con của một box chia 2 loại: "dàn ngang" (mỗi con một cột, nối từ cạnh dưới cha qua thanh ngang) và "xếp dọc"
-   (các con có stack=true thành một cột, nối bằng đường dọc bên trái vào cạnh trái từng box).
-   - Có con dàn ngang: cột xếp dọc (nếu có) đứng ngoài cùng bên trái, đường dọc được nuôi từ thanh ngang.
-   - Chỉ có con xếp dọc: các con treo ngay dưới cha, đường dọc đi ra từ cạnh trái cha.
-   measure() tính kích thước cây con (memo), place() gán toạ độ tuyệt đối (góc trên-trái). */
+/* ---------- layout: HÀNG như kệ sách + cột theo cây con ----------
+   Mọi box cao bằng nhau; hàng r nằm ở y = r × (h + gy). Hàng tự nhiên: con = cha + 1; box trong nhóm xếp dọc nối tiếp nhau
+   (box sau nằm ngay dưới cây con của box trước). rowShift ≥ 0 của một box đẩy chính nó xuống thêm; mọi thứ bên dưới đùn theo.
+   Bề ngang: con "dàn ngang" mỗi con một cột; con "xếp dọc" (stack) gom thành một cột — ngoài cùng bên trái nếu còn con
+   dàn ngang, treo ngay dưới cha nếu chỉ có nhóm này. measure() memo bề rộng cây con, place() gán toạ độ tuyệt đối. */
 function docLayout(fam){
-  var box = new Map(), meas = new Map(), pos = new Map();
-  nodes.forEach(function(n, id){ box.set(id, boxContent(n, fam)); });
+  var W = doc.boxW, H = DBOX.h, PITCH = rowPitch();
+  var box = new Map(), meas = new Map(), pos = new Map(), row = new Map(), rowBase = new Map();
+  nodes.forEach(function(n, id){ box.set(id, boxContent(n, fam, W)); });
   function kids(id){
     var n = nodes.get(id);
     return { spread:n.children.filter(function(c){ return !nodes.get(c).stack; }),
              stacked:n.children.filter(function(c){ return nodes.get(c).stack; }) };
   }
+  function assignRows(id, base){                      // trả về hàng sâu nhất của cây con
+    var r = base + (nodes.get(id).rowShift || 0), k = kids(id), bottom = r;
+    rowBase.set(id, base); row.set(id, r);
+    k.spread.forEach(function(c){ bottom = Math.max(bottom, assignRows(c, r + 1)); });
+    var next = r + 1;
+    k.stacked.forEach(function(c){ var b = assignRows(c, next); bottom = Math.max(bottom, b); next = b + 1; });
+    return bottom;
+  }
   function measure(id){
     if (meas.has(id)) return meas.get(id);
-    var b = box.get(id), k = kids(id), m;
+    var k = kids(id), m;
     var sm = k.spread.map(measure), tm = k.stacked.map(measure);
     var stackW = tm.length ? Math.max.apply(null, tm.map(function(x){ return x.w; })) : 0;
-    var stackH = tm.reduce(function(s, x){ return s + x.h; }, 0) + Math.max(0, tm.length - 1) * DBOX.gyS;
     if (sm.length){
       var cols = (tm.length ? [DBOX.stub + stackW] : []).concat(sm.map(function(x){ return x.w; }));
       var colsW = cols.reduce(function(s, x){ return s + x; }, 0) + (cols.length - 1) * DBOX.gx;
-      var childH = Math.max(stackH, Math.max.apply(null, sm.map(function(x){ return x.h; })));
-      var w = Math.max(DBOX.w, colsW);
-      m = { w:w, h:b.h + DBOX.gy + childH, bx:(w - DBOX.w) / 2, colsX:(w - colsW) / 2, groupW:tm.length ? DBOX.stub + stackW : 0 };
-    } else if (tm.length){
-      var innerW = Math.max(DBOX.w, stackW);
-      m = { w:DBOX.sx + innerW, h:b.h + DBOX.gy1 + stackH, bx:DBOX.sx };
-    } else m = { w:DBOX.w, h:b.h, bx:0 };
+      var w = Math.max(W, colsW);
+      m = { w:w, bx:(w - W) / 2, colsX:(w - colsW) / 2, groupW:tm.length ? DBOX.stub + stackW : 0 };
+    } else if (tm.length) m = { w:DBOX.sx + Math.max(W, stackW), bx:DBOX.sx };
+    else m = { w:W, bx:0 };
     meas.set(id, m);
     return m;
   }
-  function place(id, x, y){
-    var n = nodes.get(id), b = box.get(id), m = measure(id), k = kids(id);
-    pos.set(id, { x:x + m.bx + (n.dx || 0), y:y, w:DBOX.w, h:b.h });
+  function place(id, x){
+    var m = measure(id), k = kids(id);
+    pos.set(id, { x:x + m.bx, y:row.get(id) * PITCH, w:W, h:H, row:row.get(id) });
     if (k.spread.length){
-      var cx = x + m.colsX, cy = y + b.h + DBOX.gy;
-      if (k.stacked.length){
-        var yy = cy;
-        k.stacked.forEach(function(c){ place(c, cx + DBOX.stub, yy); yy += measure(c).h + DBOX.gyS; });
-        cx += m.groupW + DBOX.gx;
-      }
-      k.spread.forEach(function(c){ place(c, cx, cy); cx += measure(c).w + DBOX.gx; });
-    } else if (k.stacked.length){
-      var y2 = y + b.h + DBOX.gy1;
-      k.stacked.forEach(function(c){ place(c, x + DBOX.sx, y2); y2 += measure(c).h + DBOX.gyS; });
-    }
+      var cx = x + m.colsX;
+      if (k.stacked.length){ k.stacked.forEach(function(c){ place(c, cx + DBOX.stub); }); cx += m.groupW + DBOX.gx; }
+      k.spread.forEach(function(c){ place(c, cx); cx += measure(c).w + DBOX.gx; });
+    } else if (k.stacked.length) k.stacked.forEach(function(c){ place(c, x + DBOX.sx); });
   }
-  var x0 = 0;
-  rootIds.forEach(function(r){ place(r, x0, 0); x0 += measure(r).w + DBOX.gx * 2; });
-  return { pos:pos, box:box };
+  var x0 = 0, maxRow = 0;
+  rootIds.forEach(function(r){ maxRow = Math.max(maxRow, assignRows(r, 0)); });
+  rootIds.forEach(function(r){ place(r, x0); x0 += measure(r).w + DBOX.gx * 2; });
+  return { pos:pos, box:box, rowBase:rowBase, maxRow:maxRow };
 }
 // Đường nối của một box cha tới các con, theo toạ độ đã đặt. Trả về mảng {pts, arrow}
 function docEdges(id, pos){
@@ -170,8 +173,7 @@ function docEdges(id, pos){
     stacked.forEach(function(c){ var q = pos.get(c); out.push({ pts:[[spineX, q.y + q.h / 2], [q.x, q.y + q.h / 2]], arrow:true }); });
   }
   if (spread.length){
-    var busY = bottom + DBOX.gy / 2;
-    var first = pos.get(spread[0]);
+    var busY = bottom + DBOX.gy / 2, first = pos.get(spread[0]);
     if (spread.length === 1 && !stacked.length && Math.abs(first.x + first.w / 2 - cxP) < 0.01){
       out.push({ pts:[[cxP, bottom], [cxP, first.y]], arrow:true });
       return out;
@@ -193,69 +195,76 @@ function docEdges(id, pos){
 }
 
 /* ---------- dựng trang ---------- */
-// forExport = true: không highlight, font-family = tên font nhúng PDF (svg2pdf tra theo tên đã addFont)
+// forExport = true: không highlight/đường kẻ hàng, font-family = tên font nhúng PDF (svg2pdf tra theo tên đã addFont)
 function buildDocSvg(forExport){
   var P = docPageSize(), M = DOC_M, F = docFont(), fam = forExport ? F.pdf : F.css, COL = docColors();
-  var svg = sv('svg', { xmlns:SVGNS, viewBox:'0 0 ' + P.w + ' ' + P.h, 'font-family':fam });
-  sv('rect', { x:0, y:0, width:P.w, height:P.h, fill:'#fff' }, svg);
-  var y = M;
+  var svg = sv('svg', { xmlns:SVGNS, 'font-family':fam });
+  var bg = sv('rect', { x:0, y:0, width:P.w, height:P.h, fill:'#fff' }, svg);
+  var y = M, blocks = [];                             // blocks: vùng đã dùng ở đầu trang (mã văn bản + ghi chú, bảng màu) để sơ đồ né
   if (doc.header.trim()){
     svText(svg, P.w / 2, y + 5, doc.header, { size:5.5, weight:'bold', anchor:'middle' });
     y += 9;
   }
-  var leftY = y, rightY = y, x0 = M;
+  var leftY = y, rightY = y, x0 = M, leftW = 0;
   if (doc.show.code){
     var labels = [['dcCode', 'code'], ['dcDate', 'date'], ['dcAuthor', 'author'], ['dcReviewer', 'reviewer'], ['dcApprover', 'approver']];
     var lw = 0;
-    labels.forEach(function(l){ lw = Math.max(lw, textW(t(l[0]), 3.3, 'normal', 'italic', fam)); });
+    labels.forEach(function(l){ lw = Math.max(lw, textW(t(l[0]), 2.7, 'normal', 'italic', fam)); });
     labels.forEach(function(l, i){
-      var yy = leftY + 3.6 + i * 4.6;
-      svText(svg, x0, yy, t(l[0]), { size:3.3, style:'italic' });
-      svText(svg, x0 + lw + 2, yy, ':', { size:3.3, style:'italic' });
-      if (doc.code[l[1]]) svText(svg, x0 + lw + 5, yy, doc.code[l[1]], { size:3.3, style:'italic' });
+      var yy = leftY + 3 + i * 3.9;
+      svText(svg, x0, yy, t(l[0]), { size:2.7, style:'italic' });
+      svText(svg, x0 + lw + 1.5, yy, ':', { size:2.7, style:'italic' });
+      if (doc.code[l[1]]){ svText(svg, x0 + lw + 4, yy, doc.code[l[1]], { size:2.7, style:'italic' }); leftW = Math.max(leftW, lw + 4 + textW(doc.code[l[1]], 2.7, 'normal', 'italic', fam)); }
+      else leftW = Math.max(leftW, lw + 3);
     });
-    leftY += 5 * 4.6 + 3;
+    leftY += 5 * 3.9 + 2.5;
   }
   if (doc.show.notes && doc.notes.length){
-    svText(svg, x0 + 2, leftY + 3.4, t('notesH') + ':', { size:3.3, weight:'bold', style:'italic', deco:'underline' });
-    leftY += 5.5;
+    svText(svg, x0 + 1.5, leftY + 2.8, t('notesH') + ':', { size:2.8, weight:'bold', style:'italic', deco:'underline' });
+    leftY += 4.6;
     doc.notes.forEach(function(nt, i){
-      var yy = leftY + i * 4.9;
-      sv('rect', { x:x0, y:yy, width:4.2, height:4.2, fill:'#fff', stroke:INK, 'stroke-width':0.25 }, svg);
-      svText(svg, x0 + 2.1, yy + 3.1, nt.key, { size:2.8, weight:'bold', anchor:'middle' });
-      svText(svg, x0 + 6.5, yy + 3.1, nt.text, { size:3.1, style:'italic' });
+      var yy = leftY + i * 4.2;
+      sv('rect', { x:x0, y:yy, width:3.6, height:3.6, fill:'#fff', stroke:INK, 'stroke-width':0.25 }, svg);
+      svText(svg, x0 + 1.8, yy + 2.7, nt.key, { size:2.4, weight:'bold', anchor:'middle' });
+      svText(svg, x0 + 5.5, yy + 2.7, nt.text, { size:2.7, style:'italic' });
+      leftW = Math.max(leftW, 5.5 + textW(nt.text, 2.7, 'normal', 'italic', fam));
     });
-    leftY += doc.notes.length * 4.9 + 3;
+    leftY += doc.notes.length * 4.2 + 2.5;
   }
+  if (leftY > y) blocks.push({ x0:M, x1:M + leftW, y0:y, y1:leftY });
   if (doc.show.legend){
     var items = [['ĐB', docLevelName('ĐB')], ['CC', docLevelName('CC')], ['T1', 'T1'], ['T2', 'T2'], ['T3', 'T3'], ['T4', 'T4'], ['T5', 'T5'], ['T6', 'T6/T7/T8']];
-    var lgW = 26, lgH = 5.2, lx = P.w - M - lgW;
+    var lgW = 22, lgH = 4.4, lx = P.w - M - lgW;
     var gl = sv('g', { class:'dlegend' }, svg);
     items.forEach(function(it, i){
       var yy = rightY + i * lgH;
       sv('rect', { x:lx, y:yy, width:lgW, height:lgH, fill:COL[it[0]], stroke:INK, 'stroke-width':0.25 }, gl);
-      svText(gl, lx + lgW / 2, yy + 3.6, it[1], { size:3.1, anchor:'middle' });
+      svText(gl, lx + lgW / 2, yy + 3.05, it[1], { size:2.7, anchor:'middle' });
     });
-    rightY += items.length * lgH + 3;
+    rightY += items.length * lgH + 2.5;
+    blocks.push({ x0:lx, x1:P.w - M, y0:y, y1:rightY });
   }
-  var chartTop = Math.max(leftY, rightY, y) + 2;
 
   // ---- sơ đồ ----
   var g = sv('g', { class:'dchart' }, svg);
-  var L = docLayout(fam), pos = L.pos, ids = Array.from(pos.keys());
+  var L = docLayout(fam), pos = L.pos, ids = Array.from(pos.keys()), H = DBOX.h, PITCH = rowPitch();
+  docView = { scale:1, tx:0, ty:0, pos:pos, rowBase:L.rowBase, maxRow:L.maxRow, pageH:P.h, chartW:0 };
   if (!ids.length){
-    svText(svg, P.w / 2, chartTop + 20, t('docNoTree'), { size:4, anchor:'middle', fill:'#8C857A' });
-    docView = { scale:1, pos:pos, box:L.box };
+    svg.setAttribute('viewBox', '0 0 ' + P.w + ' ' + P.h);
+    svText(svg, P.w / 2, Math.max(leftY, rightY) + 20, t('docNoTree'), { size:4, anchor:'middle', fill:'#8C857A' });
     return svg;
   }
-  var minX = Infinity, maxX = -Infinity, maxY = 0;
+  var minX = Infinity, maxX = -Infinity, rowX = {};        // rowX[r] = [minX, maxX] của hàng r (kể cả đường dọc nhóm)
   ids.forEach(function(id){
-    var p = pos.get(id);
-    minX = Math.min(minX, p.x - (nodes.get(id).children.some(function(c){ return nodes.get(c).stack; }) ? DBOX.sx : 0));
-    maxX = Math.max(maxX, p.x + p.w); maxY = Math.max(maxY, p.y + p.h);
+    var p = pos.get(id), n = nodes.get(id);
+    var l = p.x - (n.children.some(function(c){ return nodes.get(c).stack; }) ? DBOX.sx : 0), r = p.x + p.w;
+    minX = Math.min(minX, l); maxX = Math.max(maxX, r);
+    var rx = rowX[p.row] || (rowX[p.row] = [Infinity, -Infinity]);
+    rx[0] = Math.min(rx[0], l); rx[1] = Math.max(rx[1], r);
   });
+  var maxY = (L.maxRow + 1) * PITCH - DBOX.gy;
   // cụm mô tả chức năng: một khối dưới mỗi box có mô tả, cùng độ cao, thẳng cột với box
-  var descs = [], descTop = maxY + 8, descH = 0, DS = 2.5, DLH = 3.3, DPAD = 1.6, DW = DBOX.w;
+  var descs = [], descTop = maxY + 8, descH = 0, DS = 2.5, DLH = 3.3, DPAD = 1.6, DW = doc.boxW;
   if (doc.show.desc){
     ids.forEach(function(id){
       var n = nodes.get(id);
@@ -270,13 +279,40 @@ function buildDocSvg(forExport){
       descH = Math.max(descH, lines.length * DLH + 2 * DPAD);
     });
   }
-  var chartW = maxX - minX, chartH = descs.length ? descTop + descH : maxY;
-  var availW = P.w - 2 * M, availH = P.h - M - chartTop;
-  var s = doc.show.fit ? Math.min(1, availW / chartW, availH / chartH) : 1;
-  var tx = M + (availW - chartW * s) / 2 - minX * s, ty = chartTop;
-  g.setAttribute('transform', 'translate(' + tx + ' ' + ty + ') scale(' + s + ')');
-  docView = { scale:s, pos:pos, box:L.box };
+  var chartW = maxX - minX, chartH = descs.length ? descTop + descH : maxY, availW = P.w - 2 * M;
+  // Sơ đồ bắt đầu ngay dưới tiêu đề và tận dụng khoảng trống giữa ghi chú / bảng màu: chỉ đẩy xuống khi một hàng
+  // thực sự chạm vào khối đó (thử lại vì tỉ lệ co phụ thuộc chỗ còn lại theo chiều cao)
+  var chartTop = y + 2, s, tx;
+  function geom(top){
+    var availH = P.h - M - top;
+    s = doc.show.fit ? Math.min(1, availW / chartW, doc.autoH ? 1 : availH / chartH) : 1;
+    tx = M + (availW - chartW * s) / 2 - minX * s;
+  }
+  for (var it = 0; it < 12; it++){
+    geom(chartTop);
+    var hit = null;
+    Object.keys(rowX).some(function(r){
+      var top = chartTop + r * PITCH * s - 6 * s, bot = chartTop + (r * PITCH + H) * s, x1 = tx + rowX[r][0] * s, x2 = tx + rowX[r][1] * s;
+      return blocks.some(function(b){ if (bot > b.y0 && top < b.y1 + 2 && x2 > b.x0 - 3 && x1 < b.x1 + 3){ hit = { r:+r, b:b }; return true; } return false; });
+    });
+    if (!hit) break;
+    chartTop = Math.max(chartTop + 0.5, hit.b.y1 + 2 + 6 * s - hit.r * PITCH * s);
+  }
+  geom(chartTop);
+  var pageH = doc.autoH ? Math.max(P.h, Math.ceil(chartTop + chartH * s + M)) : P.h;
+  svg.setAttribute('viewBox', '0 0 ' + P.w + ' ' + pageH); bg.setAttribute('height', pageH);
+  g.setAttribute('transform', 'translate(' + tx + ' ' + chartTop + ') scale(' + s + ')');
+  docView = { scale:s, tx:tx, ty:chartTop, pos:pos, rowBase:L.rowBase, maxRow:L.maxRow, pageH:pageH, chartW:chartW };
 
+  // đường kẻ hàng hướng dẫn khi đang kéo box đổi hàng (chỉ trên màn hình)
+  if (!forExport && docRowDrag){
+    var gg = sv('g', { class:'drows' }, g), cur = pos.get(docRowDrag.id).row;
+    for (var r = 0; r <= L.maxRow + 2; r++){
+      var yy = r * PITCH;
+      sv('line', { x1:minX - 8, y1:yy, x2:maxX + 8, y2:yy, class:'drow' + (r === cur ? ' cur' : '') }, gg);
+      sv('line', { x1:minX - 8, y1:yy + H, x2:maxX + 8, y2:yy + H, class:'drow' + (r === cur ? ' cur' : '') }, gg);
+    }
+  }
   // đường nối (vẽ trước để nằm dưới box); mũi tên vẽ bằng path để svg2pdf in đúng
   ids.forEach(function(id){
     docEdges(id, pos).forEach(function(e){
@@ -289,24 +325,24 @@ function buildDocSvg(forExport){
       sv('path', { d:'M' + a[0] + ' ' + a[1] + 'L' + (a[0] - ux * A + hx) + ' ' + (a[1] - uy * A + hy) + 'L' + (a[0] - ux * A - hx) + ' ' + (a[1] - uy * A - hy) + 'Z', fill:INK }, g);
     });
   });
-  // box: nền theo cấp; nội dung căn giữa dọc; badge chữ cái góc trên-trái; định biên góc dưới-phải
+  // box: nền theo cấp; nội dung căn giữa dọc; badge chữ cái góc trên-trái (nằm trong khoảng giữa hai hàng); định biên góc dưới-phải
   ids.forEach(function(id){
     var n = nodes.get(id), p = pos.get(id), c = L.box.get(id), w = p.w, h = p.h;
     var gb = sv('g', { class:'dbox' + (!forExport && id === sel ? ' sel' : ''), 'data-id':id }, g);
     sv('rect', { class:'bg', x:p.x, y:p.y, width:w, height:h, fill:COL[n.t] || '#fff', stroke:INK, 'stroke-width':0.35 }, gb);
-    var cx = p.x + w / 2, cur = p.y + (h - c.contentH) / 2;
-    [['dept', 'bold', null], ['title', 'bold', null], ['person', null, 'italic']].forEach(function(spec, bi){
+    var cx = p.x + w / 2, cur = p.y + (h - c.contentH) / 2, firstTop = cur;
+    [['dept', 'bold', null], ['title', 'bold', null], ['person', null, 'italic']].forEach(function(spec){
       var b = c[spec[0]];
       if (!b.lines.length) return;
-      if (bi && cur > p.y + (h - c.contentH) / 2 + 0.01) cur += 0.5;
+      if (cur > firstTop + 0.01) cur += 0.5;
       b.lines.forEach(function(ln){
         svText(gb, cx, cur + b.size * 0.95, ln, { size:b.size, weight:spec[1], style:spec[2], anchor:'middle', cls:'l-' + spec[0] });
         cur += b.size * 1.2;
       });
     });
     if (n.annot){
-      sv('rect', { class:'annot', x:p.x, y:p.y - 5.4, width:4.6, height:4.6, fill:'#fff', stroke:INK, 'stroke-width':0.3 }, gb);
-      svText(gb, p.x + 2.3, p.y - 2.0, n.annot, { size:2.9, weight:'bold', anchor:'middle' });
+      sv('rect', { class:'annot', x:p.x, y:p.y - 5.2, width:4.4, height:4.4, fill:'#fff', stroke:INK, 'stroke-width':0.3 }, gb);
+      svText(gb, p.x + 2.2, p.y - 1.9, n.annot, { size:2.8, weight:'bold', anchor:'middle' });
     }
     if (doc.show.hc){
       var hc = String(hcOf(id)), pw = Math.max(6, textW(hc, 2.5, 'bold', 'normal', fam) + 3);
@@ -338,17 +374,17 @@ function dSelect(id, focusInput){
   renderDoc(); renderDPanel();
   if (focusInput){ var f = $('dfD'); if (f) f.focus(); }
 }
-// Áp zoom: chỉ đổi kích thước svg (vector) — không dựng lại trang
+// Áp zoom: chỉ đổi kích thước svg (vector) — không dựng lại trang. Chiều cao theo trang thực tế (có thể dài hơn khổ giấy khi autoH)
 function applyDZoom(){
   var svg = $('docPage').firstChild, P = docPageSize();
-  if (svg){ svg.style.width = (P.w * PX_PER_MM * dzoom) + 'px'; svg.style.height = (P.h * PX_PER_MM * dzoom) + 'px'; }
+  if (svg){ svg.style.width = (P.w * PX_PER_MM * dzoom) + 'px'; svg.style.height = (docView.pageH * PX_PER_MM * dzoom) + 'px'; }
   var lbl = $('dzoomLbl'); if (lbl) lbl.textContent = Math.round(dzoom * 100) + '%';
 }
 function clampDZoom(z){ return Math.min(4, Math.max(0.15, z)); }
 function dZoomTo(z){ dzoomAnim = null; dzoom = clampDZoom(z); applyDZoom(); }
 function dZoomFit(){
   var w = $('docWrap'), P = docPageSize();
-  dZoomTo(Math.min((w.clientWidth - 2 * DOC_PAD - 4) / (P.w * PX_PER_MM), (w.clientHeight - 2 * DOC_PAD - 4) / (P.h * PX_PER_MM)));
+  dZoomTo(Math.min((w.clientWidth - 2 * DOC_PAD - 4) / (P.w * PX_PER_MM), (w.clientHeight - 2 * DOC_PAD - 4) / (docView.pageH * PX_PER_MM)));
   w.scrollLeft = 0; w.scrollTop = 0;
 }
 // Zoom MƯỢT quanh điểm (ax,ay) của viewport #docWrap — cùng cơ chế với tab Sơ đồ (ease-out, lăn dồn dập chỉ nâng target)
@@ -372,6 +408,11 @@ function dZoomStep(){
 }
 
 /* ---------- panel Box ---------- */
+function setRowShift(id, v){
+  var n = nodes.get(id), nv = Math.max(0, Math.round(v));
+  if (nv === (n.rowShift || 0)) return;
+  snap(null); n.rowShift = nv; renderDoc(); renderDPanel();
+}
 function renderDPanel(){
   var p = $('dBoxBody');
   if (!sel || !nodes.has(sel)){ p.innerHTML = '<div class="hint">' + t('docEmptyHint') + '</div>'; return; }
@@ -391,11 +432,12 @@ function renderDPanel(){
     + '<div class="hint">' + (leaf ? t('hcLeafNote') : t('hcAutoNote')) + '</div>'
     + '<label>' + t('lblAnnot') + '</label><select id="dfA">' + aOpts + '</select>'
     + (n.parent ? '<div class="ck"><input type="checkbox" id="dfStack"><label for="dfStack" style="margin:0">' + t('ckStack') + '</label></div><div class="hint">' + t('stackHint') + '</div>' : '')
+    + '<div class="row"><button id="dbUp"' + (n.rowShift ? '' : ' disabled') + '>' + t('btnRowUp') + '</button><button id="dbDown">' + t('btnRowDown') + '</button></div>'
+    + '<div class="hint">' + t('rowHint') + '</div>'
     + '<label>' + t('lblDesc') + '</label><textarea id="dfDesc" rows="5"></textarea>'
     + '<div class="hint">' + t('descHint') + '</div>'
     + '<div class="row"><button id="dbChild" class="primary">' + t('btnChild') + '</button><button id="dbSib">' + t('btnSib') + '</button></div>'
-    + '<div class="row"><button id="dbL">◀</button><button id="dbR">▶</button><button id="dbDel" class="danger">' + t('btnDel') + '</button></div>'
-    + '<div class="row"><button id="dbPos"' + (n.dx ? '' : ' disabled') + '>' + t('btnResetPos') + '</button></div>';
+    + '<div class="row"><button id="dbL">◀</button><button id="dbR">▶</button><button id="dbDel" class="danger">' + t('btnDel') + '</button></div>';
   var fD = $('dfD'); fD.value = n.dept;
   fD.oninput = function(){
     snap('e:' + sel + ':d');
@@ -419,12 +461,13 @@ function renderDPanel(){
   if (fS){ fS.checked = !!n.stack; fS.onchange = function(){ snap(null); n.stack = fS.checked; renderDoc(); }; }
   var fDesc = $('dfDesc'); fDesc.value = n.desc || '';
   fDesc.oninput = function(){ snap('e:' + sel + ':desc'); n.desc = fDesc.value; renderDoc(); };
+  $('dbUp').onclick    = function(){ setRowShift(sel, (n.rowShift || 0) - 1); };
+  $('dbDown').onclick  = function(){ setRowShift(sel, (n.rowShift || 0) + 1); };
   $('dbChild').onclick = function(){ addChild(sel); };
   $('dbSib').onclick   = function(){ addSib(sel); };
   $('dbL').onclick     = function(){ moveSib(sel, -1); };
   $('dbR').onclick     = function(){ moveSib(sel, 1); };
   $('dbDel').onclick   = function(){ delNode(sel); };
-  $('dbPos').onclick   = function(){ snap(null); n.dx = 0; renderDoc(); renderDPanel(); };
 }
 
 /* ---------- panel Trang ---------- */
@@ -437,8 +480,10 @@ function renderDPage(){
   var codeFields = [['code', 'dcCode'], ['date', 'dcDate'], ['author', 'dcAuthor'], ['reviewer', 'dcReviewer'], ['approver', 'dcApprover']];
   var shows = [['legend', 'ckLegend'], ['code', 'ckCode'], ['notes', 'ckNotes'], ['hc', 'ckHc'], ['desc', 'ckDesc'], ['fit', 'ckFit']];
   p.innerHTML =
-      '<div class="row2"><div><label>' + t('lblPage') + '</label>' + sel1('dpPage', [['A4', 'A4'], ['A3', 'A3']], doc.page) + '</div>'
+      '<div class="row2"><div><label>' + t('lblPage') + '</label>' + sel1('dpPage', [['A4', 'A4'], ['A3', 'A3'], ['A2', 'A2']], doc.page) + '</div>'
     + '<div><label>' + t('lblOrient') + '</label>' + sel1('dpOrient', [['L', t('orientL')], ['P', t('orientP')]], doc.orient) + '</div></div>'
+    + '<div class="ck"><input type="checkbox" id="dpAutoH"><label for="dpAutoH" style="margin:0">' + t('ckAutoH') + '</label></div>'
+    + '<label>' + t('lblBoxW') + '</label><div class="row2" style="align-items:center"><input id="dpBoxW" type="range" min="' + DBOX.wMin + '" max="' + DBOX.wMax + '" step="1"><input id="dpBoxWn" type="number" min="' + DBOX.wMin + '" max="' + DBOX.wMax + '" step="1"></div>'
     + '<div class="row2"><div><label>' + t('lblFont') + '</label>' + sel1('dpFont', [['app', t('fontApp')], ['arial', 'Arial'], ['times', 'Times New Roman']], doc.font) + '</div>'
     + '<div><label>' + t('lblScheme') + '</label>' + sel1('dpScheme', [['classic', t('schemeClassic')], ['pastel', t('schemePastel')]], doc.scheme) + '</div></div>'
     + '<label>' + t('lblHeader') + '</label><input id="dpHeader" autocomplete="off" placeholder="' + t('phHeader') + '">'
@@ -452,6 +497,12 @@ function renderDPage(){
   $('dpOrient').onchange = function(){ docSet('orient', function(){ doc.orient = $('dpOrient').value; }); };
   $('dpFont').onchange   = function(){ docSet('font',   function(){ doc.font   = $('dpFont').value;   }); };
   $('dpScheme').onchange = function(){ docSet('scheme', function(){ doc.scheme = $('dpScheme').value; }); };
+  var ah = $('dpAutoH'); ah.checked = !!doc.autoH;
+  ah.onchange = function(){ docSet('autoH', function(){ doc.autoH = ah.checked; }); };
+  var bw = $('dpBoxW'), bwn = $('dpBoxWn'); bw.value = bwn.value = doc.boxW;
+  function setBoxW(v){ v = Math.min(DBOX.wMax, Math.max(DBOX.wMin, Math.round(+v) || doc.boxW)); bw.value = bwn.value = v; docSet('boxW', function(){ doc.boxW = v; }); }
+  bw.oninput = function(){ setBoxW(bw.value); };
+  bwn.onchange = function(){ setBoxW(bwn.value); };
   var h = $('dpHeader'); h.value = doc.header;
   h.oninput = function(){ docSet('header', function(){ doc.header = h.value; }); };
   codeFields.forEach(function(f){
@@ -487,21 +538,30 @@ function renderDNotes(){
   });
 }
 
-/* ---------- kéo box sang ngang trong hàng ---------- */
-function docMmPerPx(){ return 1 / (PX_PER_MM * dzoom * docView.scale); }   // mm sơ đồ ứng với 1px màn hình
-function startBoxDrag(id, e){ return { id:id, x0:e.clientX, dx0:nodes.get(id).dx || 0, moved:false }; }
-function moveBoxDrag(d, e){
-  var dx = (e.clientX - d.x0) * docMmPerPx();
-  if (!d.moved){ if (Math.abs(dx) < 0.8) return; d.moved = true; snap(null); }
-  nodes.get(d.id).dx = Math.round((d.dx0 + dx) * 2) / 2;
-  renderDoc();
+/* ---------- kéo box lên/xuống đổi hàng (đường kẻ hàng hướng dẫn hiện trong lúc kéo) ---------- */
+function startRowDrag(id, e){
+  var svg = $('docPage').firstChild, r = svg.getBoundingClientRect();
+  return { id:id, y0:e.clientY, top:r.top, base:docView.rowBase.get(id), shift0:nodes.get(id).rowShift || 0, moved:false };
 }
-function endBoxDrag(d){ if (d.moved){ renderDoc(); renderDPanel(); } }
+function moveRowDrag(d, e){
+  if (!d.moved){ if (Math.abs(e.clientY - d.y0) < 6) return; d.moved = true; snap(null); docRowDrag = { id:d.id }; }
+  var mm = (e.clientY - d.top) / (PX_PER_MM * dzoom);                 // toạ độ trang (mm)
+  var chartY = (mm - docView.ty) / docView.scale;                     // toạ độ sơ đồ
+  var target = Math.max(d.base, Math.round((chartY - DBOX.h / 2) / rowPitch()));
+  var n = nodes.get(d.id), shift = target - d.base;
+  if (shift !== (n.rowShift || 0)){ n.rowShift = shift; renderDoc(); }
+  else if (!$('docPage').querySelector('.drows')) renderDoc();        // lần đầu: chỉ để hiện đường kẻ hàng
+}
+function endRowDrag(d){
+  if (!d.moved) return;
+  docRowDrag = null;
+  renderDoc(); renderDPanel();
+}
 
 /* ---------- in / PDF ---------- */
 function docPrint(){
   var P = docPageSize();
-  $('printPage').textContent = '@page{size:' + P.w + 'mm ' + P.h + 'mm;margin:0}';
+  $('printPage').textContent = '@page{size:' + P.w + 'mm ' + docView.pageH + 'mm;margin:0}';
   window.print();
 }
 var _pdfLibs = null, _pdfFonts = {};
@@ -535,14 +595,14 @@ function docPdf(){
   var F = docFont(), P = docPageSize();
   msg(t('msgPdfLoading'));
   return loadPdfLibs().then(function(){ return loadPdfFont(F.pdf); }).then(function(fonts){
-    var pdf = new window.jspdf.jsPDF({ orientation:doc.orient === 'P' ? 'portrait' : 'landscape', unit:'mm', format:doc.page.toLowerCase() });
+    var svg = buildDocSvg(true), PH = docView.pageH;               // dựng trước để biết chiều cao trang thực tế (autoH)
+    var pdf = new window.jspdf.jsPDF({ orientation:P.w > PH ? 'landscape' : 'portrait', unit:'mm', format:[P.w, PH] });
     fonts.forEach(function(f){ pdf.addFileToVFS(f.file, f.b64); pdf.addFont(f.file, F.pdf, f.style); });
-    var svg = buildDocSvg(true);
-    svg.setAttribute('width', P.w + 'mm'); svg.setAttribute('height', P.h + 'mm');
+    svg.setAttribute('width', P.w + 'mm'); svg.setAttribute('height', PH + 'mm');
     var holder = document.createElement('div');               // svg2pdf cần phần tử nằm trong DOM (đo chữ)
     holder.style.cssText = 'position:absolute;left:-10000px;top:0';
     holder.appendChild(svg); document.body.appendChild(holder);
-    return pdf.svg(svg, { x:0, y:0, width:P.w, height:P.h }).then(function(){
+    return pdf.svg(svg, { x:0, y:0, width:P.w, height:PH }).then(function(){
       holder.remove();
       pdf.save((doc.header.trim() || 'org-chart') + '.pdf');
       msg(t('msgPdfDone'));

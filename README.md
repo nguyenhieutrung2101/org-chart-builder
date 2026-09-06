@@ -21,15 +21,16 @@ Mở app là vào **màn hình chọn module**. Cả hai module dùng chung **m�
 
 ## 📄 Module Trình bày sơ đồ
 
-- **Trang in thật**: chọn khổ **A4 / A3**, **ngang / dọc**; sơ đồ tự co cho vừa trang (tắt được). Lề, cỡ chữ, khoảng cách tính bằng mm nên màn hình = bản in.
+- **Trang in thật**: chọn khổ **A4 / A3 / A2**, **ngang / dọc**; sơ đồ tự co cho vừa trang (tắt được); tuỳ chọn **chiều cao trang tự động theo nội dung** (giữ bề rộng khổ giấy, in/PDF đúng kích thước đó). Lề, cỡ chữ, khoảng cách tính bằng mm nên màn hình = bản in.
 - **Tiêu đề trang** đậm căn giữa; **khối mã văn bản** góc trái (Mã văn bản / Ngày áp dụng / Người soạn thảo / Người thẩm định / Người phê duyệt); **bảng màu cấp** góc phải (Đặc biệt → Cao cấp → T1…T5 → T6/T7/T8).
 - **Ghi chú chữ cái**: khai báo danh sách A, B, C… kèm diễn giải; gán chữ cái cho từng box để hiện badge nhỏ ở góc trên-trái box, đúng như tài liệu sơ đồ tổ chức thông dụng.
 - **Định biên**: box không có box con nhập số tự định nghĩa (trống = 1); box có con tự cộng **1 + tổng các box con**, hiện ở góc dưới-phải box (tắt được).
 - **Cụm mô tả chức năng** phía dưới sơ đồ, thẳng cột với box; dòng bắt đầu bằng `# ` thành tiêu đề đậm gạch chân.
-- **Box co giãn theo nội dung**: tên phòng tối đa 2 dòng ở cỡ chuẩn (dài hơn thì co chữ, không bao giờ cắt "…"), chức danh 1 dòng có thể **ẩn/hiện "(Tx)" cho riêng từng box**, người phụ trách **nhiều dòng** (mỗi người một dòng). Hàng đặt theo **độ sâu trong cây**, không ép cùng cấp T cùng hàng.
+- **Box cao cố định (~5 dòng), bề rộng chỉnh chung cho cả trang**: tên phòng tối đa 2 dòng ở cỡ chuẩn (dài hơn thì co chữ, không bao giờ cắt "…"), chức danh 1 dòng có thể **ẩn/hiện "(Tx)" cho riêng từng box**, người phụ trách **nhiều dòng**; quá 5 dòng thì cả nội dung co lại cho vừa box.
+- **Hàng như kệ sách**: mọi box nằm trên các hàng ngang thẳng tắp; con ở hàng ngay dưới cha, không ép cùng cấp T cùng hàng. Người dùng **kéo box lên/xuống** (có đường kẻ hàng hướng dẫn khi kéo) hoặc bấm ▲▼ để đổi hàng — box phía dưới bị đùn theo. Sơ đồ bắt đầu ngay dưới tiêu đề và chỉ né khối ghi chú / bảng màu khi thật sự chạm.
 - **Hai kiểu nối** giữ bản vẽ đồng nhất (không kéo đường nối tay): mặc định các con **dàn ngang** nối từ cạnh dưới cha; tick **"Xếp dọc thành nhóm"** cho một số con thì chúng thành **một cột dọc** nối bằng một đường dọc bên trái vào cạnh trái từng box (cột đứng ngoài cùng bên trái nếu còn con dàn ngang, treo ngay dưới cha nếu chỉ có nhóm này).
-- **Kéo box sang ngang** ngay trong hàng của nó; nút "Về vị trí tự động". **Zoom mượt** quanh con trỏ (lăn chuột) và **kéo nền để di chuyển trang**.
-- **Font**: font của app, Arial, Times New Roman. **Bảng màu**: pastel của app hoặc bảng màu gốc của văn bản sơ đồ tổ chức.
+- **Zoom mượt** quanh con trỏ (lăn chuột) và **kéo nền để di chuyển trang** (không bôi đen chữ).
+- **Font**: font của app, Arial, Times New Roman. **Bảng màu**: bảng màu gốc của văn bản sơ đồ tổ chức (mặc định, đúng mã màu chuẩn) hoặc pastel của app.
 - **In / Save as PDF** qua hộp thoại in của trình duyệt (vector, đúng khổ giấy), hoặc **⬇ Tải PDF** trực tiếp — PDF vector có nhúng font Liberation (đủ dấu tiếng Việt, cùng metric với Arial / Times New Roman), thư viện jsPDF + svg2pdf chỉ nạp khi bấm.
 
 ## 📗 Module Luồng duyệt
@@ -124,6 +125,7 @@ Deploy thủ công: `npx wrangler deploy`
 | Đổi thứ tự box ngang hàng | Nút ◀ ▶ trong panel Chi tiết |
 | Dịch box trong hàng (Trình bày) | Kéo box sang trái/phải; "Về vị trí tự động" để bỏ |
 | Nhóm box xếp dọc (Trình bày) | Tick "Xếp dọc thành nhóm" trên từng box con muốn gộp |
+| Đổi hàng của box (Trình bày) | Kéo box lên/xuống theo đường kẻ hàng, hoặc nút ▲ ▼ trong panel Box |
 | Zoom / di chuyển trang (Trình bày) | Lăn chuột trên trang / kéo nền |
 | In / PDF (Trình bày) | "In / Save as PDF" (hộp thoại in) hoặc "⬇ Tải PDF" |
 | Quay lại chọn module | Nút "⌂ Module" ở header; địa chỉ `#doc` / `#flow` mở thẳng module |

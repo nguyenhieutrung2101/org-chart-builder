@@ -259,7 +259,7 @@ $('bPdf').onclick   = docPdf;
 $('bTglDPanel').onclick = function(){ dpanelHidden = !dpanelHidden; $('dpanel').style.display = dpanelHidden ? 'none' : ''; refreshStateLabels(); };
 wireCollapse('tglDBox',  'dBoxBody',  'dBoxSec');
 wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
-// Trang vẽ: kéo box sang ngang (pointer capture trên #docPage vì svg bị dựng lại mỗi lần render);
+// Trang vẽ: kéo box lên/xuống để đổi hàng (pointer capture trên #docPage vì svg bị dựng lại mỗi lần render);
 // kéo nền để pan; lăn chuột = zoom mượt quanh con trỏ — cùng cơ chế với tab Sơ đồ.
 (function(){
   var host = $('docPage'), wrap = $('docWrap'), drag = null, pan = null;
@@ -269,12 +269,12 @@ wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
     if (!box) return;
     var id = box.getAttribute('data-id');
     if (sel !== id) select(id);
-    drag = startBoxDrag(id, e);
+    drag = startRowDrag(id, e);
     try{ host.setPointerCapture(e.pointerId); }catch(_){/**/}
     e.preventDefault(); e.stopPropagation();
   });
-  host.addEventListener('pointermove', function(e){ if (drag) moveBoxDrag(drag, e); });
-  function upBox(){ if (!drag) return; var d = drag; drag = null; endBoxDrag(d); }
+  host.addEventListener('pointermove', function(e){ if (drag) moveRowDrag(drag, e); });
+  function upBox(){ if (!drag) return; var d = drag; drag = null; endRowDrag(d); }
   host.addEventListener('pointerup', upBox);
   host.addEventListener('pointercancel', upBox);
   host.addEventListener('dblclick', function(e){ var box = e.target.closest('.dbox'); if (box) select(box.getAttribute('data-id'), true); });
@@ -282,6 +282,7 @@ wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
     if (e.button !== 0 || e.target.closest('.dbox')) return;
     pan = { x:e.clientX, y:e.clientY, sl:wrap.scrollLeft, st:wrap.scrollTop, moved:false };
     try{ wrap.setPointerCapture(e.pointerId); }catch(_){/**/}
+    e.preventDefault();                                    // không bôi đen chữ trên trang khi kéo nền
   });
   wrap.addEventListener('pointermove', function(e){
     if (!pan) return;

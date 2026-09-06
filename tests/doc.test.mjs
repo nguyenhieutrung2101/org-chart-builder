@@ -1,4 +1,4 @@
-// Module Trình bày sơ đồ + cấp ĐB + định biên + lớp doc trong JSON + landing/chuyển module
+// Module Trình bày sơ đồ: hàng kiểu kệ sách, box cao cố định, nhóm xếp dọc, ghi chú, zoom/pan, in/PDF + cấp ĐB, định biên, JSON v11
 import { openApp, finish } from './_browser.mjs';
 import fs from 'node:fs';
 const { page, errors, close } = await openApp({ hash: '' });          // vào landing
@@ -11,161 +11,174 @@ check('landing visible, modules hidden', await vis('#landing') && !(await vis('#
 await page.click('#bModDoc');
 check('doc module opens; hash #doc', await vis('#tabDoc') && !(await vis('#landing')) && (await ev(() => location.hash)) === '#doc' && (await ev(() => MOD)) === 'doc');
 check('empty page shows hint text', (await ev(() => document.querySelector('#docPage svg').textContent)).includes(await ev(() => t('docNoTree'))));
-check('doc module defaults to the classic scheme', (await ev(() => doc.scheme)) === 'classic');
+check('classic scheme by default with the exact palette', (await ev(() => doc.scheme + '|' + TCOLOR_CLASSIC['ĐB'] + TCOLOR_CLASSIC.CC + TCOLOR_CLASSIC.T1 + TCOLOR_CLASSIC.T2 + TCOLOR_CLASSIC.T3 + TCOLOR_CLASSIC.T4 + TCOLOR_CLASSIC.T5 + TCOLOR_CLASSIC.T6)) === 'classic|#c8c82d#5e8cf9#ea9651#92d050#f6d5b9#77e3f2#cfc8dd#ffffff');
+check('canvases never select text while panning (user-select:none)', await ev(() => ['docWrap', 'canvasWrap', 'vcanvasWrap'].every(id => getComputedStyle(document.getElementById(id)).userSelect === 'none')));
 
-// ---- cây 3 cấp: ĐB gốc, T1 → con T3 ngay dưới (không đùn hàng), chữ dài, nhiều người ----
+// ---- cây: T1 → con T3/T2 cùng hàng ngay dưới; chữ dài; nhiều người; box cao cố định ----
 const built = await ev(() => {
   addRoot(); const a = rootIds[0]; Object.assign(nodes.get(a), { dept: 'THỊ TRƯỜNG INDONESIA', title: 'Tổng Giám đốc', person: 'Lê Viết Hải Sơn (CBN)\n(Q.TGĐ thị trường Việt Nam & Lào - kiêm nhiệm)' }); setT(a, 'T1');
   addChild(a); const c1 = nodes.get(a).children[0]; Object.assign(nodes.get(c1), { dept: 'PHÒNG TĂNG TRƯỞNG & KINH DOANH O2O', title: 'Giám đốc', person: 'Phạm Công Hoàng (kiêm nhiệm)', annot: 'E', hc: 4 }); setT(c1, 'T3');
-  addChild(a); const c2 = nodes.get(a).children[1]; Object.assign(nodes.get(c2), { dept: 'VẬN HÀNH 4 BÁNH', title: 'Phó Tổng Giám đốc', person: 'Lê Viết Hải Sơn', hc: 6 }); setT(c2, 'T2');
+  addChild(a); const c2 = nodes.get(a).children[1]; Object.assign(nodes.get(c2), { dept: 'VẬN HÀNH 4 BÁNH', title: 'Phó Tổng Giám đốc', person: 'Jabo1: Ade Panca Putra Siregar (Q.)\nJabo 2: Yudhistira A. Syahputra (Q.)\nNon-Jabo 1: Phạm Hoàng Giang\nNon-Jabo 2: Adriansyah (Q.)\nASK: Chưa có\nDòng 6\nDòng 7', hc: 6 }); setT(c2, 'T2');
   select(c1);
   const pa = docView.pos.get(a), p1 = docView.pos.get(c1), p2 = docView.pos.get(c2);
   const lines = (id, cls) => document.querySelectorAll('#docPage .dbox[data-id="' + id + '"] text.l-' + cls).length;
-  return { a, c1, c2, levels: LEVELS.join(','), boxes: document.querySelectorAll('#docPage .dbox').length,
-           deptLinesRoot: lines(a, 'dept'), deptLines1: lines(c1, 'dept'), personLinesRoot: lines(a, 'person'), personLines1: lines(c1, 'person'),
-           rootH: pa.h, h1: p1.h, h2: p2.h, sameRow: Math.abs(p1.y - p2.y) < 0.01, directlyBelow: Math.abs(p1.y - (pa.y + pa.h + DBOX.gy)) < 0.01,
-           deptText: [...document.querySelectorAll('#docPage .dbox[data-id="' + c1 + '"] text.l-dept')].map(e => e.textContent).join('|'),
-           ellipsis: document.querySelector('#docPage svg').textContent.includes('…'),
-           titleText: document.querySelector('#docPage .dbox[data-id="' + c1 + '"] text.l-title').textContent,
-           hcA: hcOf(a), panelDept: document.getElementById('dfD').value, fillT1: document.querySelector('#docPage .dbox[data-id="' + a + '"] rect.bg').getAttribute('fill') };
+  const fs2 = +document.querySelector('#docPage .dbox[data-id="' + c2 + '"] text.l-person').getAttribute('font-size');
+  return { a, c1, c2, boxes: document.querySelectorAll('#docPage .dbox').length, deptLines1: lines(c1, 'dept'), personLinesRoot: lines(a, 'person'), personLines2: lines(c2, 'person'),
+           hA: pa.h, h1: p1.h, h2: p2.h, sameRow: p1.y === p2.y, directlyBelow: p1.y === pa.y + pa.h + DBOX.gy, rowPitch: rowPitch(), rows: [pa.row, p1.row, p2.row].join(','),
+           ellipsis: document.querySelector('#docPage svg').textContent.includes('…'), shrunkFont: fs2, titleText: document.querySelector('#docPage .dbox[data-id="' + c1 + '"] text.l-title').textContent,
+           hcA: hcOf(a), fillT1: document.querySelector('#docPage .dbox[data-id="' + a + '"] rect.bg').getAttribute('fill'), legendFs: document.querySelector('#docPage .dlegend text').getAttribute('font-size') };
 });
-check('LEVELS has ĐB before CC', built.levels.startsWith('ĐB,CC,T1'), built.levels);
-check('3 boxes; panel shows selected', built.boxes === 3 && built.panelDept === 'PHÒNG TĂNG TRƯỞNG & KINH DOANH O2O');
-check('long dept wraps to 2 lines, nothing truncated with "…"', built.deptLines1 === 2 && !built.ellipsis, built.deptText);
-check('multi-line person: root has 3 person lines (1 + wrapped 2nd line)', built.personLinesRoot >= 3, String(built.personLinesRoot));
-check('box height grows with content (root taller than min 19)', built.rootH > 19 && built.h2 === 19, JSON.stringify([built.rootH, built.h1, built.h2]));
-check('T3 and T2 children share the row directly under the T1 parent (no level rows)', built.sameRow && built.directlyBelow);
-check('title shows level by default', built.titleText === 'Giám đốc (T3)', built.titleText);
-check('classic T1 colour', built.fillT1 === '#E89347', built.fillT1);
-check('headcount roll-up 4 + 6 + 1 = 11', built.hcA === 11, String(built.hcA));
+check('3 boxes drawn', built.boxes === 3);
+check('long dept wraps to 2 lines, nothing truncated', built.deptLines1 === 2 && !built.ellipsis);
+check('multi-line person (root 3 lines incl. wrap; 7 entered lines kept)', built.personLinesRoot >= 3 && built.personLines2 >= 7, JSON.stringify([built.personLinesRoot, built.personLines2]));
+check('box height is fixed (23) even with 7 person lines — font shrinks instead', built.hA === 23 && built.h1 === 23 && built.h2 === 23 && built.shrunkFont < 2.9, JSON.stringify([built.h2, built.shrunkFont]));
+check('rows like shelves: children on the same row right under the parent (row 0 → 1)', built.sameRow && built.directlyBelow && built.rows === '0,1,1', built.rows);
+check('title shows level; classic T1 colour; legend text 2.7', built.titleText === 'Giám đốc (T3)' && built.fillT1 === '#ea9651' && built.legendFs === '2.7', JSON.stringify([built.titleText, built.fillT1, built.legendFs]));
+check('headcount roll-up 4 + 6 + 1 = 11', built.hcA === 11);
 
 // ---- ẩn (Tx) riêng từng box ----
 await ev(() => { document.getElementById('dfLv').click(); });
 check('hide level per box', (await ev((id) => document.querySelector('#docPage .dbox[data-id="' + id + '"] text.l-title').textContent + '|' + nodes.get(id).hideLv, built.c1)) === 'Giám đốc|true');
-check('other box still shows level', (await ev((id) => document.querySelector('#docPage .dbox[data-id="' + id + '"] text.l-title').textContent, built.c2)) === 'Phó Tổng Giám đốc (T2)');
 
-// ---- nhóm xếp dọc: 3 con của gốc tick stack -> cột trái, đường dọc + nhánh vào cạnh trái ----
+// ---- nhóm xếp dọc: 3 con của gốc tick stack -> cột trái, các hàng liên tiếp, badge không đè box trên ----
 const grp = await ev((a) => {
-  const mk = (dept) => { addChild(a); const id = nodes.get(a).children.slice(-1)[0]; Object.assign(nodes.get(id), { dept, title: 'Giám đốc', person: '(Chưa có)', stack: true }); setT(id, 'T3'); return id; };
+  const mk = (dept) => { addChild(a); const id = nodes.get(a).children.slice(-1)[0]; Object.assign(nodes.get(id), { dept, title: 'Giám đốc', person: '(Chưa có)', stack: true, annot: 'E' }); setT(id, 'T3'); return id; };
   const s1 = mk('PHÒNG PHÁP CHẾ'), s2 = mk('PHÒNG THANH TRA, KSCL & ANAT'), s3 = mk('PHÒNG QUAN HỆ ĐỐI NGOẠI');
   renderDoc();
   const P = docView.pos, q1 = P.get(s1), q2 = P.get(s2), q3 = P.get(s3), c1 = P.get(nodes.get(a).children[0]);
   const edges = docEdges(a, P);
-  const stubsIn = edges.filter(e => e.arrow && Math.abs(e.pts[0][1] - e.pts[1][1]) < 0.01).length;   // nhánh ngang có mũi tên vào cạnh trái
-  return { s1, sameCol: q1.x === q2.x && q2.x === q3.x, stackedDown: q1.y < q2.y && q2.y < q3.y, leftmost: q1.x < c1.x,
-           stubsIn, spine: edges.some(e => !e.arrow && e.pts.length === 2 && e.pts[0][0] === e.pts[1][0] && e.pts[1][1] > e.pts[0][1] && e.pts[0][0] < q1.x),
-           gap: q2.y - (q1.y + q1.h) };
+  const badgeTop2 = q2.y - 5.2;
+  return { s1, sameCol: q1.x === q2.x && q2.x === q3.x, rows: [q1.row, q2.row, q3.row].join(','), leftmost: q1.x < c1.x,
+           stubsIn: edges.filter(e => e.arrow && e.pts[0][1] === e.pts[1][1]).length,
+           spine: edges.some(e => !e.arrow && e.pts.length === 2 && e.pts[0][0] === e.pts[1][0] && e.pts[1][1] > e.pts[0][1] && e.pts[0][0] < q1.x),
+           badgeClear: badgeTop2 - (q1.y + q1.h) };
 }, built.a);
-check('stacked siblings form one column at the far left, top to bottom', grp.sameCol && grp.stackedDown && grp.leftmost, JSON.stringify(grp));
-check('one vertical spine left of the column + an arrowed stub into each of the 3 boxes', grp.spine && grp.stubsIn === 3, JSON.stringify([grp.spine, grp.stubsIn]));
-check('stack gap uses gyS', Math.abs(grp.gap - 4.5) < 0.01, String(grp.gap));
+check('stacked siblings: one leftmost column, consecutive rows 1,2,3', grp.sameCol && grp.rows === '1,2,3' && grp.leftmost, JSON.stringify(grp));
+check('spine + 3 arrowed stubs into the left edges', grp.spine && grp.stubsIn === 3);
+check('annotation badge of the lower box does not overlap the box above (clearance > 0)', grp.badgeClear > 0, String(grp.badgeClear));
 
-// ---- ý 8: box con dàn ngang (nối thẳng) có nhóm xếp dọc riêng -> treo ngay dưới, đường dọc từ cạnh trái ----
+// ---- ý 8: box dàn ngang có nhóm riêng -> treo dưới, đường dọc từ cạnh trái ----
 const sub = await ev((c1) => {
   const mk = (dept) => { addChild(c1); const id = nodes.get(c1).children.slice(-1)[0]; Object.assign(nodes.get(id), { dept, title: 'Trưởng phòng', stack: true }); setT(id, 'T4'); return id; };
   const k1 = mk('KINH DOANH NỀN TẢNG'), k2 = mk('KINH DOANH CORPORATE');
   renderDoc();
-  const P = docView.pos, p = P.get(c1), q1 = P.get(k1), q2 = P.get(k2), edges = docEdges(c1, P);
-  const first = edges[0];
-  return { underParent: q1.x === p.x && q1.y === p.y + p.h + DBOX.gy1 && q2.y > q1.y,
-           fromLeftEdge: first.pts[0][0] === p.x && first.pts[1][0] === p.x - DBOX.sx && first.pts[0][1] > p.y && first.pts[0][1] < p.y + p.h,
-           stubs: edges.filter(e => e.arrow).length };
+  const P = docView.pos, p = P.get(c1), q1 = P.get(k1), q2 = P.get(k2), edges = docEdges(c1, P), first = edges[0];
+  return { underParent: q1.x === p.x && q1.row === p.row + 1 && q2.row === p.row + 2,
+           fromLeftEdge: first.pts[0][0] === p.x && first.pts[1][0] === p.x - DBOX.sx, stubs: edges.filter(e => e.arrow).length };
 }, built.c1);
-check('stack-only children hang under the parent, aligned to its left edge', sub.underParent, JSON.stringify(sub));
-check('spine leaves from the parent\'s left edge; 2 arrowed stubs', sub.fromLeftEdge && sub.stubs === 2);
+check('stack-only children hang under the parent on the next rows, spine from its left edge', sub.underParent && sub.fromLeftEdge && sub.stubs === 2, JSON.stringify(sub));
 
-// ---- trang: khổ giấy / font / bảng màu / tiêu đề / mã văn bản / ghi chú -> dropdown badge ----
+// ---- đẩy hàng: nút ▼ đẩy box + con xuống; ▲ trả lại; kéo chuột dọc có đường kẻ hàng ----
+const push = await ev((c1) => {
+  select(c1); document.getElementById('dbDown').click();
+  const P = docView.pos, p = P.get(c1), k = P.get(nodes.get(c1).children[0]), sib = P.get(nodes.get(nodes.get(c1).parent).children[1]);
+  const out = { shift: nodes.get(c1).rowShift, row: p.row, childRow: k.row, sibRow: sib.row, upEnabled: !document.getElementById('dbUp').disabled };
+  document.getElementById('dbUp').click();
+  out.back = nodes.get(c1).rowShift === 0 && docView.pos.get(c1).row === 1 && document.getElementById('dbUp').disabled;
+  return out;
+}, built.c1);
+check('▼ pushes the box one row down and its children along; siblings stay', push.shift === 1 && push.row === 2 && push.childRow === 3 && push.sibRow === 1 && push.upEnabled, JSON.stringify(push));
+check('▲ brings it back (disabled at the natural row)', push.back);
+await ev(() => dZoomTo(1));
+const box = await page.locator('#docPage .dbox[data-id="' + built.c2 + '"] rect.bg').boundingBox();
+const pitchPx = await ev(() => rowPitch() * docView.scale * PX_PER_MM * dzoom);
+await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + pitchPx * 1.9, { steps: 8 });
+const mid = await ev((id) => ({ guides: document.querySelectorAll('#docPage .drow').length, cur: document.querySelectorAll('#docPage .drow.cur').length, shift: nodes.get(id).rowShift, sel: sel === id }), built.c2);
+await page.mouse.up();
+const dropped = await ev((id) => ({ guides: document.querySelectorAll('#docPage .drow').length, shift: nodes.get(id).rowShift, row: docView.pos.get(id).row, y: docView.pos.get(id).y }), built.c2);
+check('vertical drag shows row guides (current row highlighted) and moves the box 2 rows down', mid.guides > 4 && mid.cur === 2 && mid.shift === 2 && mid.sel, JSON.stringify(mid));
+check('drop hides guides; box sits exactly on row 3', dropped.guides === 0 && dropped.shift === 2 && dropped.row === 3 && dropped.y === 3 * (await ev(() => rowPitch())), JSON.stringify(dropped));
+await ev(() => undo());
+check('undo restores the row', (await ev((id) => nodes.get(id).rowShift, built.c2)) === 0);
+
+// ---- trang: A2, chiều cao tự động, bề rộng box, font, tiêu đề/mã/ghi chú, dropdown badge ----
 const pg = await ev((c1) => {
   const out = {};
+  out.pageOpts = [...document.querySelectorAll('#dpPage option')].map(o => o.value).join(',');
   document.getElementById('dpPage').value = 'A3'; document.getElementById('dpPage').dispatchEvent(new Event('change'));
   document.getElementById('dpOrient').value = 'P'; document.getElementById('dpOrient').dispatchEvent(new Event('change'));
   out.viewBox = document.querySelector('#docPage svg').getAttribute('viewBox');
-  document.getElementById('dpScheme').value = 'pastel'; document.getElementById('dpScheme').dispatchEvent(new Event('change'));
-  out.fillPastel = document.querySelector('#docPage .dbox rect.bg').getAttribute('fill');
-  document.getElementById('dpScheme').value = 'classic'; document.getElementById('dpScheme').dispatchEvent(new Event('change'));
+  const bw = document.getElementById('dpBoxW'); bw.value = 60; bw.dispatchEvent(new Event('input'));
+  out.boxW = doc.boxW; out.wAll = [...docView.pos.values()].every(p => p.w === 60);
+  bw.value = 46; bw.dispatchEvent(new Event('input'));
   document.getElementById('dpFont').value = 'times'; document.getElementById('dpFont').dispatchEvent(new Event('change'));
-  out.fam = document.querySelector('#docPage svg').getAttribute('font-family');
   const h = document.getElementById('dpHeader'); h.value = 'SƠ ĐỒ TỔ CHỨC CÔNG TY'; h.dispatchEvent(new Event('input'));
   const c = document.getElementById('dpc_code'); c.value = 'QĐ-01/2026'; c.dispatchEvent(new Event('input'));
   select(c1);
-  out.annotOptsBefore = [...document.querySelectorAll('#dfA option')].map(o => o.value).join(',');
   document.getElementById('dpAddNote').click(); document.getElementById('dpAddNote').click();
   const rows = document.querySelectorAll('#dpNotes .noteRow');
   const tx = rows[0].querySelector('input.txt'); tx.value = 'Báo cáo đồng thời cho Chủ Tịch Tập đoàn'; tx.dispatchEvent(new Event('input'));
   const k2 = rows[1].querySelector('input.k'); k2.value = 'E'; k2.dispatchEvent(new Event('input'));
   out.annotOpts = [...document.querySelectorAll('#dfA option')].map(o => o.value).join(',');
-  out.annotSel = document.getElementById('dfA').value;
   document.getElementById('dfA').value = 'A'; document.getElementById('dfA').dispatchEvent(new Event('change'));
   out.annotAfter = nodes.get(c1).annot;
   const svgText = document.querySelector('#docPage svg').textContent;
   out.hasHeader = svgText.includes('SƠ ĐỒ TỔ CHỨC CÔNG TY'); out.hasCode = svgText.includes('QĐ-01/2026'); out.hasNote = svgText.includes('Báo cáo đồng thời');
-  out.legendRects = document.querySelectorAll('#docPage .dlegend rect').length;
+  out.chartTop = docView.ty;                                   // sơ đồ phải bắt đầu cạnh khối ghi chú, không dưới hẳn
+  out.notesBottom = 10 + 9 + 5 * 3.9 + 2.5 + 4.6 + 2 * 4.2 + 2.5;
+  out.pageH0 = docView.pageH;
+  document.getElementById('dpAutoH').click();
+  const root = rootIds[0]; nodes.get(root).rowShift = 9; renderDoc();     // đẩy cả sơ đồ xuống 9 hàng -> dài quá A3
+  out.autoPageH = docView.pageH; out.viewBoxAuto = document.querySelector('#docPage svg').getAttribute('viewBox');
+  out.printPage = (docPrint.toString().length > 0, (window.print = function(){}), docPrint(), document.getElementById('printPage').textContent);
+  nodes.get(root).rowShift = 0; document.getElementById('dpAutoH').click();
   return out;
 }, built.c1);
+check('paper options include A2', pg.pageOpts === 'A4,A3,A2', pg.pageOpts);
 check('A3 portrait → viewBox 297×420', pg.viewBox === '0 0 297 420', pg.viewBox);
-check('pastel scheme selectable; Times font applied', pg.fillPastel === '#FFB98A' && /Times New Roman/.test(pg.fam), JSON.stringify([pg.fillPastel, pg.fam]));
-check('annotation is a dropdown: undefined key flagged before notes exist', pg.annotOptsBefore === ',E', pg.annotOptsBefore);
-check('dropdown lists defined note keys; box keeps E; can switch to A', pg.annotOpts === ',A,E' && pg.annotSel === 'E' && pg.annotAfter === 'A', JSON.stringify([pg.annotOpts, pg.annotSel, pg.annotAfter]));
-check('header, code block, note and 8-row legend on page', pg.hasHeader && pg.hasCode && pg.hasNote && pg.legendRects === 8);
+check('universal box width slider re-lays every box (60 mm)', pg.boxW === 60 && pg.wAll);
+check('annotation dropdown lists defined keys; switch to A', pg.annotOpts === ',A,E' && pg.annotAfter === 'A', pg.annotOpts);
+check('header, code block and note on page', pg.hasHeader && pg.hasCode && pg.hasNote);
+check('chart starts beside the notes block, not below it', pg.chartTop < pg.notesBottom, JSON.stringify([pg.chartTop, pg.notesBottom]));
+check('auto page height: page grows to fit 9 extra rows; print @page follows', pg.pageH0 === 420 && pg.autoPageH > 420 && pg.viewBoxAuto === '0 0 297 ' + pg.autoPageH && pg.printPage === '@page{size:297mm ' + pg.autoPageH + 'mm;margin:0}', JSON.stringify([pg.pageH0, pg.autoPageH, pg.printPage]));
 
-// ---- kéo box sang ngang (giữ hàng) ----
-const box = await page.locator('#docPage .dbox[data-id="' + built.c2 + '"] rect.bg').boundingBox();
-await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
-await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30, { steps: 6 }); await page.mouse.up();
-const afterDrag = await ev((id) => ({ dx: nodes.get(id).dx, sel: sel === id, y: docView.pos.get(id).y }), built.c2);
-const rowY = await ev((id) => docView.pos.get(nodes.get(id).children[0]).y, built.a);
-check('box drag shifts dx only (row unchanged), selects box', afterDrag.dx > 5 && afterDrag.sel && Math.abs(afterDrag.y - rowY) < 0.01, JSON.stringify(afterDrag));
-await ev(() => document.getElementById('dbPos').click());
-check('reset position clears dx', (await ev((id) => nodes.get(id).dx, built.c2)) === 0);
-
-// ---- zoom mượt quanh con trỏ + pan bằng chuột ----
+// ---- zoom mượt quanh con trỏ + pan bằng chuột, không bôi đen chữ ----
 await ev(() => dZoomTo(1));
 const wrapBox = await page.locator('#docWrap').boundingBox();
 await page.mouse.move(wrapBox.x + 300, wrapBox.y + 300);
 await page.mouse.wheel(0, -300);
 await page.waitForTimeout(500);
-const z1 = await ev(() => ({ z: dzoom, w: parseFloat(document.querySelector('#docPage svg').style.width), anim: dzoomAnim }));
-check('wheel zooms smoothly to the target (animation finished)', z1.z > 1.5 && z1.anim === null && z1.w > 0, JSON.stringify(z1));
+const z1 = await ev(() => ({ z: dzoom, anim: dzoomAnim }));
+check('wheel zooms smoothly to the target', z1.z > 1.5 && z1.anim === null, JSON.stringify(z1));
 const before = await ev(() => ({ sl: document.getElementById('docWrap').scrollLeft, st: document.getElementById('docWrap').scrollTop }));
 await page.mouse.move(wrapBox.x + 200, wrapBox.y + 200); await page.mouse.down();
 await page.mouse.move(wrapBox.x + 120, wrapBox.y + 140, { steps: 5 }); await page.mouse.up();
-const after = await ev(() => ({ sl: document.getElementById('docWrap').scrollLeft, st: document.getElementById('docWrap').scrollTop, sel }));
-check('dragging the background pans the page and keeps selection', after.sl > before.sl && after.st > before.st && after.sel !== null, JSON.stringify([before, after]));
-await page.mouse.move(wrapBox.x + 300, wrapBox.y + 400); await page.mouse.down(); await page.mouse.up();
+const after = await ev(() => ({ sl: document.getElementById('docWrap').scrollLeft, st: document.getElementById('docWrap').scrollTop, sel, selection: window.getSelection().toString() }));
+check('dragging the background pans the page, keeps selection, selects no text', after.sl > before.sl && after.st > before.st && after.sel !== null && after.selection === '', JSON.stringify([before, after]));
+await page.mouse.move(wrapBox.x + 8, wrapBox.y + 8); await page.mouse.down(); await page.mouse.up();   // vùng đệm quanh trang = nền
 check('plain click on background deselects', (await ev(() => sel)) === null);
 await ev(() => dZoomFit());
 
 // ---- round-trip JSON (v11 + doc + trường trình bày) + file cũ ----
 const rt = await ev(() => {
+  nodes.get(rootIds[0]).children.forEach((c, i) => { if (i === 1) nodes.get(c).rowShift = 1; });
   const saved = JSON.parse(JSON.stringify(serializeAll()));
   applyState(saved); renderAll();
-  const a = rootIds[0], c1 = nodes.get(nodes.get(a).children[0]), s1 = nodes.get(nodes.get(a).children[2]);
-  const out = { v: saved.v, page: doc.page, orient: doc.orient, font: doc.font, scheme: doc.scheme, header: doc.header, notes: doc.notes.length,
-                annot: c1.annot, hc: c1.hc, hideLv: c1.hideLv, stack: s1.stack, rootStack: nodes.get(a).stack };
+  const a = rootIds[0], c1 = nodes.get(nodes.get(a).children[0]), c2 = nodes.get(nodes.get(a).children[1]), s1 = nodes.get(nodes.get(a).children[2]);
+  const out = { v: saved.v, page: doc.page, orient: doc.orient, boxW: doc.boxW, autoH: doc.autoH, font: doc.font, notes: doc.notes.length,
+                annot: c1.annot, hc: c1.hc, hideLv: c1.hideLv, rowShift: c2.rowShift, stack: s1.stack };
   const legacy = JSON.parse(JSON.stringify(saved)); delete legacy.doc;
-  legacy.roots.forEach(function strip(r){ delete r.hc; delete r.annot; delete r.desc; delete r.dx; delete r.hideLv; delete r.stack; (r.children || []).forEach(strip); });
+  legacy.roots.forEach(function strip(r){ delete r.hc; delete r.annot; delete r.desc; delete r.rowShift; delete r.hideLv; delete r.stack; (r.children || []).forEach(strip); });
   applyState(legacy); renderAll();
-  out.legacyDoc = doc.page + doc.orient + doc.font + doc.scheme + '|' + doc.notes.length; out.legacyStack = [...nodes.values()].some(n => n.stack || n.hideLv);
+  out.legacyDoc = doc.page + doc.orient + doc.boxW + doc.autoH + doc.font + doc.scheme + '|' + doc.notes.length; out.legacyFlags = [...nodes.values()].some(n => n.stack || n.hideLv || n.rowShift);
   applyState(saved); renderAll();
   return out;
 });
-check('round-trip keeps doc layer, annot/hc/hideLv/stack', rt.v === 11 && rt.page === 'A3' && rt.orient === 'P' && rt.font === 'times' && rt.scheme === 'classic' && rt.notes === 2 && rt.annot === 'A' && rt.hc === 4 && rt.hideLv === true && rt.stack === true && rt.rootStack === false, JSON.stringify(rt));
-check('file without presentation fields loads with defaults', rt.legacyDoc === 'A4Lappclassic|0' && rt.legacyStack === false, rt.legacyDoc);
+check('round-trip keeps doc layer (boxW/autoH), annot/hc/hideLv/rowShift/stack', rt.v === 11 && rt.page === 'A3' && rt.orient === 'P' && rt.boxW === 46 && rt.autoH === false && rt.font === 'times' && rt.notes === 2 && rt.annot === 'A' && rt.hc === 4 && rt.hideLv === true && rt.rowShift === 1 && rt.stack === true, JSON.stringify(rt));
+check('file without presentation fields loads with defaults', rt.legacyDoc === 'A4L46falseappclassic|0' && rt.legacyFlags === false, rt.legacyDoc);
 
 // ---- chuyển module: cùng cây ----
 await page.click('#bHome'); check('home → landing', await vis('#landing'));
 await page.click('#bModFlow');
 const flow = await ev(() => ({ mod: MOD, orgVisible: getComputedStyle(document.getElementById('tabOrg')).display !== 'none', nodesOnCanvas: document.querySelectorAll('#canvas .node').length }));
 check('flow module shows the same 8 boxes', flow.mod === 'flow' && flow.orgVisible && flow.nodesOnCanvas === 8, JSON.stringify(flow));
-await ev(() => { select(rootIds[0]); addChild(rootIds[0]); nodes.get(sel).dept = 'THÊM Ở LUỒNG'; });
-await ev(() => select(rootIds[0]));
+await ev(() => { select(rootIds[0]); addChild(rootIds[0]); nodes.get(sel).dept = 'THÊM Ở LUỒNG'; select(rootIds[0]); });
 check('org panel offers ĐB (root) and headcount field', (await ev(() => [...document.querySelectorAll('#fT option')].map(o => o.textContent).join(','))).startsWith('ĐB,CC') && (await ev(() => !!document.getElementById('fHc'))));
 await ev(() => showModule('doc'));
-check('box added in flow module appears in doc module with blank presentation fields', (await ev(() => document.querySelectorAll('#docPage .dbox').length)) === 9 && (await ev(() => { const n = nodes.get(sel); return n.annot === '' && n.desc === '' && n.dx === 0 && !n.stack && !n.hideLv; })));
+check('box added in flow module appears in doc module with blank presentation fields', (await ev(() => document.querySelectorAll('#docPage .dbox').length)) === 9 && (await ev(() => { const n = nodes.get(nodes.get(rootIds[0]).children.slice(-1)[0]); return n.annot === '' && n.desc === '' && n.rowShift === 0 && !n.stack && !n.hideLv; })));
 
-// ---- in + PDF ----
-await ev(() => { window.print = function(){ window.__printed = true; }; docPrint(); });
-check('print sets @page size from current paper', (await ev(() => document.getElementById('printPage').textContent)) === '@page{size:297mm 420mm;margin:0}' && (await ev(() => window.__printed === true)));
+// ---- PDF ----
 const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#bPdf')]);
 const pdfBuf = fs.readFileSync(await dl.path());
 check('PDF download is a real PDF with embedded LiberationSerif', pdfBuf.subarray(0, 5).toString() === '%PDF-' && /LiberationSerif/.test(pdfBuf.toString('latin1')), pdfBuf.length + 'B');

@@ -82,7 +82,7 @@ select:focus{outline:none;box-shadow:0 0 0 3px var(--cyan)}
 #focusChip button{padding:0 5px;font-size:12px;border:none;box-shadow:none;background:none}
 #focusChip button:hover{transform:none}          /* nút không có shadow thì không lún */
 main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overlay */
-#canvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none}
+#canvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none;user-select:none}   /* kéo nền không bôi đen chữ */
 #canvasWrap.panning{cursor:grabbing}
 #canvasSizer{position:relative}                            /* kích thước = world × zoom, tạo vùng cuộn */
 #canvas{position:relative;transform-origin:0 0}            /* scale(zoom) set bằng JS */
@@ -174,7 +174,7 @@ td.dash{color:var(--muted);text-align:center}
 #vlineBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
           padding:9px 12px;border-bottom:2px solid var(--line);background:var(--wash)}
 #vmain{flex:1;min-height:0;display:flex}
-#vcanvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none}
+#vcanvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none;user-select:none}
 #vcanvasWrap.panning{cursor:grabbing}
 #vcanvas{position:relative}
 #vsvg{position:absolute;left:0;top:0;pointer-events:none}
@@ -348,7 +348,7 @@ tr.hideRow{display:none}
 #tabDoc{flex:1;min-height:0;display:none;flex-direction:column}
 #docBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:var(--bd);background:var(--paper)}
 #dmain{flex:1;min-height:0;display:flex}
-#docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px;cursor:grab;touch-action:none}
+#docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px;cursor:grab;touch-action:none;user-select:none}
 #docWrap.panning{cursor:grabbing}
 #docPage{display:inline-block;vertical-align:top}
 #docPage svg{display:block;background:#fff;border:var(--bd);box-shadow:4px 4px 0 var(--ink)}
@@ -368,7 +368,9 @@ tr.hideRow{display:none}
 #dfC{font-weight:700}
 #dfP{font-style:italic}
 /* Tương tác trên SVG (đơn vị mm) */
-.dbox{cursor:ew-resize}
+.dbox{cursor:ns-resize}
+.drow{stroke:#6B8FE8;stroke-width:0.3;stroke-dasharray:1.5 1.2;opacity:.35}   /* đường kẻ hàng hướng dẫn khi kéo box đổi hàng */
+.drow.cur{opacity:.9;stroke-width:0.5}
 .dbox.sel rect.bg{stroke:#6B8FE8;stroke-width:0.9}
 @media print{
   html,body{background:#fff}

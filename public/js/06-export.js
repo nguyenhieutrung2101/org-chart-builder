@@ -50,7 +50,7 @@ function ser(id){
            hc: n.hc == null ? undefined : n.hc,
            annot: n.annot || undefined,
            desc: n.desc || undefined,
-           dx: n.dx || undefined,
+           rowShift: n.rowShift || undefined,
            hideLv: n.hideLv || undefined,
            stack: n.stack || undefined,
            children: n.children.map(ser) };
@@ -95,7 +95,7 @@ function applyState(d){
                  hc: (typeof o.hc === 'number' && isFinite(o.hc) && o.hc >= 0) ? Math.round(o.hc) : null,
                  annot: String(o.annot || '').slice(0, 3),
                  desc: String(o.desc || ''),
-                 dx: (typeof o.dx === 'number' && isFinite(o.dx)) ? o.dx : 0,
+                 rowShift: (typeof o.rowShift === 'number' && isFinite(o.rowShift) && o.rowShift > 0) ? Math.round(o.rowShift) : 0,
                  hideLv: !!o.hideLv, stack: !!(parentId && o.stack) });
     if (o.focus && !tFocus) tFocus = id;
     (o.children || []).forEach(function(c){ tN.get(id).children.push(mk(c, id)); });
