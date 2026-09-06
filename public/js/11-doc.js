@@ -6,9 +6,10 @@
 
 var PAGE_MM = { A4:[210, 297], A3:[297, 420], A2:[420, 594] };   // [cạnh ngắn, cạnh dài] mm
 var DOC_M   = 10;                                        // lề trang (mm)
-// h: cao box cố định (~5 dòng); wMin/wMax: giới hạn bề rộng box (doc.boxW); gx: giữa các cột;
-// gy: khoảng giữa hai HÀNG (đủ chỗ cho thanh ngang + badge chữ cái); stub: đường dọc → cạnh trái box; sx: đường dọc lệch trái box cha
-var DBOX    = { h:23, wMin:30, wMax:80, gx:5, gy:11, stub:4, sx:4 };
+// w × h: kích thước box cố định (~5 dòng); gx: giữa các cột; gy: khoảng giữa hai HÀNG (thanh ngang ở giữa khoảng này,
+// badge chữ cái nằm dưới thanh ngang); stub: đường dọc → cạnh trái box; sx: đường dọc lệch trái box cha; logoH: cao logo
+var DBOX    = { w:46, h:23, gx:5, gy:12, stub:4, sx:4, logoH:8 };
+var BADGE   = { s:4.2, up:4.6 };                          // badge chữ cái: cạnh s, đỉnh cách mép trên box "up" (hở ~1.2 mm với thanh ngang)
 var DOC_FONTS = {                                        // css: hiển thị; pdf: tên họ font nhúng khi tải PDF
   app:   { css:'system-ui, "Segoe UI", Arial, sans-serif',          pdf:'DocSans'  },
   arial: { css:'Arial, "Liberation Sans", Helvetica, sans-serif',    pdf:'DocSans'  },
@@ -116,7 +117,7 @@ function svText(parent, x, y, str, o){
    Bề ngang: con "dàn ngang" mỗi con một cột; con "xếp dọc" (stack) gom thành một cột — ngoài cùng bên trái nếu còn con
    dàn ngang, treo ngay dưới cha nếu chỉ có nhóm này. measure() memo bề rộng cây con, place() gán toạ độ tuyệt đối. */
 function docLayout(fam){
-  var W = doc.boxW, H = DBOX.h, PITCH = rowPitch();
+  var W = DBOX.w, H = DBOX.h, PITCH = rowPitch();
   var box = new Map(), meas = new Map(), pos = new Map(), row = new Map(), rowBase = new Map();
   nodes.forEach(function(n, id){ box.set(id, boxContent(n, fam, W)); });
   function kids(id){
@@ -173,7 +174,9 @@ function docEdges(id, pos){
     stacked.forEach(function(c){ var q = pos.get(c); out.push({ pts:[[spineX, q.y + q.h / 2], [q.x, q.y + q.h / 2]], arrow:true }); });
   }
   if (spread.length){
-    var busY = bottom + DBOX.gy / 2, first = pos.get(spread[0]);
+    var first = pos.get(spread[0]);
+    var topY = Math.min.apply(null, spread.concat(stacked).map(function(c){ return pos.get(c).y; }));
+    var busY = topY - DBOX.gy / 2;                    // thanh ngang ngay trên hàng con cao nhất, không phải sát đáy cha
     if (spread.length === 1 && !stacked.length && Math.abs(first.x + first.w / 2 - cxP) < 0.01){
       out.push({ pts:[[cxP, bottom], [cxP, first.y]], arrow:true });
       return out;
@@ -206,6 +209,13 @@ function buildDocSvg(forExport){
     y += 9;
   }
   var leftY = y, rightY = y, x0 = M, leftW = 0;
+  var logo = doc.logo ? docLogoSvg(doc.logo) : null;
+  if (logo){                                          // logo cố định 8 mm cao ở góc trái trên, không co theo trang
+    var lw0 = DBOX.logoH * logo.ratio;
+    logo.el.setAttribute('x', M); logo.el.setAttribute('y', M); logo.el.setAttribute('width', lw0); logo.el.setAttribute('height', DBOX.logoH);
+    svg.appendChild(logo.el);
+    leftY = Math.max(leftY, M + DBOX.logoH + 3); leftW = Math.max(leftW, lw0);
+  }
   if (doc.show.code){
     var labels = [['dcCode', 'code'], ['dcDate', 'date'], ['dcAuthor', 'author'], ['dcReviewer', 'reviewer'], ['dcApprover', 'approver']];
     var lw = 0;
@@ -231,7 +241,7 @@ function buildDocSvg(forExport){
     });
     leftY += doc.notes.length * 4.2 + 2.5;
   }
-  if (leftY > y) blocks.push({ x0:M, x1:M + leftW, y0:y, y1:leftY });
+  if (leftY > y || logo) blocks.push({ x0:M, x1:M + leftW, y0:Math.min(y, M), y1:leftY });
   if (doc.show.legend){
     var items = [['ĐB', docLevelName('ĐB')], ['CC', docLevelName('CC')], ['T1', 'T1'], ['T2', 'T2'], ['T3', 'T3'], ['T4', 'T4'], ['T5', 'T5'], ['T6', 'T6/T7/T8']];
     var lgW = 22, lgH = 4.4, lx = P.w - M - lgW;
@@ -264,7 +274,7 @@ function buildDocSvg(forExport){
   });
   var maxY = (L.maxRow + 1) * PITCH - DBOX.gy;
   // cụm mô tả chức năng: một khối dưới mỗi box có mô tả, cùng độ cao, thẳng cột với box
-  var descs = [], descTop = maxY + 8, descH = 0, DS = 2.5, DLH = 3.3, DPAD = 1.6, DW = doc.boxW;
+  var descs = [], descTop = maxY + 8, descH = 0, DS = 2.5, DLH = 3.3, DPAD = 1.6, DW = DBOX.w;
   if (doc.show.desc){
     ids.forEach(function(id){
       var n = nodes.get(id);
@@ -341,8 +351,8 @@ function buildDocSvg(forExport){
       });
     });
     if (n.annot){
-      sv('rect', { class:'annot', x:p.x, y:p.y - 5.2, width:4.4, height:4.4, fill:'#fff', stroke:INK, 'stroke-width':0.3 }, gb);
-      svText(gb, p.x + 2.2, p.y - 1.9, n.annot, { size:2.8, weight:'bold', anchor:'middle' });
+      sv('rect', { class:'annot', x:p.x, y:p.y - BADGE.up, width:BADGE.s, height:BADGE.s, fill:'#fff', stroke:INK, 'stroke-width':0.3 }, gb);
+      svText(gb, p.x + BADGE.s / 2, p.y - BADGE.up + BADGE.s * 0.76, n.annot, { size:2.7, weight:'bold', anchor:'middle' });
     }
     if (doc.show.hc){
       var hc = String(hcOf(id)), pw = Math.max(6, textW(hc, 2.5, 'bold', 'normal', fam) + 3);
@@ -358,6 +368,40 @@ function buildDocSvg(forExport){
     });
   });
   return svg;
+}
+
+/* ---------- logo SVG người dùng dán vào ---------- */
+// Trả về { el: <svg> đã lọc, ratio: rộng/cao } hoặc null nếu không phải SVG. Loại bỏ script / sự kiện / foreignObject / href javascript:.
+// Fill/stroke khai báo qua <style> theo class được chuyển thành thuộc tính inline để svg2pdf in đúng (svg2pdf không đọc <style>).
+function docLogoSvg(code){
+  var d;
+  try{ d = new DOMParser().parseFromString(String(code), 'image/svg+xml'); }catch(_){ return null; }
+  var root = d.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg' || d.querySelector('parsererror')) return null;
+  var css = {};
+  Array.prototype.slice.call(root.querySelectorAll('style')).forEach(function(st){
+    (st.textContent || '').replace(/\.([\w-]+)\s*\{([^}]*)\}/g, function(_, cls, body){
+      var props = {};
+      body.split(';').forEach(function(kv){ var m = kv.split(':'); if (m.length === 2 && /^(fill|stroke|fill-opacity|stroke-width|opacity)$/.test(m[0].trim())) props[m[0].trim()] = m[1].trim(); });
+      css[cls] = props; return '';
+    });
+    st.remove();
+  });
+  Array.prototype.slice.call(root.querySelectorAll('*')).forEach(function(el){
+    var name = el.nodeName.toLowerCase();
+    if (name === 'script' || name === 'foreignobject'){ el.remove(); return; }
+    Array.prototype.slice.call(el.attributes).forEach(function(at){
+      if (/^on/i.test(at.name) || (/href$/i.test(at.name) && /^\s*javascript:/i.test(at.value))) el.removeAttribute(at.name);
+    });
+    (el.getAttribute('class') || '').split(/\s+/).forEach(function(c){ var p = css[c]; if (p) Object.keys(p).forEach(function(k){ if (!el.hasAttribute(k)) el.setAttribute(k, p[k]); }); });
+  });
+  var vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  var w = parseFloat(root.getAttribute('width')), h = parseFloat(root.getAttribute('height'));
+  if (vb.length !== 4 || vb.some(isNaN)){ if (!(w > 0 && h > 0)) return null; vb = [0, 0, w, h]; }
+  var el = document.importNode(root, true);
+  Array.prototype.slice.call(el.attributes).forEach(function(at){ if (!/^(xmlns|xmlns:xlink|viewBox|id)$/.test(at.name)) el.removeAttribute(at.name); });
+  el.setAttribute('viewBox', vb.join(' ')); el.setAttribute('preserveAspectRatio', 'xMinYMin meet'); el.setAttribute('class', 'dlogo');
+  return { el:el, ratio:vb[2] / vb[3] };
 }
 
 /* ---------- render màn hình + zoom mượt ---------- */
@@ -483,10 +527,11 @@ function renderDPage(){
       '<div class="row2"><div><label>' + t('lblPage') + '</label>' + sel1('dpPage', [['A4', 'A4'], ['A3', 'A3'], ['A2', 'A2']], doc.page) + '</div>'
     + '<div><label>' + t('lblOrient') + '</label>' + sel1('dpOrient', [['L', t('orientL')], ['P', t('orientP')]], doc.orient) + '</div></div>'
     + '<div class="ck"><input type="checkbox" id="dpAutoH"><label for="dpAutoH" style="margin:0">' + t('ckAutoH') + '</label></div>'
-    + '<label>' + t('lblBoxW') + '</label><div class="row2" style="align-items:center"><input id="dpBoxW" type="range" min="' + DBOX.wMin + '" max="' + DBOX.wMax + '" step="1"><input id="dpBoxWn" type="number" min="' + DBOX.wMin + '" max="' + DBOX.wMax + '" step="1"></div>'
     + '<div class="row2"><div><label>' + t('lblFont') + '</label>' + sel1('dpFont', [['app', t('fontApp')], ['arial', 'Arial'], ['times', 'Times New Roman']], doc.font) + '</div>'
     + '<div><label>' + t('lblScheme') + '</label>' + sel1('dpScheme', [['classic', t('schemeClassic')], ['pastel', t('schemePastel')]], doc.scheme) + '</div></div>'
     + '<label>' + t('lblHeader') + '</label><input id="dpHeader" autocomplete="off" placeholder="' + t('phHeader') + '">'
+    + '<label>' + t('lblLogo') + '</label><textarea id="dpLogo" rows="3" spellcheck="false" placeholder="' + xesc(t('phLogo')) + '"></textarea>'
+    + '<div class="hint">' + t('logoHint') + '</div>'
     + '<label>' + t('docCodeH') + '</label>'
     + codeFields.map(function(f){ return '<input id="dpc_' + f[0] + '" autocomplete="off" placeholder="' + t(f[1]) + '" style="margin-bottom:5px">'; }).join('')
     + '<label>' + t('notesH') + '</label><div id="dpNotes"></div>'
@@ -499,10 +544,12 @@ function renderDPage(){
   $('dpScheme').onchange = function(){ docSet('scheme', function(){ doc.scheme = $('dpScheme').value; }); };
   var ah = $('dpAutoH'); ah.checked = !!doc.autoH;
   ah.onchange = function(){ docSet('autoH', function(){ doc.autoH = ah.checked; }); };
-  var bw = $('dpBoxW'), bwn = $('dpBoxWn'); bw.value = bwn.value = doc.boxW;
-  function setBoxW(v){ v = Math.min(DBOX.wMax, Math.max(DBOX.wMin, Math.round(+v) || doc.boxW)); bw.value = bwn.value = v; docSet('boxW', function(){ doc.boxW = v; }); }
-  bw.oninput = function(){ setBoxW(bw.value); };
-  bwn.onchange = function(){ setBoxW(bwn.value); };
+  var lg = $('dpLogo'); lg.value = doc.logo;
+  lg.onchange = function(){
+    var v = lg.value.trim();
+    if (v && !docLogoSvg(v)){ msg(t('logoBad')); return; }
+    docSet('logo', function(){ doc.logo = v; });
+  };
   var h = $('dpHeader'); h.value = doc.header;
   h.oninput = function(){ docSet('header', function(){ doc.header = h.value; }); };
   codeFields.forEach(function(f){

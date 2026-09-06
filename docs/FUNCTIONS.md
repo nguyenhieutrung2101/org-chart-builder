@@ -19,7 +19,7 @@
 | `public/js/08-flow.js` | 481 | Flow engine, FC groups, Fund Centers, result table |
 | `public/js/09-rules.js` | 380 | Flow module — Flow-Rules tab (palette, matrix, CIG scenarios, modes) |
 | `public/js/10-zoom.js` | 115 | Org-tab zoom + minimap |
-| `public/js/11-doc.js` | 611 | **Chart-layout module**: printable SVG page in mm, drag/bend interactions, print, PDF |
+| `public/js/11-doc.js` | 658 | **Chart-layout module**: printable SVG page in mm, drag/bend interactions, print, PDF |
 | `public/js/12-wiring.js` | 314 | Pan handlers, shortcuts, event wiring, landing + module switching, init |
 | `public/js/vendor/*` | — | jsPDF 2.5.2 + svg2pdf 2.2.4 (MIT), loaded lazily by "Download PDF". Not inventoried. |
 | `public/fonts/*.ttf` | — | Liberation Sans/Serif (SIL OFL) embedded into downloaded PDFs. |
@@ -233,43 +233,44 @@ Also: an IIFE wiring pointer-capture drag on the minimap (click/drag → centre 
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
-| `docPageSize` | 29 | `() → {w,h}` | Page size in mm from `doc.page` + `doc.orient` | — / doc renderer, zoom, print, PDF | pure |
-| `docColors` | 33 | `() → object` | Level → fill colour for the active scheme (`TCOLOR` pastel or `TCOLOR_CLASSIC`) | — / `buildDocSvg` | pure |
-| `docFont` | 34 | `() → {css,pdf}` | Font entry for `doc.font` (CSS stack for screen, embedded family name for PDF) | — / `buildDocSvg`, `docPdf` | pure |
-| `docLevelName` | 35 | `(L: LevelKey) → string` | Legend label: ĐB/CC translated, T1… as is | `t` / `buildDocSvg` | pure |
-| `rowPitch` | 36 | `() → number` | Row pitch in mm = fixed box height + row gap | — / layout, drag | pure |
-| `textW` | 40 | `(str, size, weight, style, fam) → number` | Measure text width in mm with a canvas 2D context | — / `fitText`, `wrapText`, `buildDocSvg`, `svText` | pure (cached ctx) |
-| `wrapText` | 46 | `(str, maxW, size, weight, style, fam) → string[]` | Word-wrap (breaking over-long words by character), keeping user line breaks | `textW` / `buildDocSvg` (descriptions) | pure |
-| `fitLines` | 67 | `(str, maxW, size, minSize, maxLines, weight, style, fam) → {lines,size}` | Wrap; if more than `maxLines` shrink the font step-wise down to `minSize`; at the minimum keep wrapping (extra lines) — text is never truncated | `wrapText` / `boxContent` | pure |
-| `boxContent` | 77 | `(n: Node, fam, W) → {dept,title,person,contentH,scale}` | Text blocks of one box inside the fixed height: dept ≤2 lines then shrink; title (+ level unless `hideLv`) 1 line then shrink; person = every entered line wrapped; if the total still overflows, all three blocks shrink together (down to 50 %) — the box never grows | `fitLines`, `wrapText` / `docLayout` | pure |
-| `sv` | 94 | `(name, attrs?, parent?) → SVGElement` | Create an SVG element with attributes, optionally appended | — / doc renderer | pure (creates el) |
-| `svText` | 101 | `(parent, x, y, str, o) → SVGTextElement` | SVG `<text>` with size/weight/style/anchor; underline drawn as a real `<line>` (svg2pdf ignores `text-decoration`) | `sv`, `textW` / `buildDocSvg` | pure (creates el) |
-| `docLayout` | 118 | `(fam) → {pos,box,rowBase,maxRow}` | Shelf layout: every box has the same height and sits on an integer row (child = parent + 1; stacked siblings on consecutive rows; `rowShift` pushes a box and everything below it down). Columns from a memoised tidy tree: spread children side by side, `stack` children in one column (leftmost when spread siblings exist, hanging under the parent otherwise). Inner `assignRows`, `measure`, `place` | — / `buildDocSvg` | pure |
-| `docEdges` | 165 | `(id, pos) → {pts,arrow}[]` | Connectors of one parent: straight drop for a single centred child, else bus + drops; stacked column fed by a vertical spine (from the bus, or from the parent's left edge when it has no spread children) with an arrowed stub into each box | — / `buildDocSvg`, tests | pure |
-| `buildDocSvg` | 199 | `(forExport: boolean) → SVGSVGElement` | **Core of the module**: build the page in mm — header, document-code block, notes, legend, chart placed right under the header and pushed down only when a row would touch those blocks, fit-to-page (width only when `autoH`), page height grown to the content when `autoH`, row guides while dragging, connectors with arrowheads, boxes (centred text, badge, headcount), description blocks | `docPageSize`, `docFont`, `docColors`, `docLayout`, `docEdges`, `hcOf`, `sv`, `svText`, `wrapText` / `renderDoc`, `docPdf` | pure (creates DOM), **state** (`docView`) |
-| `renderDoc` | 364 | `() → void` | Render the page SVG into `#docPage` at the current screen zoom; update zoom label | `buildDocSvg` / `renderDocAll`, `dSelect`, `dZoomTo`, panel inputs, drags | **DOM** |
-| `renderDocAll` [PUBLIC] | 370 | `() → void` | Full module render: page + Box panel + Page panel (what `renderAll` calls when the doc module is active) | `renderDoc`, `renderDPanel`, `renderDPage` / `renderAll`, `showModule` | **DOM** |
-| `dSelect` | 372 | `(id, focusInput?) → void` | Selection inside the doc module (`select()` delegates here when `MOD === 'doc'`) | `renderDoc`, `renderDPanel` / `select` | **state** (`sel`), **DOM** |
-| `applyDZoom` | 378 | `() → void` | Apply screen zoom by resizing the page SVG to the real page size (may exceed the paper when `autoH`); update the % label | — / `renderDoc`, `dZoomTo`, `dZoomStep` | **DOM** |
-| `clampDZoom` | 383 | `(z) → number` | Clamp page zoom to [0.15, 4] | — / zoom fns | pure |
-| `dZoomTo` [PUBLIC] | 384 | `(z) → void` | Instant page zoom (cancels a running animation) | `clampDZoom`, `applyDZoom` / `dZoomFit`, tests | **state** (`dzoom`), **DOM** |
-| `dZoomFit` [PUBLIC] | 385 | `() → void` | Fit the whole page (real height) into the viewport | `dZoomTo` / `#bDZoomFit`, first open | **state**, **DOM** |
-| `dAnimateZoomTo` [PUBLIC] | 391 | `(nz, ax?, ay?) → void` | Smooth page zoom around a viewport point (same eased, target-accumulating scheme as the org tab) | `clampDZoom` / wheel on `#docWrap`, zoom buttons | **state** (`dzoomAnim`) |
-| `dZoomStep` | 399 | `() → void` | One animation frame: ease 30 % toward the target, keep the anchor point fixed, loop until done | `applyDZoom`, rAF / `dAnimateZoomTo` | **state**, **DOM** |
-| `setRowShift` [PUBLIC] | 411 | `(id, v) → void` | Set how many extra rows a box is pushed down (≥ 0); boxes below follow | `snap`, `renderDoc`, `renderDPanel` / ▲▼ buttons, tests | **state**, **undo**, **DOM** |
-| `renderDPanel` | 416 | `() → void` | Box panel: dept/title (+ show-level toggle), multi-line person, level, headcount, annotation-key dropdown, stack toggle, ▲▼ row buttons, description, add/reorder/delete | `hcOf`, `xesc`; handlers → `snap`, `setT`, `setHc`, `setRowShift`, `addChild`, `addSib`, `moveSib`, `delNode`, `renderDoc` / `renderDocAll`, `dSelect`, `endRowDrag`, notes editor | **DOM** |
-| `docSet` | 474 | `(key, fn) → void` | Apply a page-setting change: undo snapshot (coalesced per key) + mutate + re-render page | `snap`, `renderDoc` / Page panel inputs | **state**, **undo**, **DOM** |
-| `renderDPage` | 475 | `() → void` | Page panel: paper (A4/A3/A2), orientation, auto page height, universal box width (slider + number), font, scheme, header, document-code fields, notes editor, show/hide toggles | `docSet`, `renderDNotes` / `renderDocAll` | **DOM** |
-| `renderDNotes` | 527 | `() → void` | Notes list rows (key + text + delete) inside the Page panel | `docSet`, `snap`, `renderDoc` / `renderDPage`, add/delete note | **DOM** |
-| `startRowDrag` | 542 | `(id, e) → Drag` | Begin a vertical drag of a box between rows | — / doc pointerdown | pure |
-| `moveRowDrag` | 546 | `(d, e) → void` | Drag step: pointer y → target row (never above the natural row) → `rowShift`; first real move takes the undo snapshot and turns on the row guides | `rowPitch`, `snap`, `renderDoc` / doc pointermove | **state**, **undo**, **DOM** |
-| `endRowDrag` | 555 | `(d) → void` | Finish a row drag: hide guides, refresh page + panel | `renderDoc`, `renderDPanel` / doc pointerup | **state**, **DOM** |
-| `docPrint` [PUBLIC] | 562 | `() → void` | Write `@page{size}` for the paper width × real page height into `#printPage` and open the print dialog | `docPageSize` / `#bPrint` | **DOM**, print dialog |
-| `loadScript` | 570 | `(src) → Promise` | Inject a `<script>` and resolve on load | — / `loadPdfLibs` | **DOM** |
-| `loadPdfLibs` | 576 | `() → Promise` | Lazy-load vendored jsPDF + svg2pdf once | `loadScript` / `docPdf` | **DOM** |
-| `bufToB64` | 580 | `(buf: ArrayBuffer) → string` | Base64-encode a font file for jsPDF's virtual FS | — / `loadPdfFont` | pure |
-| `loadPdfFont` | 586 | `(famName) → Promise<{file,style,b64}[]>` | Fetch the 4 Liberation TTF styles for a family once (Vietnamese glyphs; metric-compatible with Arial / Times New Roman) | `fetch`, `bufToB64` / `docPdf` | network |
-| `docPdf` [PUBLIC] | 594 | `() → Promise` | Download the page as a vector PDF at the real page size: register embedded fonts, build an export SVG (family = embedded font), render with svg2pdf, save | `loadPdfLibs`, `loadPdfFont`, `buildDocSvg`, `msg` / `#bPdf` | **DOM**, **DL** |
+| `docPageSize` | 30 | `() → {w,h}` | Page size in mm from `doc.page` + `doc.orient` | — / doc renderer, zoom, print, PDF | pure |
+| `docColors` | 34 | `() → object` | Level → fill colour for the active scheme (`TCOLOR` pastel or `TCOLOR_CLASSIC`) | — / `buildDocSvg` | pure |
+| `docFont` | 35 | `() → {css,pdf}` | Font entry for `doc.font` (CSS stack for screen, embedded family name for PDF) | — / `buildDocSvg`, `docPdf` | pure |
+| `docLevelName` | 36 | `(L: LevelKey) → string` | Legend label: ĐB/CC translated, T1… as is | `t` / `buildDocSvg` | pure |
+| `rowPitch` | 37 | `() → number` | Row pitch in mm = fixed box height + row gap | — / layout, drag | pure |
+| `textW` | 41 | `(str, size, weight, style, fam) → number` | Measure text width in mm with a canvas 2D context | — / `fitText`, `wrapText`, `buildDocSvg`, `svText` | pure (cached ctx) |
+| `wrapText` | 47 | `(str, maxW, size, weight, style, fam) → string[]` | Word-wrap (breaking over-long words by character), keeping user line breaks | `textW` / `buildDocSvg` (descriptions) | pure |
+| `fitLines` | 68 | `(str, maxW, size, minSize, maxLines, weight, style, fam) → {lines,size}` | Wrap; if more than `maxLines` shrink the font step-wise down to `minSize`; at the minimum keep wrapping (extra lines) — text is never truncated | `wrapText` / `boxContent` | pure |
+| `boxContent` | 78 | `(n: Node, fam, W) → {dept,title,person,contentH,scale}` | Text blocks of one box inside the fixed height: dept ≤2 lines then shrink; title (+ level unless `hideLv`) 1 line then shrink; person = every entered line wrapped; if the total still overflows, all three blocks shrink together (down to 50 %) — the box never grows | `fitLines`, `wrapText` / `docLayout` | pure |
+| `sv` | 95 | `(name, attrs?, parent?) → SVGElement` | Create an SVG element with attributes, optionally appended | — / doc renderer | pure (creates el) |
+| `svText` | 102 | `(parent, x, y, str, o) → SVGTextElement` | SVG `<text>` with size/weight/style/anchor; underline drawn as a real `<line>` (svg2pdf ignores `text-decoration`) | `sv`, `textW` / `buildDocSvg` | pure (creates el) |
+| `docLayout` | 119 | `(fam) → {pos,box,rowBase,maxRow}` | Shelf layout: every box has the same height and sits on an integer row (child = parent + 1; stacked siblings on consecutive rows; `rowShift` pushes a box and everything below it down). Columns from a memoised tidy tree: spread children side by side, `stack` children in one column (leftmost when spread siblings exist, hanging under the parent otherwise). Inner `assignRows`, `measure`, `place` | — / `buildDocSvg` | pure |
+| `docEdges` | 166 | `(id, pos) → {pts,arrow}[]` | Connectors of one parent: straight drop for a single centred child, else a vertical from the parent down to a bus placed just above the topmost child row (so pushed-down rows never drag the bus through the header blocks) + drops; stacked column fed by a vertical spine (from the bus, or from the parent's left edge when it has no spread children) with an arrowed stub into each box | — / `buildDocSvg`, tests | pure |
+| `buildDocSvg` | 202 | `(forExport: boolean) → SVGSVGElement` | **Core of the module**: build the page in mm — header, document-code block, notes, legend, optional fixed-size SVG logo top-left, chart placed right under the header and pushed down only when a row would touch those blocks, fit-to-page (width only when `autoH`), page height grown to the content when `autoH`, row guides while dragging, connectors with arrowheads, boxes (centred text, badge, headcount), description blocks | `docPageSize`, `docFont`, `docColors`, `docLayout`, `docEdges`, `hcOf`, `sv`, `svText`, `wrapText` / `renderDoc`, `docPdf` | pure (creates DOM), **state** (`docView`) |
+| `docLogoSvg` | 376 | `(code: string) → {el,ratio}|null` | Parse pasted SVG for the logo: reject non-SVG, strip script/foreignObject/event handlers/javascript: hrefs, inline class-based fill/stroke from <style> (svg2pdf ignores <style>), normalise viewBox; returns the element and its aspect ratio | `DOMParser` / `buildDocSvg`, `renderDPage` | pure (creates DOM) |
+| `renderDoc` | 408 | `() → void` | Render the page SVG into `#docPage` at the current screen zoom; update zoom label | `buildDocSvg` / `renderDocAll`, `dSelect`, `dZoomTo`, panel inputs, drags | **DOM** |
+| `renderDocAll` [PUBLIC] | 414 | `() → void` | Full module render: page + Box panel + Page panel (what `renderAll` calls when the doc module is active) | `renderDoc`, `renderDPanel`, `renderDPage` / `renderAll`, `showModule` | **DOM** |
+| `dSelect` | 416 | `(id, focusInput?) → void` | Selection inside the doc module (`select()` delegates here when `MOD === 'doc'`) | `renderDoc`, `renderDPanel` / `select` | **state** (`sel`), **DOM** |
+| `applyDZoom` | 422 | `() → void` | Apply screen zoom by resizing the page SVG to the real page size (may exceed the paper when `autoH`); update the % label | — / `renderDoc`, `dZoomTo`, `dZoomStep` | **DOM** |
+| `clampDZoom` | 427 | `(z) → number` | Clamp page zoom to [0.15, 4] | — / zoom fns | pure |
+| `dZoomTo` [PUBLIC] | 428 | `(z) → void` | Instant page zoom (cancels a running animation) | `clampDZoom`, `applyDZoom` / `dZoomFit`, tests | **state** (`dzoom`), **DOM** |
+| `dZoomFit` [PUBLIC] | 429 | `() → void` | Fit the whole page (real height) into the viewport | `dZoomTo` / `#bDZoomFit`, first open | **state**, **DOM** |
+| `dAnimateZoomTo` [PUBLIC] | 435 | `(nz, ax?, ay?) → void` | Smooth page zoom around a viewport point (same eased, target-accumulating scheme as the org tab) | `clampDZoom` / wheel on `#docWrap`, zoom buttons | **state** (`dzoomAnim`) |
+| `dZoomStep` | 443 | `() → void` | One animation frame: ease 30 % toward the target, keep the anchor point fixed, loop until done | `applyDZoom`, rAF / `dAnimateZoomTo` | **state**, **DOM** |
+| `setRowShift` [PUBLIC] | 455 | `(id, v) → void` | Set how many extra rows a box is pushed down (≥ 0); boxes below follow | `snap`, `renderDoc`, `renderDPanel` / ▲▼ buttons, tests | **state**, **undo**, **DOM** |
+| `renderDPanel` | 460 | `() → void` | Box panel: dept/title (+ show-level toggle), multi-line person, level, headcount, annotation-key dropdown, stack toggle, ▲▼ row buttons, description, add/reorder/delete | `hcOf`, `xesc`; handlers → `snap`, `setT`, `setHc`, `setRowShift`, `addChild`, `addSib`, `moveSib`, `delNode`, `renderDoc` / `renderDocAll`, `dSelect`, `endRowDrag`, notes editor | **DOM** |
+| `docSet` | 518 | `(key, fn) → void` | Apply a page-setting change: undo snapshot (coalesced per key) + mutate + re-render page | `snap`, `renderDoc` / Page panel inputs | **state**, **undo**, **DOM** |
+| `renderDPage` | 519 | `() → void` | Page panel: paper (A4/A3/A2), orientation, auto page height, font, scheme, header, SVG logo (pasted code), document-code fields, notes editor, show/hide toggles | `docSet`, `docLogoSvg`, `renderDNotes`, `msg` / `renderDocAll` | **DOM** |
+| `renderDNotes` | 574 | `() → void` | Notes list rows (key + text + delete) inside the Page panel | `docSet`, `snap`, `renderDoc` / `renderDPage`, add/delete note | **DOM** |
+| `startRowDrag` | 589 | `(id, e) → Drag` | Begin a vertical drag of a box between rows | — / doc pointerdown | pure |
+| `moveRowDrag` | 593 | `(d, e) → void` | Drag step: pointer y → target row (never above the natural row) → `rowShift`; first real move takes the undo snapshot and turns on the row guides | `rowPitch`, `snap`, `renderDoc` / doc pointermove | **state**, **undo**, **DOM** |
+| `endRowDrag` | 602 | `(d) → void` | Finish a row drag: hide guides, refresh page + panel | `renderDoc`, `renderDPanel` / doc pointerup | **state**, **DOM** |
+| `docPrint` [PUBLIC] | 609 | `() → void` | Write `@page{size}` for the paper width × real page height into `#printPage` and open the print dialog | `docPageSize` / `#bPrint` | **DOM**, print dialog |
+| `loadScript` | 617 | `(src) → Promise` | Inject a `<script>` and resolve on load | — / `loadPdfLibs` | **DOM** |
+| `loadPdfLibs` | 623 | `() → Promise` | Lazy-load vendored jsPDF + svg2pdf once | `loadScript` / `docPdf` | **DOM** |
+| `bufToB64` | 627 | `(buf: ArrayBuffer) → string` | Base64-encode a font file for jsPDF's virtual FS | — / `loadPdfFont` | pure |
+| `loadPdfFont` | 633 | `(famName) → Promise<{file,style,b64}[]>` | Fetch the 4 Liberation TTF styles for a family once (Vietnamese glyphs; metric-compatible with Arial / Times New Roman) | `fetch`, `bufToB64` / `docPdf` | network |
+| `docPdf` [PUBLIC] | 641 | `() → Promise` | Download the page as a vector PDF at the real page size: register embedded fonts, build an export SVG (family = embedded font), render with svg2pdf, save | `loadPdfLibs`, `loadPdfFont`, `buildDocSvg`, `msg` / `#bPdf` | **DOM**, **DL** |
 
 ## `12-wiring.js`
 
@@ -377,5 +378,19 @@ Remaining observation (not a defect): `debounce` has exactly one consumer (`refr
 | Schema v11: node presentation fields (`hc`, `annot`, `desc`, `dx`, `wp`) + `doc` layer | Validated on load; absent → blank/defaults, so the flow module never depends on them. |
 | Landing page + `MOD` dispatch in `renderAll` / `select` / `refreshView` | One tree, two modules; the org-tree mutators are shared unchanged. |
 | Chart-layout module (`11-doc.js`) | SVG page in mm; header / document-code block / notes / legend / badges / headcount / descriptions; shelf rows with drag-to-reorder + guides; fixed box height with shrinking text; two connector styles (spread / stacked group); universal box width; auto page height; smooth zoom + pan; print via `@page`; vector PDF via jsPDF + svg2pdf with embedded Liberation fonts. |
+
+*Every table above is generated from the current source; each row's line number is verified to start the named function.*
+
+### Restructure + chart-layout module (v11)
+
+| Change | Notes |
+|---|---|
+| Single file → `css/app.css` + 12 `js/` section files | Pure slicing of the old sections in load order; state stays global, no behaviour change (56 existing checks pass over HTTP). |
+| Playwright suites moved into `tests/` | `npm test` runs a static server + Chromium; `PW_MODULE`/`PW_CHROMIUM` point at a pre-installed Playwright. |
+| Level `ĐB` above `CC`; `LMAX` replaces hard-coded `8` | Root default stays CC; old files load unchanged. |
+| Headcount (`hc`) with roll-up (`hcOf`) | Editable in both modules; parents show the computed sum. |
+| Schema v11: node presentation fields (`hc`, `annot`, `desc`, `dx`, `wp`) + `doc` layer | Validated on load; absent → blank/defaults, so the flow module never depends on them. |
+| Landing page + `MOD` dispatch in `renderAll` / `select` / `refreshView` | One tree, two modules; the org-tree mutators are shared unchanged. |
+| Chart-layout module (`11-doc.js`) | SVG page in mm; header / document-code block / notes / legend / badges / headcount / descriptions; shelf rows with drag-to-reorder + guides; fixed box height with shrinking text; two connector styles (spread / stacked group); SVG logo; auto page height; smooth zoom + pan; print via `@page`; vector PDF via jsPDF + svg2pdf with embedded Liberation fonts. |
 
 *Every table above is generated from the current source; each row's line number is verified to start the named function.*

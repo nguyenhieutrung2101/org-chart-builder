@@ -93,15 +93,19 @@ await ev(() => undo());
 check('undo restores the row', (await ev((id) => nodes.get(id).rowShift, built.c2)) === 0);
 
 // ---- trang: A2, chiều cao tự động, bề rộng box, font, tiêu đề/mã/ghi chú, dropdown badge ----
+const DBOX_gy = await ev(() => DBOX.gy);
 const pg = await ev((c1) => {
   const out = {};
   out.pageOpts = [...document.querySelectorAll('#dpPage option')].map(o => o.value).join(',');
   document.getElementById('dpPage').value = 'A3'; document.getElementById('dpPage').dispatchEvent(new Event('change'));
   document.getElementById('dpOrient').value = 'P'; document.getElementById('dpOrient').dispatchEvent(new Event('change'));
   out.viewBox = document.querySelector('#docPage svg').getAttribute('viewBox');
-  const bw = document.getElementById('dpBoxW'); bw.value = 60; bw.dispatchEvent(new Event('input'));
-  out.boxW = doc.boxW; out.wAll = [...docView.pos.values()].every(p => p.w === 60);
-  bw.value = 46; bw.dispatchEvent(new Event('input'));
+  const lg = document.getElementById('dpLogo');
+  lg.value = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40"><defs><style>.a{fill:\n#ff0000}</style></defs><rect class="a" x="0" y="0" width="100" height="40" onclick="alert(1)"/><script>alert(1)</script></svg>';
+  lg.dispatchEvent(new Event('change'));
+  const logoEl = document.querySelector('#docPage svg .dlogo');
+  out.logo = logoEl ? { w: logoEl.getAttribute('width'), h: logoEl.getAttribute('height'), x: logoEl.getAttribute('x'), fill: logoEl.querySelector('rect').getAttribute('fill'), script: !!logoEl.querySelector('script'), onclick: logoEl.querySelector('rect').hasAttribute('onclick'), style: !!logoEl.querySelector('style') } : null;
+  out.codeBelowLogo = +document.querySelector('#docPage svg text').getAttribute('y') > 0 && docView.ty >= 0;
   document.getElementById('dpFont').value = 'times'; document.getElementById('dpFont').dispatchEvent(new Event('change'));
   const h = document.getElementById('dpHeader'); h.value = 'SƠ ĐỒ TỔ CHỨC CÔNG TY'; h.dispatchEvent(new Event('input'));
   const c = document.getElementById('dpc_code'); c.value = 'QĐ-01/2026'; c.dispatchEvent(new Event('input'));
@@ -116,7 +120,13 @@ const pg = await ev((c1) => {
   const svgText = document.querySelector('#docPage svg').textContent;
   out.hasHeader = svgText.includes('SƠ ĐỒ TỔ CHỨC CÔNG TY'); out.hasCode = svgText.includes('QĐ-01/2026'); out.hasNote = svgText.includes('Báo cáo đồng thời');
   out.chartTop = docView.ty;                                   // sơ đồ phải bắt đầu cạnh khối ghi chú, không dưới hẳn
-  out.notesBottom = 10 + 9 + 5 * 3.9 + 2.5 + 4.6 + 2 * 4.2 + 2.5;
+  out.notesBottom = 10 + 8 + 3 + 5 * 3.9 + 2.5 + 4.6 + 2 * 4.2 + 2.5;
+  // đẩy các con của gốc xuống 2 hàng: thanh ngang phải nằm ngay trên hàng con (không sát đáy cha), badge hở với thanh ngang
+  const rt0 = rootIds[0]; nodes.get(rt0).children.forEach(c => { nodes.get(c).rowShift = 2; }); renderDoc();
+  const P = docView.pos, pr = P.get(rt0), edges = docEdges(rt0, P), bus = edges.find(e => !e.arrow && e.pts[0][1] === e.pts[1][1] && e.pts[0][0] !== e.pts[1][0]);
+  const childTop = Math.min(...nodes.get(rt0).children.map(c => P.get(c).y));
+  out.busY = bus.pts[0][1]; out.childTop = childTop; out.parentBottom = pr.y + pr.h; out.badgeGap = (childTop - BADGE.up) - out.busY;
+  nodes.get(rt0).children.forEach(c => { nodes.get(c).rowShift = 0; }); renderDoc();
   out.pageH0 = docView.pageH;
   document.getElementById('dpAutoH').click();
   const root = rootIds[0]; nodes.get(root).rowShift = 9; renderDoc();     // đẩy cả sơ đồ xuống 9 hàng -> dài quá A3
@@ -127,10 +137,11 @@ const pg = await ev((c1) => {
 }, built.c1);
 check('paper options include A2', pg.pageOpts === 'A4,A3,A2', pg.pageOpts);
 check('A3 portrait → viewBox 297×420', pg.viewBox === '0 0 297 420', pg.viewBox);
-check('universal box width slider re-lays every box (60 mm)', pg.boxW === 60 && pg.wAll);
+check('pasted SVG logo: fixed 8 mm high (width by aspect), class fill inlined, script/onclick/style stripped', pg.logo && pg.logo.h === '8' && pg.logo.w === '20' && pg.logo.x === '10' && pg.logo.fill === '#ff0000' && !pg.logo.script && !pg.logo.onclick && !pg.logo.style, JSON.stringify(pg.logo));
 check('annotation dropdown lists defined keys; switch to A', pg.annotOpts === ',A,E' && pg.annotAfter === 'A', pg.annotOpts);
 check('header, code block and note on page', pg.hasHeader && pg.hasCode && pg.hasNote);
 check('chart starts beside the notes block, not below it', pg.chartTop < pg.notesBottom, JSON.stringify([pg.chartTop, pg.notesBottom]));
+check('bus sits just above the (pushed) child row, not under the parent; badge clear of the bus', pg.busY === pg.childTop - DBOX_gy / 2 && pg.busY > pg.parentBottom + 20 && pg.badgeGap >= 1, JSON.stringify([pg.busY, pg.childTop, pg.parentBottom, pg.badgeGap]));
 check('auto page height: page grows to fit 9 extra rows; print @page follows', pg.pageH0 === 420 && pg.autoPageH > 420 && pg.viewBoxAuto === '0 0 297 ' + pg.autoPageH && pg.printPage === '@page{size:297mm ' + pg.autoPageH + 'mm;margin:0}', JSON.stringify([pg.pageH0, pg.autoPageH, pg.printPage]));
 
 // ---- zoom mượt quanh con trỏ + pan bằng chuột, không bôi đen chữ ----
@@ -156,17 +167,17 @@ const rt = await ev(() => {
   const saved = JSON.parse(JSON.stringify(serializeAll()));
   applyState(saved); renderAll();
   const a = rootIds[0], c1 = nodes.get(nodes.get(a).children[0]), c2 = nodes.get(nodes.get(a).children[1]), s1 = nodes.get(nodes.get(a).children[2]);
-  const out = { v: saved.v, page: doc.page, orient: doc.orient, boxW: doc.boxW, autoH: doc.autoH, font: doc.font, notes: doc.notes.length,
+  const out = { v: saved.v, page: doc.page, orient: doc.orient, logo: doc.logo.length > 0, autoH: doc.autoH, font: doc.font, notes: doc.notes.length,
                 annot: c1.annot, hc: c1.hc, hideLv: c1.hideLv, rowShift: c2.rowShift, stack: s1.stack };
   const legacy = JSON.parse(JSON.stringify(saved)); delete legacy.doc;
   legacy.roots.forEach(function strip(r){ delete r.hc; delete r.annot; delete r.desc; delete r.rowShift; delete r.hideLv; delete r.stack; (r.children || []).forEach(strip); });
   applyState(legacy); renderAll();
-  out.legacyDoc = doc.page + doc.orient + doc.boxW + doc.autoH + doc.font + doc.scheme + '|' + doc.notes.length; out.legacyFlags = [...nodes.values()].some(n => n.stack || n.hideLv || n.rowShift);
+  out.legacyDoc = doc.page + doc.orient + doc.logo.length + doc.autoH + doc.font + doc.scheme + '|' + doc.notes.length; out.legacyFlags = [...nodes.values()].some(n => n.stack || n.hideLv || n.rowShift);
   applyState(saved); renderAll();
   return out;
 });
-check('round-trip keeps doc layer (boxW/autoH), annot/hc/hideLv/rowShift/stack', rt.v === 11 && rt.page === 'A3' && rt.orient === 'P' && rt.boxW === 46 && rt.autoH === false && rt.font === 'times' && rt.notes === 2 && rt.annot === 'A' && rt.hc === 4 && rt.hideLv === true && rt.rowShift === 1 && rt.stack === true, JSON.stringify(rt));
-check('file without presentation fields loads with defaults', rt.legacyDoc === 'A4L46falseappclassic|0' && rt.legacyFlags === false, rt.legacyDoc);
+check('round-trip keeps doc layer (logo/autoH), annot/hc/hideLv/rowShift/stack', rt.v === 11 && rt.page === 'A3' && rt.orient === 'P' && rt.logo === true && rt.autoH === false && rt.font === 'times' && rt.notes === 2 && rt.annot === 'A' && rt.hc === 4 && rt.hideLv === true && rt.rowShift === 1 && rt.stack === true, JSON.stringify(rt));
+check('file without presentation fields loads with defaults', rt.legacyDoc === 'A4L0falseappclassic|0' && rt.legacyFlags === false, rt.legacyDoc);
 
 // ---- chuyển module: cùng cây ----
 await page.click('#bHome'); check('home → landing', await vis('#landing'));

@@ -88,7 +88,7 @@ function seedRules(){
 
 // Lớp trình bày của module "Trình bày sơ đồ" — không ảnh hưởng luồng duyệt
 function defaultDoc(){
-  return { page:'A4', orient:'L', autoH:false, boxW:46, font:'app', scheme:'classic', header:'',
+  return { page:'A4', orient:'L', autoH:false, font:'app', scheme:'classic', header:'', logo:'',
            code:{ code:'', date:'', author:'', reviewer:'', approver:'' },
            notes:[],
            show:{ legend:true, code:true, notes:true, hc:true, desc:true, fit:true } };
@@ -100,7 +100,7 @@ function cleanDoc(src){
   if (PAGE_MM[src.page]) d.page = src.page;
   if (src.orient === 'P' || src.orient === 'L') d.orient = src.orient;
   d.autoH = !!src.autoH;
-  if (typeof src.boxW === 'number' && isFinite(src.boxW)) d.boxW = Math.min(DBOX.wMax, Math.max(DBOX.wMin, Math.round(src.boxW)));
+  d.logo = typeof src.logo === 'string' ? src.logo.slice(0, 200000) : '';
   if (DOC_FONTS[src.font]) d.font = src.font;
   if (src.scheme === 'classic' || src.scheme === 'pastel') d.scheme = src.scheme;
   d.header = String(src.header || '');
