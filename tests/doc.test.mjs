@@ -102,7 +102,7 @@ const pg = await ev((c1) => {
   out.viewBox = document.querySelector('#docPage svg').getAttribute('viewBox');
   const lg = document.getElementById('dpLogo');
   lg.value = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40"><defs><style>.a{fill:\n#ff0000}</style></defs><rect class="a" x="0" y="0" width="100" height="40" onclick="alert(1)"/><script>alert(1)</script></svg>';
-  lg.dispatchEvent(new Event('change'));
+  lg.dispatchEvent(new Event('input'));                       // dán vào (input) là render ngay, không cần blur
   const logoEl = document.querySelector('#docPage svg .dlogo');
   out.logo = logoEl ? { w: logoEl.getAttribute('width'), h: logoEl.getAttribute('height'), x: logoEl.getAttribute('x'), fill: logoEl.querySelector('rect').getAttribute('fill'), script: !!logoEl.querySelector('script'), onclick: logoEl.querySelector('rect').hasAttribute('onclick'), style: !!logoEl.querySelector('style') } : null;
   out.codeBelowLogo = +document.querySelector('#docPage svg text').getAttribute('y') > 0 && docView.ty >= 0;
@@ -126,6 +126,15 @@ const pg = await ev((c1) => {
   const P = docView.pos, pr = P.get(rt0), edges = docEdges(rt0, P), bus = edges.find(e => !e.arrow && e.pts[0][1] === e.pts[1][1] && e.pts[0][0] !== e.pts[1][0]);
   const childTop = Math.min(...nodes.get(rt0).children.map(c => P.get(c).y));
   out.busY = bus.pts[0][1]; out.childTop = childTop; out.parentBottom = pr.y + pr.h; out.badgeGap = (childTop - BADGE.up) - out.busY;
+  // không đoạn đường kẻ nào và không box nào được chạm khối ghi chú / bảng màu (toạ độ trang)
+  const clash = (function(){
+    const V = docView, out2 = [];
+    const test = (x0, x1, y0, y1, what) => V.blocks.forEach(b => { if (y1 > b.y0 - 1 && y0 < b.y1 + 2 && x1 > b.x0 - 3 && x0 < b.x1 + 3) out2.push(what); });
+    V.pos.forEach((q, id) => { test(V.tx + q.x * V.scale, V.tx + (q.x + q.w) * V.scale, V.ty + (q.y - (nodes.get(id).annot ? BADGE.up : 0)) * V.scale, V.ty + (q.y + q.h) * V.scale, 'box ' + id);
+      docEdges(id, V.pos).forEach(e => { const xs = e.pts.map(q => q[0]), ys = e.pts.map(q => q[1]); test(V.tx + Math.min(...xs) * V.scale, V.tx + Math.max(...xs) * V.scale, V.ty + Math.min(...ys) * V.scale, V.ty + Math.max(...ys) * V.scale, 'edge of ' + id); }); });
+    return out2;
+  })();
+  out.clashPushed = clash; out.chartTopPushed = docView.ty;
   nodes.get(rt0).children.forEach(c => { nodes.get(c).rowShift = 0; }); renderDoc();
   out.pageH0 = docView.pageH;
   document.getElementById('dpAutoH').click();
@@ -141,6 +150,7 @@ check('pasted SVG logo: fixed 8 mm high (width by aspect), class fill inlined, s
 check('annotation dropdown lists defined keys; switch to A', pg.annotOpts === ',A,E' && pg.annotAfter === 'A', pg.annotOpts);
 check('header, code block and note on page', pg.hasHeader && pg.hasCode && pg.hasNote);
 check('chart starts beside the notes block, not below it', pg.chartTop < pg.notesBottom, JSON.stringify([pg.chartTop, pg.notesBottom]));
+check('with pushed rows no connector or box touches the notes/legend (chart only moves when something would touch)', pg.clashPushed.length === 0, JSON.stringify([pg.clashPushed, pg.chartTopPushed]));
 check('bus sits just above the (pushed) child row, not under the parent; badge clear of the bus', pg.busY === pg.childTop - DBOX_gy / 2 && pg.busY > pg.parentBottom + 20 && pg.badgeGap >= 1, JSON.stringify([pg.busY, pg.childTop, pg.parentBottom, pg.badgeGap]));
 check('auto page height: page grows to fit 9 extra rows; print @page follows', pg.pageH0 === 420 && pg.autoPageH > 420 && pg.viewBoxAuto === '0 0 297 ' + pg.autoPageH && pg.printPage === '@page{size:297mm ' + pg.autoPageH + 'mm;margin:0}', JSON.stringify([pg.pageH0, pg.autoPageH, pg.printPage]));
 

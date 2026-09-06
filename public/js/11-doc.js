@@ -264,13 +264,18 @@ function buildDocSvg(forExport){
     svText(svg, P.w / 2, Math.max(leftY, rightY) + 20, t('docNoTree'), { size:4, anchor:'middle', fill:'#8C857A' });
     return svg;
   }
-  var minX = Infinity, maxX = -Infinity, rowX = {};        // rowX[r] = [minX, maxX] của hàng r (kể cả đường dọc nhóm)
+  var minX = Infinity, maxX = -Infinity, items = [];       // items: hình chữ nhật (mm sơ đồ) của box + badge và của từng đoạn đường kẻ
+  var edgeList = [];
   ids.forEach(function(id){
     var p = pos.get(id), n = nodes.get(id);
     var l = p.x - (n.children.some(function(c){ return nodes.get(c).stack; }) ? DBOX.sx : 0), r = p.x + p.w;
     minX = Math.min(minX, l); maxX = Math.max(maxX, r);
-    var rx = rowX[p.row] || (rowX[p.row] = [Infinity, -Infinity]);
-    rx[0] = Math.min(rx[0], l); rx[1] = Math.max(rx[1], r);
+    items.push({ x0:l, x1:r, y0:p.y - (n.annot ? BADGE.up : 0), y1:p.y + p.h });
+    docEdges(id, pos).forEach(function(e){
+      edgeList.push(e);
+      var xs = e.pts.map(function(q){ return q[0]; }), ys = e.pts.map(function(q){ return q[1]; });
+      items.push({ x0:Math.min.apply(null, xs), x1:Math.max.apply(null, xs), y0:Math.min.apply(null, ys), y1:Math.max.apply(null, ys) });
+    });
   });
   var maxY = (L.maxRow + 1) * PITCH - DBOX.gy;
   // cụm mô tả chức năng: một khối dưới mỗi box có mô tả, cùng độ cao, thẳng cột với box
@@ -290,29 +295,36 @@ function buildDocSvg(forExport){
     });
   }
   var chartW = maxX - minX, chartH = descs.length ? descTop + descH : maxY, availW = P.w - 2 * M;
-  // Sơ đồ bắt đầu ngay dưới tiêu đề và tận dụng khoảng trống giữa ghi chú / bảng màu: chỉ đẩy xuống khi một hàng
-  // thực sự chạm vào khối đó (thử lại vì tỉ lệ co phụ thuộc chỗ còn lại theo chiều cao)
+  // Sơ đồ bắt đầu ngay dưới tiêu đề và tận dụng khoảng trống giữa ghi chú / bảng màu. Chỉ khi một box (kể cả badge)
+  // hoặc một ĐOẠN ĐƯỜNG KẺ thực sự chạm vào khối đó mới đẩy cả sơ đồ xuống vừa đủ để phần chạm nằm dưới khối
+  // (lặp lại vì tỉ lệ co phụ thuộc chỗ còn lại theo chiều cao). Sơ đồ hẹp thì box gốc đứng ngang hàng với ghi chú.
   var chartTop = y + 2, s, tx;
   function geom(top){
     var availH = P.h - M - top;
     s = doc.show.fit ? Math.min(1, availW / chartW, doc.autoH ? 1 : availH / chartH) : 1;
     tx = M + (availW - chartW * s) / 2 - minX * s;
   }
-  for (var it = 0; it < 12; it++){
+  function hitBlock(top){
+    for (var i = 0; i < items.length; i++){
+      var q = items[i], X0 = tx + q.x0 * s, X1 = tx + q.x1 * s, Y0 = top + q.y0 * s, Y1 = top + q.y1 * s;
+      for (var j = 0; j < blocks.length; j++){
+        var b = blocks[j];
+        if (Y1 > b.y0 - 1 && Y0 < b.y1 + 2 && X1 > b.x0 - 3 && X0 < b.x1 + 3) return { q:q, b:b };
+      }
+    }
+    return null;
+  }
+  for (var it = 0; it < 24; it++){
     geom(chartTop);
-    var hit = null;
-    Object.keys(rowX).some(function(r){
-      var top = chartTop + r * PITCH * s - 6 * s, bot = chartTop + (r * PITCH + H) * s, x1 = tx + rowX[r][0] * s, x2 = tx + rowX[r][1] * s;
-      return blocks.some(function(b){ if (bot > b.y0 && top < b.y1 + 2 && x2 > b.x0 - 3 && x1 < b.x1 + 3){ hit = { r:+r, b:b }; return true; } return false; });
-    });
+    var hit = hitBlock(chartTop);
     if (!hit) break;
-    chartTop = Math.max(chartTop + 0.5, hit.b.y1 + 2 + 6 * s - hit.r * PITCH * s);
+    chartTop = Math.max(chartTop + 0.5, hit.b.y1 + 2 - hit.q.y0 * s);
   }
   geom(chartTop);
   var pageH = doc.autoH ? Math.max(P.h, Math.ceil(chartTop + chartH * s + M)) : P.h;
   svg.setAttribute('viewBox', '0 0 ' + P.w + ' ' + pageH); bg.setAttribute('height', pageH);
   g.setAttribute('transform', 'translate(' + tx + ' ' + chartTop + ') scale(' + s + ')');
-  docView = { scale:s, tx:tx, ty:chartTop, pos:pos, rowBase:L.rowBase, maxRow:L.maxRow, pageH:pageH, chartW:chartW };
+  docView = { scale:s, tx:tx, ty:chartTop, pos:pos, rowBase:L.rowBase, maxRow:L.maxRow, pageH:pageH, chartW:chartW, blocks:blocks };
 
   // đường kẻ hàng hướng dẫn khi đang kéo box đổi hàng (chỉ trên màn hình)
   if (!forExport && docRowDrag){
@@ -324,8 +336,8 @@ function buildDocSvg(forExport){
     }
   }
   // đường nối (vẽ trước để nằm dưới box); mũi tên vẽ bằng path để svg2pdf in đúng
-  ids.forEach(function(id){
-    docEdges(id, pos).forEach(function(e){
+  edgeList.forEach(function(e){
+    (function(){
       var pts = e.pts;
       sv('path', { d:pts.map(function(q, i){ return (i ? 'L' : 'M') + q[0] + ' ' + q[1]; }).join(''), class:'dedge',
                    fill:'none', stroke:INK, 'stroke-width':0.35, 'stroke-linejoin':'round' }, g);
@@ -333,7 +345,7 @@ function buildDocSvg(forExport){
       var a = pts[pts.length - 1], b = pts[pts.length - 2];
       var dx = a[0] - b[0], dy = a[1] - b[1], len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, A = 1.9, hx = -uy * A * 0.55, hy = ux * A * 0.55;
       sv('path', { d:'M' + a[0] + ' ' + a[1] + 'L' + (a[0] - ux * A + hx) + ' ' + (a[1] - uy * A + hy) + 'L' + (a[0] - ux * A - hx) + ' ' + (a[1] - uy * A - hy) + 'Z', fill:INK }, g);
-    });
+    })();
   });
   // box: nền theo cấp; nội dung căn giữa dọc; badge chữ cái góc trên-trái (nằm trong khoảng giữa hai hàng); định biên góc dưới-phải
   ids.forEach(function(id){
@@ -545,7 +557,7 @@ function renderDPage(){
   var ah = $('dpAutoH'); ah.checked = !!doc.autoH;
   ah.onchange = function(){ docSet('autoH', function(){ doc.autoH = ah.checked; }); };
   var lg = $('dpLogo'); lg.value = doc.logo;
-  lg.onchange = function(){
+  lg.oninput = function(){                                  // dán vào là hiện ngay, không cần rời ô
     var v = lg.value.trim();
     if (v && !docLogoSvg(v)){ msg(t('logoBad')); return; }
     docSet('logo', function(){ doc.logo = v; });
