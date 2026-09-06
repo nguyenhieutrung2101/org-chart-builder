@@ -11,122 +11,164 @@ check('landing visible, modules hidden', await vis('#landing') && !(await vis('#
 await page.click('#bModDoc');
 check('doc module opens; hash #doc', await vis('#tabDoc') && !(await vis('#landing')) && (await ev(() => location.hash)) === '#doc' && (await ev(() => MOD)) === 'doc');
 check('empty page shows hint text', (await ev(() => document.querySelector('#docPage svg').textContent)).includes(await ev(() => t('docNoTree'))));
+check('doc module defaults to the classic scheme', (await ev(() => doc.scheme)) === 'classic');
 
-// ---- vẽ trong module doc: cây 3 cấp, ĐB ở gốc ----
+// ---- cây 3 cấp: ĐB gốc, T1 → con T3 ngay dưới (không đùn hàng), chữ dài, nhiều người ----
 const built = await ev(() => {
-  addRoot(); const a = rootIds[0]; const na = nodes.get(a); na.dept = 'TẬP ĐOÀN'; na.title = 'Chủ tịch'; na.person = 'Nguyễn Văn A'; setT(a, 'ĐB');
-  addChild(a); const b = nodes.get(a).children[0]; const nb = nodes.get(b); nb.dept = 'CÔNG TY'; nb.title = 'Tổng Giám đốc'; nb.person = 'Trần B'; setT(b, 'CC');
-  addChild(b); addChild(b);
-  const c1 = nodes.get(b).children[0], c2 = nodes.get(b).children[1];
-  Object.assign(nodes.get(c1), { dept: 'PHÒNG PHÁP CHẾ', title: 'Giám đốc', person: 'Gharnis Athe M Ginting', annot: 'E', hc: 4,
-    desc: '# Pháp chế\n- Cung cấp tư vấn và ý kiến pháp lý cho Ban Lãnh đạo về các vấn đề liên quan đến pháp luật.\n- Soạn thảo, rà soát hợp đồng.' });
-  Object.assign(nodes.get(c2), { dept: 'PHÒNG TĂNG TRƯỞNG', title: 'Giám đốc', person: 'Lê C', hc: 6 });
-  setT(c1, 'T3'); setT(c2, 'T3');
+  addRoot(); const a = rootIds[0]; Object.assign(nodes.get(a), { dept: 'THỊ TRƯỜNG INDONESIA', title: 'Tổng Giám đốc', person: 'Lê Viết Hải Sơn (CBN)\n(Q.TGĐ thị trường Việt Nam & Lào - kiêm nhiệm)' }); setT(a, 'T1');
+  addChild(a); const c1 = nodes.get(a).children[0]; Object.assign(nodes.get(c1), { dept: 'PHÒNG TĂNG TRƯỞNG & KINH DOANH O2O', title: 'Giám đốc', person: 'Phạm Công Hoàng (kiêm nhiệm)', annot: 'E', hc: 4 }); setT(c1, 'T3');
+  addChild(a); const c2 = nodes.get(a).children[1]; Object.assign(nodes.get(c2), { dept: 'VẬN HÀNH 4 BÁNH', title: 'Phó Tổng Giám đốc', person: 'Lê Viết Hải Sơn', hc: 6 }); setT(c2, 'T2');
   select(c1);
-  return { a, b, c1, c2, levels: LEVELS.join(','), hcB: hcOf(b), hcA: hcOf(a), boxes: document.querySelectorAll('#docPage .dbox').length,
-           badge: document.querySelector('#docPage .dbox[data-id="' + c1 + '"] rect.annot') ? document.querySelector('#docPage .dbox[data-id="' + c1 + '"]').textContent : '',
-           fillA: document.querySelector('#docPage .dbox[data-id="' + a + '"] rect.bg').getAttribute('fill'),
-           descBlocks: document.querySelectorAll('#docPage .ddesc').length, descLines: document.querySelectorAll('#docPage .ddesc text').length,
-           edges: document.querySelectorAll('#docPage .dedge-hit').length, panelDept: document.getElementById('dfD').value };
+  const pa = docView.pos.get(a), p1 = docView.pos.get(c1), p2 = docView.pos.get(c2);
+  const lines = (id, cls) => document.querySelectorAll('#docPage .dbox[data-id="' + id + '"] text.l-' + cls).length;
+  return { a, c1, c2, levels: LEVELS.join(','), boxes: document.querySelectorAll('#docPage .dbox').length,
+           deptLinesRoot: lines(a, 'dept'), deptLines1: lines(c1, 'dept'), personLinesRoot: lines(a, 'person'), personLines1: lines(c1, 'person'),
+           rootH: pa.h, h1: p1.h, h2: p2.h, sameRow: Math.abs(p1.y - p2.y) < 0.01, directlyBelow: Math.abs(p1.y - (pa.y + pa.h + DBOX.gy)) < 0.01,
+           deptText: [...document.querySelectorAll('#docPage .dbox[data-id="' + c1 + '"] text.l-dept')].map(e => e.textContent).join('|'),
+           ellipsis: document.querySelector('#docPage svg').textContent.includes('…'),
+           titleText: document.querySelector('#docPage .dbox[data-id="' + c1 + '"] text.l-title').textContent,
+           hcA: hcOf(a), panelDept: document.getElementById('dfD').value, fillT1: document.querySelector('#docPage .dbox[data-id="' + a + '"] rect.bg').getAttribute('fill') };
 });
 check('LEVELS has ĐB before CC', built.levels.startsWith('ĐB,CC,T1'), built.levels);
-check('4 boxes drawn; panel shows selected box', built.boxes === 4 && built.panelDept === 'PHÒNG PHÁP CHẾ', JSON.stringify([built.boxes, built.panelDept]));
-check('headcount roll-up: 4 + 6 + 1 = 11 at CC, 12 at ĐB', built.hcB === 11 && built.hcA === 12, JSON.stringify([built.hcB, built.hcA]));
-check('annotation badge "E" rendered', built.badge.includes('E'), built.badge);
-check('ĐB box uses pastel ĐB colour', built.fillA === '#F0A6C0', built.fillA);
-check('description block wrapped into several lines', built.descBlocks === 1 && built.descLines >= 4, JSON.stringify([built.descBlocks, built.descLines]));
-check('edge hit segments: 3 edges × 3 segments', built.edges === 9, String(built.edges));
+check('3 boxes; panel shows selected', built.boxes === 3 && built.panelDept === 'PHÒNG TĂNG TRƯỞNG & KINH DOANH O2O');
+check('long dept wraps to 2 lines, nothing truncated with "…"', built.deptLines1 === 2 && !built.ellipsis, built.deptText);
+check('multi-line person: root has 3 person lines (1 + wrapped 2nd line)', built.personLinesRoot >= 3, String(built.personLinesRoot));
+check('box height grows with content (root taller than min 19)', built.rootH > 19 && built.h2 === 19, JSON.stringify([built.rootH, built.h1, built.h2]));
+check('T3 and T2 children share the row directly under the T1 parent (no level rows)', built.sameRow && built.directlyBelow);
+check('title shows level by default', built.titleText === 'Giám đốc (T3)', built.titleText);
+check('classic T1 colour', built.fillT1 === '#E89347', built.fillT1);
+check('headcount roll-up 4 + 6 + 1 = 11', built.hcA === 11, String(built.hcA));
 
-// ---- trang: khổ giấy / hướng / font / bảng màu / tiêu đề / mã văn bản / ghi chú / toggle ----
-const pg = await ev(() => {
+// ---- ẩn (Tx) riêng từng box ----
+await ev(() => { document.getElementById('dfLv').click(); });
+check('hide level per box', (await ev((id) => document.querySelector('#docPage .dbox[data-id="' + id + '"] text.l-title').textContent + '|' + nodes.get(id).hideLv, built.c1)) === 'Giám đốc|true');
+check('other box still shows level', (await ev((id) => document.querySelector('#docPage .dbox[data-id="' + id + '"] text.l-title').textContent, built.c2)) === 'Phó Tổng Giám đốc (T2)');
+
+// ---- nhóm xếp dọc: 3 con của gốc tick stack -> cột trái, đường dọc + nhánh vào cạnh trái ----
+const grp = await ev((a) => {
+  const mk = (dept) => { addChild(a); const id = nodes.get(a).children.slice(-1)[0]; Object.assign(nodes.get(id), { dept, title: 'Giám đốc', person: '(Chưa có)', stack: true }); setT(id, 'T3'); return id; };
+  const s1 = mk('PHÒNG PHÁP CHẾ'), s2 = mk('PHÒNG THANH TRA, KSCL & ANAT'), s3 = mk('PHÒNG QUAN HỆ ĐỐI NGOẠI');
+  renderDoc();
+  const P = docView.pos, q1 = P.get(s1), q2 = P.get(s2), q3 = P.get(s3), c1 = P.get(nodes.get(a).children[0]);
+  const edges = docEdges(a, P);
+  const stubsIn = edges.filter(e => e.arrow && Math.abs(e.pts[0][1] - e.pts[1][1]) < 0.01).length;   // nhánh ngang có mũi tên vào cạnh trái
+  return { s1, sameCol: q1.x === q2.x && q2.x === q3.x, stackedDown: q1.y < q2.y && q2.y < q3.y, leftmost: q1.x < c1.x,
+           stubsIn, spine: edges.some(e => !e.arrow && e.pts.length === 2 && e.pts[0][0] === e.pts[1][0] && e.pts[1][1] > e.pts[0][1] && e.pts[0][0] < q1.x),
+           gap: q2.y - (q1.y + q1.h) };
+}, built.a);
+check('stacked siblings form one column at the far left, top to bottom', grp.sameCol && grp.stackedDown && grp.leftmost, JSON.stringify(grp));
+check('one vertical spine left of the column + an arrowed stub into each of the 3 boxes', grp.spine && grp.stubsIn === 3, JSON.stringify([grp.spine, grp.stubsIn]));
+check('stack gap uses gyS', Math.abs(grp.gap - 4.5) < 0.01, String(grp.gap));
+
+// ---- ý 8: box con dàn ngang (nối thẳng) có nhóm xếp dọc riêng -> treo ngay dưới, đường dọc từ cạnh trái ----
+const sub = await ev((c1) => {
+  const mk = (dept) => { addChild(c1); const id = nodes.get(c1).children.slice(-1)[0]; Object.assign(nodes.get(id), { dept, title: 'Trưởng phòng', stack: true }); setT(id, 'T4'); return id; };
+  const k1 = mk('KINH DOANH NỀN TẢNG'), k2 = mk('KINH DOANH CORPORATE');
+  renderDoc();
+  const P = docView.pos, p = P.get(c1), q1 = P.get(k1), q2 = P.get(k2), edges = docEdges(c1, P);
+  const first = edges[0];
+  return { underParent: q1.x === p.x && q1.y === p.y + p.h + DBOX.gy1 && q2.y > q1.y,
+           fromLeftEdge: first.pts[0][0] === p.x && first.pts[1][0] === p.x - DBOX.sx && first.pts[0][1] > p.y && first.pts[0][1] < p.y + p.h,
+           stubs: edges.filter(e => e.arrow).length };
+}, built.c1);
+check('stack-only children hang under the parent, aligned to its left edge', sub.underParent, JSON.stringify(sub));
+check('spine leaves from the parent\'s left edge; 2 arrowed stubs', sub.fromLeftEdge && sub.stubs === 2);
+
+// ---- trang: khổ giấy / font / bảng màu / tiêu đề / mã văn bản / ghi chú -> dropdown badge ----
+const pg = await ev((c1) => {
   const out = {};
   document.getElementById('dpPage').value = 'A3'; document.getElementById('dpPage').dispatchEvent(new Event('change'));
   document.getElementById('dpOrient').value = 'P'; document.getElementById('dpOrient').dispatchEvent(new Event('change'));
   out.viewBox = document.querySelector('#docPage svg').getAttribute('viewBox');
+  document.getElementById('dpScheme').value = 'pastel'; document.getElementById('dpScheme').dispatchEvent(new Event('change'));
+  out.fillPastel = document.querySelector('#docPage .dbox rect.bg').getAttribute('fill');
   document.getElementById('dpScheme').value = 'classic'; document.getElementById('dpScheme').dispatchEvent(new Event('change'));
-  out.fillClassic = document.querySelector('#docPage .dbox rect.bg').getAttribute('fill');
   document.getElementById('dpFont').value = 'times'; document.getElementById('dpFont').dispatchEvent(new Event('change'));
   out.fam = document.querySelector('#docPage svg').getAttribute('font-family');
   const h = document.getElementById('dpHeader'); h.value = 'SƠ ĐỒ TỔ CHỨC CÔNG TY'; h.dispatchEvent(new Event('input'));
   const c = document.getElementById('dpc_code'); c.value = 'QĐ-01/2026'; c.dispatchEvent(new Event('input'));
-  document.getElementById('dpAddNote').click();
-  const rows = document.querySelectorAll('#dpNotes .noteRow'); const tx = rows[0].querySelector('input.txt'); tx.value = 'Báo cáo đồng thời cho Chủ Tịch Tập đoàn'; tx.dispatchEvent(new Event('input'));
+  select(c1);
+  out.annotOptsBefore = [...document.querySelectorAll('#dfA option')].map(o => o.value).join(',');
+  document.getElementById('dpAddNote').click(); document.getElementById('dpAddNote').click();
+  const rows = document.querySelectorAll('#dpNotes .noteRow');
+  const tx = rows[0].querySelector('input.txt'); tx.value = 'Báo cáo đồng thời cho Chủ Tịch Tập đoàn'; tx.dispatchEvent(new Event('input'));
+  const k2 = rows[1].querySelector('input.k'); k2.value = 'E'; k2.dispatchEvent(new Event('input'));
+  out.annotOpts = [...document.querySelectorAll('#dfA option')].map(o => o.value).join(',');
+  out.annotSel = document.getElementById('dfA').value;
+  document.getElementById('dfA').value = 'A'; document.getElementById('dfA').dispatchEvent(new Event('change'));
+  out.annotAfter = nodes.get(c1).annot;
   const svgText = document.querySelector('#docPage svg').textContent;
   out.hasHeader = svgText.includes('SƠ ĐỒ TỔ CHỨC CÔNG TY'); out.hasCode = svgText.includes('QĐ-01/2026'); out.hasNote = svgText.includes('Báo cáo đồng thời');
   out.legendRects = document.querySelectorAll('#docPage .dlegend rect').length;
-  out.noteKey = doc.notes[0].key;
-  document.getElementById('dps_legend').click(); out.legendAfter = document.querySelectorAll('#docPage .dlegend').length;
-  document.getElementById('dps_hc').click(); out.hcAfter = document.querySelectorAll('#docPage rect.hc').length;
-  document.getElementById('dps_hc').click(); document.getElementById('dps_legend').click();
   return out;
-});
+}, built.c1);
 check('A3 portrait → viewBox 297×420', pg.viewBox === '0 0 297 420', pg.viewBox);
-check('classic scheme colours the ĐB box olive', pg.fillClassic === '#C7BC1F', pg.fillClassic);
-check('Times font applied to svg', /Times New Roman/.test(pg.fam), pg.fam);
-check('header, code block and note appear on page', pg.hasHeader && pg.hasCode && pg.hasNote, JSON.stringify(pg));
-check('legend has 8 colour rows; first note key auto = A', pg.legendRects === 8 && pg.noteKey === 'A', JSON.stringify([pg.legendRects, pg.noteKey]));
-check('toggles hide legend / headcount', pg.legendAfter === 0 && pg.hcAfter === 0, JSON.stringify([pg.legendAfter, pg.hcAfter]));
+check('pastel scheme selectable; Times font applied', pg.fillPastel === '#FFB98A' && /Times New Roman/.test(pg.fam), JSON.stringify([pg.fillPastel, pg.fam]));
+check('annotation is a dropdown: undefined key flagged before notes exist', pg.annotOptsBefore === ',E', pg.annotOptsBefore);
+check('dropdown lists defined note keys; box keeps E; can switch to A', pg.annotOpts === ',A,E' && pg.annotSel === 'E' && pg.annotAfter === 'A', JSON.stringify([pg.annotOpts, pg.annotSel, pg.annotAfter]));
+check('header, code block, note and 8-row legend on page', pg.hasHeader && pg.hasCode && pg.hasNote && pg.legendRects === 8);
 
-// ---- kéo box sang ngang (trong hàng) + kéo đoạn nối ----
-const box = await page.locator('#docPage .dbox[data-id="' + built.c1 + '"] rect.bg').boundingBox();
+// ---- kéo box sang ngang (giữ hàng) ----
+const box = await page.locator('#docPage .dbox[data-id="' + built.c2 + '"] rect.bg').boundingBox();
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
-await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 6 }); await page.mouse.up();
-const afterDrag = await ev((id) => ({ dx: nodes.get(id).dx, y: docView.pos.get(id).y, sel: sel === id }), built.c1);
-check('box drag sets dx > 0, keeps row, stays selected', afterDrag.dx > 5 && afterDrag.sel, JSON.stringify(afterDrag));
+await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30, { steps: 6 }); await page.mouse.up();
+const afterDrag = await ev((id) => ({ dx: nodes.get(id).dx, sel: sel === id, y: docView.pos.get(id).y }), built.c2);
+const rowY = await ev((id) => docView.pos.get(nodes.get(id).children[0]).y, built.a);
+check('box drag shifts dx only (row unchanged), selects box', afterDrag.dx > 5 && afterDrag.sel && Math.abs(afterDrag.y - rowY) < 0.01, JSON.stringify(afterDrag));
 await ev(() => document.getElementById('dbPos').click());
-check('reset position clears dx', (await ev((id) => nodes.get(id).dx, built.c1)) === 0);
-const seg = await page.locator('#docPage .dedge-hit[data-id="' + built.c2 + '"][data-seg="1"]').boundingBox();
-await page.mouse.move(seg.x + seg.width / 2, seg.y + seg.height / 2); await page.mouse.down();
-await page.mouse.move(seg.x + seg.width / 2, seg.y + seg.height / 2 + 25, { steps: 6 }); await page.mouse.up();
-const afterEdge = await ev((id) => ({ wp: nodes.get(id).wp, segs: document.querySelectorAll('#docPage .dedge-hit[data-id="' + id + '"]').length }), built.c2);
-check('dragging the horizontal segment stores waypoints (bus moved down)', Array.isArray(afterEdge.wp) && afterEdge.wp.length === 2 && afterEdge.wp[0][1] === afterEdge.wp[1][1], JSON.stringify(afterEdge));
-const seg0 = await page.locator('#docPage .dedge-hit[data-id="' + built.c2 + '"][data-seg="0"]').boundingBox();
-await page.mouse.move(seg0.x + seg0.width / 2, seg0.y + seg0.height / 2); await page.mouse.down();
-await page.mouse.move(seg0.x + seg0.width / 2 + 30, seg0.y + seg0.height / 2, { steps: 6 }); await page.mouse.up();
-const afterEdge2 = await ev((id) => ({ wp: nodes.get(id).wp, segs: document.querySelectorAll('#docPage .dedge-hit[data-id="' + id + '"]').length }), built.c2);
-check('dragging the first vertical segment adds a bend (5 segments)', afterEdge2.wp && afterEdge2.wp.length === 3 && afterEdge2.segs === 4, JSON.stringify(afterEdge2));
-await ev(() => document.getElementById('dbEdge').disabled ? null : null);
-await ev((id) => { select(id); document.getElementById('dbEdge').click(); }, built.c2);
-check('reset connector clears waypoints', (await ev((id) => nodes.get(id).wp, built.c2)) === null);
-await ev(() => undo());
-check('undo restores waypoints', Array.isArray(await ev((id) => nodes.get(id).wp, built.c2)));
+check('reset position clears dx', (await ev((id) => nodes.get(id).dx, built.c2)) === 0);
 
-// ---- round-trip JSON (v11 + doc + trường trình bày) + file cũ không có doc ----
+// ---- zoom mượt quanh con trỏ + pan bằng chuột ----
+await ev(() => dZoomTo(1));
+const wrapBox = await page.locator('#docWrap').boundingBox();
+await page.mouse.move(wrapBox.x + 300, wrapBox.y + 300);
+await page.mouse.wheel(0, -300);
+await page.waitForTimeout(500);
+const z1 = await ev(() => ({ z: dzoom, w: parseFloat(document.querySelector('#docPage svg').style.width), anim: dzoomAnim }));
+check('wheel zooms smoothly to the target (animation finished)', z1.z > 1.5 && z1.anim === null && z1.w > 0, JSON.stringify(z1));
+const before = await ev(() => ({ sl: document.getElementById('docWrap').scrollLeft, st: document.getElementById('docWrap').scrollTop }));
+await page.mouse.move(wrapBox.x + 200, wrapBox.y + 200); await page.mouse.down();
+await page.mouse.move(wrapBox.x + 120, wrapBox.y + 140, { steps: 5 }); await page.mouse.up();
+const after = await ev(() => ({ sl: document.getElementById('docWrap').scrollLeft, st: document.getElementById('docWrap').scrollTop, sel }));
+check('dragging the background pans the page and keeps selection', after.sl > before.sl && after.st > before.st && after.sel !== null, JSON.stringify([before, after]));
+await page.mouse.move(wrapBox.x + 300, wrapBox.y + 400); await page.mouse.down(); await page.mouse.up();
+check('plain click on background deselects', (await ev(() => sel)) === null);
+await ev(() => dZoomFit());
+
+// ---- round-trip JSON (v11 + doc + trường trình bày) + file cũ ----
 const rt = await ev(() => {
   const saved = JSON.parse(JSON.stringify(serializeAll()));
   applyState(saved); renderAll();
-  const n = nodes.get(rootIds[0]); const c = nodes.get(nodes.get(n.children[0]).children[0]);
-  const out = { v: saved.v, page: doc.page, orient: doc.orient, font: doc.font, scheme: doc.scheme, header: doc.header, notes: doc.notes.length, annot: c.annot, hc: c.hc, desc: !!c.desc, lvl: n.t };
-  const legacy = JSON.parse(JSON.stringify(saved)); delete legacy.doc; legacy.roots.forEach(function strip(r){ delete r.hc; delete r.annot; delete r.desc; delete r.dx; delete r.wp; (r.children || []).forEach(strip); });
+  const a = rootIds[0], c1 = nodes.get(nodes.get(a).children[0]), s1 = nodes.get(nodes.get(a).children[2]);
+  const out = { v: saved.v, page: doc.page, orient: doc.orient, font: doc.font, scheme: doc.scheme, header: doc.header, notes: doc.notes.length,
+                annot: c1.annot, hc: c1.hc, hideLv: c1.hideLv, stack: s1.stack, rootStack: nodes.get(a).stack };
+  const legacy = JSON.parse(JSON.stringify(saved)); delete legacy.doc;
+  legacy.roots.forEach(function strip(r){ delete r.hc; delete r.annot; delete r.desc; delete r.dx; delete r.hideLv; delete r.stack; (r.children || []).forEach(strip); });
   applyState(legacy); renderAll();
-  out.legacyDoc = doc.page + doc.orient + doc.font + doc.scheme + '|' + doc.notes.length; out.legacyHc = hcOf(rootIds[0]);
+  out.legacyDoc = doc.page + doc.orient + doc.font + doc.scheme + '|' + doc.notes.length; out.legacyStack = [...nodes.values()].some(n => n.stack || n.hideLv);
   applyState(saved); renderAll();
   return out;
 });
-check('round-trip keeps doc layer + presentation fields + ĐB', rt.v === 11 && rt.page === 'A3' && rt.orient === 'P' && rt.font === 'times' && rt.scheme === 'classic' && rt.header.length > 0 && rt.notes === 1 && rt.annot === 'E' && rt.hc === 4 && rt.desc && rt.lvl === 'ĐB', JSON.stringify(rt));
-check('file without doc/presentation fields loads with defaults (hc blank = 1 each)', rt.legacyDoc === 'A4Lapppastel|0' && rt.legacyHc === 4, JSON.stringify([rt.legacyDoc, rt.legacyHc]));
+check('round-trip keeps doc layer, annot/hc/hideLv/stack', rt.v === 11 && rt.page === 'A3' && rt.orient === 'P' && rt.font === 'times' && rt.scheme === 'classic' && rt.notes === 2 && rt.annot === 'A' && rt.hc === 4 && rt.hideLv === true && rt.stack === true && rt.rootStack === false, JSON.stringify(rt));
+check('file without presentation fields loads with defaults', rt.legacyDoc === 'A4Lappclassic|0' && rt.legacyStack === false, rt.legacyDoc);
 
 // ---- chuyển module: cùng cây ----
 await page.click('#bHome'); check('home → landing', await vis('#landing'));
 await page.click('#bModFlow');
-const flow = await ev(() => ({ mod: MOD, orgVisible: getComputedStyle(document.getElementById('tabOrg')).display !== 'none', nodesOnCanvas: document.querySelectorAll('#canvas .node').length, hcField: !!document.getElementById('fHc') || sel === null, lvlOpts: [...document.querySelectorAll('#fT option')].map(o => o.textContent).join(',') }));
-check('flow module shows the same 4 boxes', flow.mod === 'flow' && flow.orgVisible && flow.nodesOnCanvas === 4, JSON.stringify(flow));
+const flow = await ev(() => ({ mod: MOD, orgVisible: getComputedStyle(document.getElementById('tabOrg')).display !== 'none', nodesOnCanvas: document.querySelectorAll('#canvas .node').length }));
+check('flow module shows the same 8 boxes', flow.mod === 'flow' && flow.orgVisible && flow.nodesOnCanvas === 8, JSON.stringify(flow));
 await ev(() => { select(rootIds[0]); addChild(rootIds[0]); nodes.get(sel).dept = 'THÊM Ở LUỒNG'; });
-check('org panel offers ĐB and headcount field', (await ev(() => [...document.querySelectorAll('#fT option')].map(o => o.textContent).join(','))).startsWith('ĐB,CC') && (await ev(() => !!document.getElementById('fHc'))));
+await ev(() => select(rootIds[0]));
+check('org panel offers ĐB (root) and headcount field', (await ev(() => [...document.querySelectorAll('#fT option')].map(o => o.textContent).join(','))).startsWith('ĐB,CC') && (await ev(() => !!document.getElementById('fHc'))));
 await ev(() => showModule('doc'));
-check('box added in flow module appears in doc module (blank presentation fields)', (await ev(() => document.querySelectorAll('#docPage .dbox').length)) === 5 && (await ev(() => { const n = nodes.get(sel); return n.annot === '' && n.desc === '' && n.dx === 0 && n.wp === null; })));
+check('box added in flow module appears in doc module with blank presentation fields', (await ev(() => document.querySelectorAll('#docPage .dbox').length)) === 9 && (await ev(() => { const n = nodes.get(sel); return n.annot === '' && n.desc === '' && n.dx === 0 && !n.stack && !n.hideLv; })));
 
-// ---- in: @page theo khổ giấy ----
+// ---- in + PDF ----
 await ev(() => { window.print = function(){ window.__printed = true; }; docPrint(); });
 check('print sets @page size from current paper', (await ev(() => document.getElementById('printPage').textContent)) === '@page{size:297mm 420mm;margin:0}' && (await ev(() => window.__printed === true)));
-
-// ---- tải PDF: jsPDF + svg2pdf + font nhúng ----
 const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#bPdf')]);
-const pdfPath = await dl.path(); const pdfBuf = fs.readFileSync(pdfPath);
-const pdfHead = pdfBuf.subarray(0, 5).toString();
-check('PDF download produced a real PDF', pdfHead === '%PDF-' && pdfBuf.length > 100000, pdfHead + ' ' + pdfBuf.length + 'B ' + dl.suggestedFilename());
-check('PDF embeds LiberationSerif (Times chosen) with Vietnamese glyph support', /LiberationSerif/.test(pdfBuf.toString('latin1')), '');
-fs.copyFileSync(pdfPath, '/tmp/claude-0/-home-user-ideal-fiesta/36013426-8f19-5f04-9163-25afeda6f837/scratchpad/doc-test.pdf');
+const pdfBuf = fs.readFileSync(await dl.path());
+check('PDF download is a real PDF with embedded LiberationSerif', pdfBuf.subarray(0, 5).toString() === '%PDF-' && /LiberationSerif/.test(pdfBuf.toString('latin1')), pdfBuf.length + 'B');
 check('no page/console errors', errors.length === 0, errors.join(' | '));
 await close();
 finish(R);

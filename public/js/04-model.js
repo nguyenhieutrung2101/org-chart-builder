@@ -2,12 +2,13 @@
 /* [3] Model cây + [4] visibleSet + [5] layout thuần — Org Builder. Các file js/ dùng chung state global, nạp theo thứ tự trong index.html. */
 /* ============ [3] MODEL: THAO TÁC TRÊN CÂY ============ */
 // Trường trình bày (module Trình bày sơ đồ): hc định biên tự nhập (null = trống), annot chữ cái badge,
-// desc mô tả chức năng, dx lệch ngang thủ công (mm), wp điểm gấp khúc đường nối từ box cha (mm, null = tự động)
+// desc mô tả chức năng, dx lệch ngang thủ công (mm), hideLv ẩn "(Tx)" sau chức danh,
+// stack = xếp dọc thành nhóm cùng các box anh em cũng đánh dấu (nối bằng đường dọc bên trái)
 function nn(dept, title, person, lv, parent, id){
   var nid = id || ('n' + (seq++));
   nodes.set(nid, {id:nid, dept:dept, title:title, person:person, t:lv,
                   star:false, br:'', collapsed:false, parent:parent, children:[],
-                  hc:null, annot:'', desc:'', dx:0, wp:null});
+                  hc:null, annot:'', desc:'', dx:0, hideLv:false, stack:false});
   return nid;
 }
 function addRoot(){

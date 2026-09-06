@@ -26,7 +26,9 @@ Mở app là vào **màn hình chọn module**. Cả hai module dùng chung **m�
 - **Ghi chú chữ cái**: khai báo danh sách A, B, C… kèm diễn giải; gán chữ cái cho từng box để hiện badge nhỏ ở góc trên-trái box, đúng như tài liệu sơ đồ tổ chức thông dụng.
 - **Định biên**: box không có box con nhập số tự định nghĩa (trống = 1); box có con tự cộng **1 + tổng các box con**, hiện ở góc dưới-phải box (tắt được).
 - **Cụm mô tả chức năng** phía dưới sơ đồ, thẳng cột với box; dòng bắt đầu bằng `# ` thành tiêu đề đậm gạch chân.
-- **Kéo box sang ngang** ngay trong hàng của nó (hàng do cấp quyết định); **cầm đoạn đường nối để bẻ gấp khúc** (kéo đoạn ngang lên/xuống, kéo đoạn dọc sang ngang tạo thêm khúc gập); mỗi box có nút về vị trí / nối lại tự động.
+- **Box co giãn theo nội dung**: tên phòng tối đa 2 dòng ở cỡ chuẩn (dài hơn thì co chữ, không bao giờ cắt "…"), chức danh 1 dòng có thể **ẩn/hiện "(Tx)" cho riêng từng box**, người phụ trách **nhiều dòng** (mỗi người một dòng). Hàng đặt theo **độ sâu trong cây**, không ép cùng cấp T cùng hàng.
+- **Hai kiểu nối** giữ bản vẽ đồng nhất (không kéo đường nối tay): mặc định các con **dàn ngang** nối từ cạnh dưới cha; tick **"Xếp dọc thành nhóm"** cho một số con thì chúng thành **một cột dọc** nối bằng một đường dọc bên trái vào cạnh trái từng box (cột đứng ngoài cùng bên trái nếu còn con dàn ngang, treo ngay dưới cha nếu chỉ có nhóm này).
+- **Kéo box sang ngang** ngay trong hàng của nó; nút "Về vị trí tự động". **Zoom mượt** quanh con trỏ (lăn chuột) và **kéo nền để di chuyển trang**.
 - **Font**: font của app, Arial, Times New Roman. **Bảng màu**: pastel của app hoặc bảng màu gốc của văn bản sơ đồ tổ chức.
 - **In / Save as PDF** qua hộp thoại in của trình duyệt (vector, đúng khổ giấy), hoặc **⬇ Tải PDF** trực tiếp — PDF vector có nhúng font Liberation (đủ dấu tiếng Việt, cùng metric với Arial / Times New Roman), thư viện jsPDF + svg2pdf chỉ nạp khi bấm.
 
@@ -121,7 +123,8 @@ Deploy thủ công: `npx wrangler deploy`
 | Sửa nhanh một box | Nháy đúp vào box |
 | Đổi thứ tự box ngang hàng | Nút ◀ ▶ trong panel Chi tiết |
 | Dịch box trong hàng (Trình bày) | Kéo box sang trái/phải; "Về vị trí tự động" để bỏ |
-| Bẻ đường nối (Trình bày) | Kéo một đoạn của đường nối; "Nối lại tự động" để bỏ |
+| Nhóm box xếp dọc (Trình bày) | Tick "Xếp dọc thành nhóm" trên từng box con muốn gộp |
+| Zoom / di chuyển trang (Trình bày) | Lăn chuột trên trang / kéo nền |
 | In / PDF (Trình bày) | "In / Save as PDF" (hộp thoại in) hoặc "⬇ Tải PDF" |
 | Quay lại chọn module | Nút "⌂ Module" ở header; địa chỉ `#doc` / `#flow` mở thẳng module |
 | Thả box vai trò vào ô luật | Kéo ở tay nắm ⠿ trên card trong palette |

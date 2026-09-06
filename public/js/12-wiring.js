@@ -250,32 +250,58 @@ $('bModDoc').onclick  = function(){ showModule('doc'); };
 $('bModFlow').onclick = function(){ showModule('flow'); };
 $('bHome').onclick    = function(){ showModule('landing'); };
 $('bDocRoot').onclick   = addRoot;
-$('bDZoomIn').onclick    = function(){ dZoomTo(dzoom * ZSTEP); };
-$('bDZoomOut').onclick   = function(){ dZoomTo(dzoom / ZSTEP); };
-$('bDZoomReset').onclick = function(){ dZoomTo(1); };
+$('bDZoomIn').onclick    = function(){ dAnimateZoomTo((dzoomAnim ? dzoomAnim.target : dzoom) * ZSTEP); };
+$('bDZoomOut').onclick   = function(){ dAnimateZoomTo((dzoomAnim ? dzoomAnim.target : dzoom) / ZSTEP); };
+$('bDZoomReset').onclick = function(){ dAnimateZoomTo(1); };
 $('bDZoomFit').onclick   = dZoomFit;
 $('bPrint').onclick = docPrint;
 $('bPdf').onclick   = docPdf;
 $('bTglDPanel').onclick = function(){ dpanelHidden = !dpanelHidden; $('dpanel').style.display = dpanelHidden ? 'none' : ''; refreshStateLabels(); };
 wireCollapse('tglDBox',  'dBoxBody',  'dBoxSec');
 wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
-// Kéo-thả trên trang: pointer capture trên #docPage (svg bị dựng lại mỗi lần render nên không capture trên svg)
+// Trang vẽ: kéo box sang ngang (pointer capture trên #docPage vì svg bị dựng lại mỗi lần render);
+// kéo nền để pan; lăn chuột = zoom mượt quanh con trỏ — cùng cơ chế với tab Sơ đồ.
 (function(){
-  var host = $('docPage'), drag = null;
+  var host = $('docPage'), wrap = $('docWrap'), drag = null, pan = null;
   host.addEventListener('pointerdown', function(e){
     if (e.button !== 0) return;
-    var box = e.target.closest('.dbox'), hit = e.target.classList.contains('dedge-hit') ? e.target : null;
-    if (box){ var id = box.getAttribute('data-id'); if (sel !== id) select(id); drag = startBoxDrag(id, e); }
-    else if (hit) drag = startEdgeDrag(hit.getAttribute('data-id'), +hit.getAttribute('data-seg'), e);
-    else { if (sel) select(null); return; }
+    var box = e.target.closest('.dbox');
+    if (!box) return;
+    var id = box.getAttribute('data-id');
+    if (sel !== id) select(id);
+    drag = startBoxDrag(id, e);
     try{ host.setPointerCapture(e.pointerId); }catch(_){/**/}
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
   });
-  host.addEventListener('pointermove', function(e){ if (drag) moveDrag(drag, e); });
-  function up(){ if (!drag) return; var d = drag; drag = null; endDrag(d); }
-  host.addEventListener('pointerup', up);
-  host.addEventListener('pointercancel', up);
+  host.addEventListener('pointermove', function(e){ if (drag) moveBoxDrag(drag, e); });
+  function upBox(){ if (!drag) return; var d = drag; drag = null; endBoxDrag(d); }
+  host.addEventListener('pointerup', upBox);
+  host.addEventListener('pointercancel', upBox);
   host.addEventListener('dblclick', function(e){ var box = e.target.closest('.dbox'); if (box) select(box.getAttribute('data-id'), true); });
+  wrap.addEventListener('pointerdown', function(e){
+    if (e.button !== 0 || e.target.closest('.dbox')) return;
+    pan = { x:e.clientX, y:e.clientY, sl:wrap.scrollLeft, st:wrap.scrollTop, moved:false };
+    try{ wrap.setPointerCapture(e.pointerId); }catch(_){/**/}
+  });
+  wrap.addEventListener('pointermove', function(e){
+    if (!pan) return;
+    var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+    if (!pan.moved && Math.hypot(dx, dy) < 5) return;
+    if (!pan.moved){ pan.moved = true; wrap.classList.add('panning'); }
+    wrap.scrollLeft = pan.sl - dx; wrap.scrollTop = pan.st - dy;
+  });
+  function upPan(){
+    if (!pan) return;
+    var moved = pan.moved; pan = null; wrap.classList.remove('panning');
+    if (!moved && sel) select(null);                       // bấm nền không kéo -> bỏ chọn
+  }
+  wrap.addEventListener('pointerup', upPan);
+  wrap.addEventListener('pointercancel', upPan);
+  wrap.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var r = wrap.getBoundingClientRect();
+    dAnimateZoomTo((dzoomAnim ? dzoomAnim.target : dzoom) * Math.exp(-e.deltaY * 0.0022), e.clientX - r.left, e.clientY - r.top);
+  }, { passive:false });
 })();
 
 window.onbeforeunload = function(){ return dirty ? true : null; };   // dirty đã bao trùm mọi dữ liệu (FC, luật, ngành dọc…), không chỉ box sơ đồ

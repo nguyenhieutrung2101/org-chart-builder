@@ -88,7 +88,7 @@ function seedRules(){
 
 // Lớp trình bày của module "Trình bày sơ đồ" — không ảnh hưởng luồng duyệt
 function defaultDoc(){
-  return { page:'A4', orient:'L', font:'app', scheme:'pastel', header:'',
+  return { page:'A4', orient:'L', font:'app', scheme:'classic', header:'',
            code:{ code:'', date:'', author:'', reviewer:'', approver:'' },
            notes:[],
            show:{ legend:true, code:true, notes:true, hc:true, desc:true, fit:true } };

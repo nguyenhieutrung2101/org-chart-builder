@@ -348,7 +348,8 @@ tr.hideRow{display:none}
 #tabDoc{flex:1;min-height:0;display:none;flex-direction:column}
 #docBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:var(--bd);background:var(--paper)}
 #dmain{flex:1;min-height:0;display:flex}
-#docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px}
+#docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px;cursor:grab;touch-action:none}
+#docWrap.panning{cursor:grabbing}
 #docPage{display:inline-block;vertical-align:top}
 #docPage svg{display:block;background:#fff;border:var(--bd);box-shadow:4px 4px 0 var(--ink)}
 #dpanel{width:300px;flex:none;overflow:auto;border-left:var(--bd);background:var(--wash);padding:10px;display:flex;flex-direction:column;gap:10px}
@@ -367,12 +368,8 @@ tr.hideRow{display:none}
 #dfC{font-weight:700}
 #dfP{font-style:italic}
 /* Tương tác trên SVG (đơn vị mm) */
-.dbox{cursor:grab}
+.dbox{cursor:ew-resize}
 .dbox.sel rect.bg{stroke:#6B8FE8;stroke-width:0.9}
-.dedge-hit{stroke:transparent;stroke-width:3.5;fill:none;pointer-events:stroke}
-.dedge-hit:hover{stroke:rgba(107,143,232,.35)}
-.dedge-hit.hor{cursor:ns-resize}
-.dedge-hit.ver{cursor:ew-resize}
 @media print{
   html,body{background:#fff}
   body>*:not(#tabDoc){display:none!important}
@@ -386,5 +383,4 @@ tr.hideRow{display:none}
   #tabDoc,#dmain,#docWrap,#docPage{height:100%;overflow:hidden}
   /* @page = đúng khổ trang nên svg phủ trọn viewport in -> đúng 1 trang, không dư trang trắng */
   #docPage svg{border:none!important;box-shadow:none!important;width:100vw!important;height:100vh!important}
-  .dedge-hit{display:none}
 }
