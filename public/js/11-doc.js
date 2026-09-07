@@ -387,6 +387,16 @@ function buildDocSvg(forExport){
 /* ---------- logo SVG người dùng dán vào ---------- */
 // Trả về { el: <svg> đã lọc, ratio: rộng/cao } hoặc null nếu không phải SVG. Loại bỏ script / sự kiện / foreignObject / href javascript:.
 // Fill/stroke khai báo qua <style> theo class được chuyển thành thuộc tính inline để svg2pdf in đúng (svg2pdf không đọc <style>).
+var SVG_ALLOW = { svg:1, g:1, path:1, rect:1, circle:1, ellipse:1, line:1, polyline:1, polygon:1, text:1, tspan:1, textPath:1, defs:1, symbol:1, use:1,
+                  clipPath:1, mask:1, linearGradient:1, radialGradient:1, stop:1, pattern:1, marker:1, title:1, desc:1, style:1 };
+// Thuộc tính được giữ trên logo SVG: không on*; href/xlink:href chỉ tham chiếu nội bộ "#id" (gradient, clipPath, use); giá trị khác không được
+// chứa javascript:/data:/vbscript:, url() ra ngoài hay expression(). So khớp sau khi bỏ khoảng trắng + ký tự điều khiển như URL parser làm.
+function svgAttrOk(name, value){
+  if (/^on/i.test(name)) return false;
+  var v = String(value).replace(/[\s\u0000-\u001f]+/g, '').toLowerCase();
+  if (/(^|:)href$/i.test(name)) return /^#/.test(v);
+  return !/javascript:|vbscript:|data:|url\((?!#)|expression\(/.test(v);
+}
 function docLogoSvg(code){
   var d;
   try{ d = new DOMParser().parseFromString(String(code), 'image/svg+xml'); }catch(_){ return null; }
@@ -401,12 +411,17 @@ function docLogoSvg(code){
     });
     st.remove();
   });
+  // ALLOWLIST: chỉ giữ phần tử vẽ tĩnh trong namespace SVG; mọi thứ khác (script, foreignObject, a, image, animate/set, filter…) bị gỡ cả nhánh.
+  // Danh sách cấm cũ không đủ: URL parser bỏ tab/xuống dòng nên "java<tab>script:" vẫn là javascript:, <a> trong SVG kích hoạt được bằng Enter,
+  // <image href="https://…"> tải tài nguyên ngoài. Cả cây con của root đi qua đây; root xử lý riêng bên dưới.
   Array.prototype.slice.call(root.querySelectorAll('*')).forEach(function(el){
-    var name = el.nodeName.toLowerCase();
-    if (name === 'script' || name === 'foreignobject'){ el.remove(); return; }
-    Array.prototype.slice.call(el.attributes).forEach(function(at){
-      if (/^on/i.test(at.name) || (/href$/i.test(at.name) && /^\s*javascript:/i.test(at.value))) el.removeAttribute(at.name);
-    });
+    if (!root.contains(el)) return;                              // đã bị gỡ theo cha
+    if (el.namespaceURI === SVGNS && el.localName === 'a'){      // <a> thường bọc cả hình: bóc vỏ, giữ con (con vẫn đi qua vòng lặp này)
+      while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+      el.remove(); return;
+    }
+    if (el.namespaceURI !== SVGNS || !SVG_ALLOW[el.localName]){ el.remove(); return; }
+    Array.prototype.slice.call(el.attributes).forEach(function(at){ if (!svgAttrOk(at.name, at.value)) el.removeAttribute(at.name); });
     (el.getAttribute('class') || '').split(/\s+/).forEach(function(c){ var p = css[c]; if (p) Object.keys(p).forEach(function(k){ if (!el.hasAttribute(k)) el.setAttribute(k, p[k]); }); });
   });
   var vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);

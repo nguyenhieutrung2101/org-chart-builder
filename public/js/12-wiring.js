@@ -123,7 +123,7 @@ wireCollapse('tglRes', 'resBody', 'resSec');
 wireCollapse('tglCig', 'cigBody', 'cigSec', false);        // CIG mặc định thu gọn
 wireCollapse('tglPalette', 'paletteBody', 'paletteSec');
 
-$('resFilter').oninput = applyResFilter;
+$('resFilter').oninput = debounce(function(){ renderFlowResult(); }, 150);   // lọc = chọn dữ liệu trước khi vẽ (không đổi dữ liệu -> không qua mutate)
 
 // Tab Sơ đồ: ẩn/hiện sơ đồ (bảng chiếm toàn màn hình) và ẩn/hiện panel
 var chartHidden = false, panelHidden = false;
@@ -183,6 +183,7 @@ $('bTglInputs').onclick = function(){
 $('bPaste').onclick  = function(){
   var pb = $('pasteBox');
   pb.style.display = (pb.style.display === 'none' || !pb.style.display) ? 'block' : 'none';
+  $('pasteNotes').hidden = true;
 };
 $('bPasteGo').onclick     = function(){ importPaste($('pasteTa').value); };
 $('bPasteCancel').onclick = function(){ $('pasteTa').value=''; $('pasteBox').style.display='none'; };
@@ -193,6 +194,7 @@ $('bCopyFc').onclick  = function(){ if (!fcs.length){ msg(t('msgNothingCopy')); 
 $('bPasteGrp').onclick = function(){
   var pb = $('pasteBoxGrp');
   pb.style.display = (pb.style.display === 'none' || !pb.style.display) ? 'block' : 'none';
+  $('pasteNotesGrp').hidden = true;
 };
 $('bPasteGrpGo').onclick     = function(){ importGrpPaste($('pasteTaGrp').value); };
 $('bPasteGrpCancel').onclick = function(){ $('pasteTaGrp').value=''; $('pasteBoxGrp').style.display='none'; };

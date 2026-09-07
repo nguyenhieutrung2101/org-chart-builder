@@ -47,7 +47,11 @@ var cigs = [];                   // [{id, code, name}] — nhóm chi phí (Commi
 var rseq = 1, cseq = 1;
 function gridFamily(){ return ruleMode === 'vline' ? vlineGrids : ruleGrids; }
 function gridFor(cigId){ var f = gridFamily(); return f[cigId] || f['']; }  // CIG chưa có riêng -> Chung
-function curGrid(){ var f = gridFamily(); return f[curCig] || (f[curCig] = {}); }
+// Grid của CIG đang chọn, CHỈ ĐỌC (renderer, kiểm tra chip). Không bao giờ tạo grid ở đây: bản cũ tạo {} rỗng ngay trong getter khi
+// đổi mode, làm CIG mất fallback về Chung và người duyệt thành "—" — và renderer sửa document mà không có snapshot.
+function curGrid(){ return gridFor(curCig); }
+// Grid của CIG đang chọn để SỬA (gọi trong mutate): chưa có luật riêng thì chép từ Chung đúng lúc sửa lần đầu
+function ownGrid(){ var f = gridFamily(); if (!f[curCig]) f[curCig] = JSON.parse(JSON.stringify(f[''] || {})); return f[curCig]; }
 // Cây ngành dọc: serialize lồng nhau như roots; imported chỉ lưu orgId (nội dung mirror lúc render)
 function vser(id){
   var n = vnodes.get(id);
@@ -133,21 +137,35 @@ function serializeAll(){
 // Chụp snapshot cho Undo trước một thay đổi. key khác null = đang gõ liên tục vào cùng một ô: cả chuỗi gõ chỉ chụp một lần.
 // dirty + cờ tab cũ đặt TRƯỚC khi quyết định gộp, vì thay đổi vẫn là thay đổi dù không chụp thêm snapshot
 // (trước đây: Save rồi gõ tiếp đúng ô cũ -> gộp -> dirty vẫn false -> đóng tab không cảnh báo).
+// Trả về JSON trạng thái trước thay đổi (mutate dùng để rollback), kể cả khi snapshot được gộp.
 function snap(key){
   dirty = true; markStale();
-  if (key !== null && key === lastSnapKey) return;
-  undoStack.push(JSON.stringify(serializeAll()));
-  if (undoStack.length > 60) undoStack.shift();
-  lastSnapKey = key;
+  var json = JSON.stringify(serializeAll());
+  if (key === null || key !== lastSnapKey){
+    undoStack.push(json);
+    if (undoStack.length > 60) undoStack.shift();
+    lastSnapKey = key;
+  }
+  return json;
 }
-// CỬA DUY NHẤT cho mọi thay đổi dữ liệu: snapshot + dirty + chạy fn + vẽ lại. Không nơi nào gọi snap() rồi tự sửa state nữa.
-// after: hàm vẽ lại sau thay đổi, mặc định renderAll (vẽ module/tab đang mở); đang gõ thì truyền refreshView hoặc hàm vá nhẹ hơn.
-// Trả về kết quả của fn.
+// CỬA DUY NHẤT cho mọi thay đổi dữ liệu — một transaction: snapshot + dirty -> chạy fn -> kiểm tra bất biến -> vẽ lại.
+// fn ném lỗi hoặc để lại dữ liệu vi phạm bất biến -> khôi phục đúng trạng thái trước (kể cả dirty), báo toast, ném lỗi tiếp
+// để console/test thấy. Nhờ vậy một batch dán Excel lỗi giữa chừng không để lại nửa dữ liệu.
+// after: hàm vẽ lại sau khi commit, mặc định renderAll (vẽ module/tab đang mở); đang gõ thì truyền refreshView hoặc hàm vá nhẹ hơn.
+// Lỗi trong after xảy ra SAU commit: không rollback, không được hiểu là "chưa lưu". Trả về kết quả của fn.
 function mutate(key, fn, after){
-  snap(key);
-  var r = fn();
+  var wasDirty = dirty, before = snap(key), r, bad;
+  try { r = fn(); bad = checkInvariants(); }
+  catch(e){ rollback(before, wasDirty); msg(t('msgMutateFail')); throw e; }
+  if (bad.length){ rollback(before, wasDirty); msg(t('msgMutateFail')); throw new Error('invariants: ' + bad.join('; ')); }
   (after || renderAll)();
   return r;
+}
+function rollback(before, wasDirty){
+  applyState(JSON.parse(before));
+  if (undoStack[undoStack.length - 1] === before) undoStack.pop();   // snapshot của chính thay đổi hỏng
+  lastSnapKey = null; dirty = wasDirty;
+  renderAll();
 }
 function undo(){
   if (!undoStack.length){ msg(t('msgNoUndo')); return; }
@@ -188,7 +206,7 @@ function checkInvariants(){
       }); });
     });
   });
-  var vseen = new Set();
+  var vseen = new Set(), orgSeen = new Set();
   function vwalk(id, parent){
     var n = vnodes.get(id);
     if (!n){ bad.push('missing vnode ' + id); return; }
@@ -196,6 +214,7 @@ function checkInvariants(){
     vseen.add(id);
     if (n.parent !== parent) bad.push('vnode parent mismatch ' + id);
     if (n.orgId && !nodes.has(n.orgId)) bad.push('vnode org dangling ' + id);
+    if (n.orgId){ if (orgSeen.has(n.orgId)) bad.push('org imported twice ' + n.orgId); orgSeen.add(n.orgId); }   // một box ★ chỉ có một cấp trên ngành dọc
     n.children.forEach(function(c){ vwalk(c, id); });
   }
   vroots.forEach(function(r){ vwalk(r, null); });
