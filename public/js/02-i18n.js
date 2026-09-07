@@ -3,17 +3,44 @@
 /* ============ [1b] I18N — Anh/Việt ============
    Nguyên tắc: KHÓA DỮ LIỆU giữ nguyên (FLOWS/COLS/LEVELS/scope trong JSON),
    chỉ dịch NHÃN hiển thị. Ngôn ngữ là tuỳ chọn UI, lưu localStorage.        */
-var LANG = (function(){ try{ return localStorage.getItem('ob_lang') || 'vi'; }catch(_){ return 'vi'; } })();
+var LANG = (function(){ try{ return localStorage.getItem('ob_lang') || 'en'; }catch(_){ return 'en'; } })();   // mặc định English, đổi ở landing/header
 
 var STR = {
 vi: {
   docTitle:'Org Builder — sơ đồ, bảng phân cấp & luồng duyệt',
   tabOrg:'Sơ đồ tổ chức', tabVline:'Ngành dọc', tabRules:'Định nghĩa luồng', tabFlow:'Luồng duyệt',
-  // --- landing + module ---
-  landingTitle:'Chọn module', btnHome:'⌂ Module', tipHome:'Về màn hình chọn module',
-  modDocH:'Trình bày sơ đồ', modDocD:'Vẽ và căn chỉnh sơ đồ tổ chức trên trang in: khổ giấy, font, bảng màu, ghi chú, định biên, in / PDF.',
-  modFlowH:'Luồng duyệt', modFlowD:'Sơ đồ tổ chức, ngành dọc, ma trận luật và bảng luồng duyệt theo nhóm Fund Center.',
-  landingHint:'Hai module dùng chung một cây tổ chức và một file JSON — vẽ ở module nào cũng cập nhật ở cả hai.',
+  // --- landing + popup giới thiệu / Có gì mới / Về dự án ---
+  btnHome:'⌂ Module', tipHome:'Về màn hình chọn module', mod1:'Module 1', mod2:'Module 2',
+  modDocH:'Trình bày sơ đồ', modDocD:'Vẽ sơ đồ tổ chức lên trang in đúng khổ giấy và xuất PDF.',
+  modFlowH:'Luồng duyệt', modFlowD:'Từ sơ đồ và ma trận luật, suy ra bảng luồng phê duyệt ngân sách cho từng nhóm Fund Center.',
+  whatsNew:'Có gì mới', about:'Về dự án', btnGo:'Chọn module', btnSkip:'Bỏ qua', tagDoc:'Trình bày', tagFlow:'Luồng', tagAll:'Chung',
+  introH:'Org Builder — sơ đồ tổ chức & luồng duyệt.',
+  introP:'Chạy offline ngay trên trình duyệt, không có back-end; dữ liệu lưu cục bộ dưới dạng file JSON.',
+  introDoc:'· vẽ sơ đồ lên trang in, xuất PDF', introFlow:'· từ sơ đồ suy ra bảng luồng phê duyệt ngân sách',
+  abH:'Org Builder · project affogato',
+  abP1:'Một công cụ nhỏ cho một việc lặp đi lặp lại: vẽ cây tổ chức của công ty một lần, rồi dùng hai lần — làm sơ đồ tổ chức in được để đưa vào văn bản chính thức, và làm nguồn để quyết định ai thẩm định, ai phê duyệt từng đề nghị ngân sách.',
+  abIdeoH:'Dự án tin vào điều gì',
+  abI1:'<b>Local-first.</b> Không back-end, không tài khoản. Dữ liệu là một file JSON bạn sở hữu, tự lưu và mở lại.',
+  abI2:'<b>Một nguồn sự thật.</b> Một cây tổ chức nuôi cả hai module; sửa một box là đổi ở mọi nơi.',
+  abI3:'<b>Thấy sao in vậy.</b> Trang được dựng theo milimét nên màn hình, bản in và PDF khớp nhau.',
+  abI4:'<b>Tự tay, đơn giản.</b> HTML tĩnh + JavaScript thuần, không framework, không build step, mọi tính năng đều có test trên trình duyệt thật.',
+  abMeH:'Về tôi',
+  abMe:'Tôi là Trung. Tôi làm Org Builder cho chính công việc phê duyệt ngân sách hằng ngày, xuất phát từ một bực bội đơn giản: sơ đồ tổ chức đã biết ai duyệt cái gì, không ai nên phải gõ lại nó thành ma trận. "Affogato" là ly espresso đổ lên gelato đã nuôi phần lớn các commit.',
+  l11a:'Module mới: trang in SVG theo mm (A4/A3/A2, chiều cao tự động), hàng kiểu kệ sách, nhóm xếp dọc, logo, mã văn bản, ghi chú chữ cái, định biên, tải PDF nhúng font.',
+  l11b:'Màn hình chọn module; cấp <b>ĐB</b> trên CC; một cây tổ chức dùng chung cho cả hai module.',
+  l11c:'Landing mới với popup Có gì mới / Về dự án; chuyển cảnh và animation nhỏ khắp app.',
+  l11d:'Tách mã nguồn thành từng file theo section; bộ test Playwright đi kèm repo.',
+  l10a:'Dán từ Excel nhận đúng dòng tiêu đề; CIG xoá hết vẫn giữ khi mở lại; box vai trò gỡ theo box sơ đồ bị xoá.',
+  l10b:'Bảng Fund Center nhanh gấp 6 lần với dữ liệu lớn; chặn formula injection khi copy sang Excel.',
+  l10c:'Cảnh báo khi đóng tab còn thay đổi chưa lưu; inventory toàn bộ hàm trong <code>docs/</code>.',
+  l9a:'Tab <b>Ngành dọc</b>: CBQLNS thị trường gắn lên cấp Global; chế độ xử lý Luồng / Ngành dọc với hai bộ luật độc lập.',
+  l9b:'Copy và dán từ Excel cho cả Nhóm FC lẫn Fund Center.',
+  l9c:'Zoom mượt quanh con trỏ; minimap tự co theo sơ đồ.',
+  l8a:'Giao diện pastel neo-brutalism; chuyển ngôn ngữ Việt / English.',
+  l8b:'Nhánh Kinh doanh, Hỗ trợ, IT, Kế toán; nhóm chi phí CIG với bộ luật riêng; trigger "CBQLNS cấp dưới tự PD".',
+  l7a:'Tab Định nghĩa luồng: kéo box vai trò vào ma trận; box link từ sơ đồ.',
+  l7b:'Sơ đồ tổ chức, bảng phân cấp, lưu/mở JSON, xuất .drawio, zoom + minimap.',
+  foot:'Mẹo: <kbd>Ctrl</kbd>+<kbd>Z</kbd> hoàn tác ở mọi module; nút <b>⌂ Module</b> trên header đưa bạn về màn hình này.',
   // --- cấp + định biên ---
   lvlDB:'Đặc biệt', lvlCC:'Cao cấp',
   lblHc:'Định biên', hcAutoNote:'Tự cộng: 1 (box này) + tổng định biên các box con.', hcLeafNote:'Box không có box con: nhập số (trống = 1, chính nó).',
@@ -162,10 +189,37 @@ vi: {
 en: {
   docTitle:'Org Builder — org chart, hierarchy table & approval flows',
   tabOrg:'Org Chart', tabVline:'Vertical Line', tabRules:'Flow Rules', tabFlow:'Approval Flow',
-  landingTitle:'Choose a module', btnHome:'⌂ Modules', tipHome:'Back to module selection',
-  modDocH:'Chart layout', modDocD:'Lay out the org chart on a printable page: paper size, fonts, colour scheme, notes, headcount, print / PDF.',
-  modFlowH:'Approval flow', modFlowD:'Org chart, vertical line, rule matrix and approval-flow tables per Fund Center group.',
-  landingHint:'Both modules share one org tree and one JSON file — edits in either module show up in both.',
+  btnHome:'⌂ Modules', tipHome:'Back to module selection', mod1:'Module 1', mod2:'Module 2',
+  modDocH:'Chart layout', modDocD:'Lay the org chart out on a real printed page and export a PDF.',
+  modFlowH:'Approval flow', modFlowD:'From the chart and the rule matrix, derive the budget approval-flow table for every Fund Center group.',
+  whatsNew:"What's new", about:'About this project', btnGo:'Choose a module', btnSkip:'Skip', tagDoc:'Layout', tagFlow:'Flow', tagAll:'All',
+  introH:'Org Builder — org charts & approval flows.',
+  introP:'Runs offline in the browser with no back-end; data is stored locally as a JSON file.',
+  introDoc:'· draw the chart on a printed page, export PDF', introFlow:'· derive the budget approval-flow table from the chart',
+  abH:'Org Builder · project affogato',
+  abP1:"A small tool for one recurring job: draw a company's org tree once, then use it twice — as a printable organisation chart that goes into an official document, and as the source that decides who reviews and approves each budget request.",
+  abIdeoH:'What it believes in',
+  abI1:'<b>Local-first.</b> No back-end, no account. Your data is one JSON file that you own, save and reopen.',
+  abI2:'<b>One source of truth.</b> One org tree feeds both modules; change a box once and it changes everywhere.',
+  abI3:'<b>What you see is what prints.</b> The page is laid out in millimetres, so the screen, the printout and the PDF match.',
+  abI4:'<b>Hand-built and plain.</b> Static HTML + vanilla JavaScript, no framework, no build step, every feature covered by browser tests.',
+  abMeH:'About me',
+  abMe:"I'm Trung. I built Org Builder for the budget-approval work I deal with every day, starting from a simple frustration: the org chart already knows who approves what, so nobody should have to retype it into a matrix. \"Affogato\" is the espresso-over-gelato that fuelled most of the commits.",
+  l11a:'New module: printable SVG page in mm (A4/A3/A2, auto height), shelf rows, stacked groups, logo, document code, lettered notes, headcount, PDF with embedded fonts.',
+  l11b:'Module chooser; new <b>ĐB</b> level above CC; one org tree shared by both modules.',
+  l11c:"New landing with What's new / About popups; transitions and small animations across the app.",
+  l11d:'Source split into one file per section; Playwright test suite ships with the repo.',
+  l10a:'Excel paste recognises header rows; deleting every CIG survives reload; role boxes follow deleted chart boxes.',
+  l10b:'Fund Center table 6× faster on large data; formula injection blocked when copying to Excel.',
+  l10c:'Unsaved-changes warning on close; full function inventory in <code>docs/</code>.',
+  l9a:'<b>Vertical line</b> tab: market BMOs attached to Global; Flow / Vertical-line rule modes with independent rule sets.',
+  l9b:'Copy and paste from Excel for both FC groups and Fund Centers.',
+  l9c:'Smooth zoom around the cursor; minimap sizes itself to the chart.',
+  l8a:'Pastel neo-brutalism UI; Vietnamese / English toggle.',
+  l8b:'Sales, Back-office, IT and Accounting branches; CIG cost groups with their own rules; "BMO below approves directly" trigger.',
+  l7a:'Flow Rules tab: drag role boxes into the matrix; boxes linked from the chart.',
+  l7b:'Org chart, hierarchy table, JSON save/open, .drawio export, zoom + minimap.',
+  foot:'Tip: <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes in every module; the <b>⌂ Modules</b> button in the header brings you back here.',
   lvlDB:'Special', lvlCC:'Senior',
   lblHc:'Headcount', hcAutoNote:'Auto: 1 (this box) + sum of the child boxes.', hcLeafNote:'Leaf box: enter a number (blank = 1, itself).',
   docPageH:'Page', docBoxH:'Box', lblPage:'Paper', lblOrient:'Orientation', orientL:'Landscape', orientP:'Portrait',
@@ -315,7 +369,7 @@ function applyStatic(){
   document.querySelectorAll('[data-col]').forEach(function(el){ el.textContent = colLabel(el.getAttribute('data-col')); });
   document.title = t('docTitle');
   document.documentElement.lang = LANG;
-  var bl = $('bLang'); if (bl) bl.textContent = LANG === 'vi' ? 'English' : 'Tiếng Việt';
+  ['bLang', 'bLangLanding'].forEach(function(id){ var b = $(id); if (b) b.textContent = LANG === 'vi' ? 'English' : 'Tiếng Việt'; });   // header + góc landing
   refreshStateLabels();
 }
 function setLang(l){
@@ -333,10 +387,12 @@ var TCOLOR = {'ĐB':'#F0A6C0',CC:'#6B8FE8',T1:'#FFB98A',T2:'#A8D989',T3:'#FFD93D
 
 function $(id){ return document.getElementById(id); }
 function rnum(lv){ return LEVELS.indexOf(lv); }
-function msg(s){
-  var m = $('msg'); m.textContent = s;
-  clearTimeout(msg._t); msg._t = setTimeout(function(){ m.textContent=''; }, 3500);
+function msg(s){                                 // toast: viên mực trượt lên từ đáy, tự trượt xuống sau 3,5 s
+  var m = $('msg'); m.textContent = s; m.classList.add('show');
+  clearTimeout(msg._t); msg._t = setTimeout(function(){ m.classList.remove('show'); }, 3500);
 }
+// Chạy lại animation CSS theo class (bỏ class, ép reflow, thêm lại) — cho phần tử không đi qua display:none
+function replay(el, cls){ if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function debounce(fn, ms){                       // gõ liền mạch -> chỉ chạy 1 lần sau khi ngừng
   var tm; return function(){ clearTimeout(tm); tm = setTimeout(fn, ms); };
 }

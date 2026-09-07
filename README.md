@@ -6,18 +6,20 @@ Công cụ vẽ **sơ đồ tổ chức** dùng cho hai việc: **trình bày s�
 
 🌐 **Bản chạy thử:** https://org-chart-builder.nguyenhieutrung2101.workers.dev
 
-Giao diện **song ngữ Việt / Anh** (nút góc phải header, nhớ lựa chọn cho lần sau). Thuật ngữ được dịch đồng nhất: CBQLNS ↔ BMO (Budget Management Officer), TĐ1–TĐ4 ↔ R1–R4, TĐ* ↔ R*, PD ↔ Approval, Xanh / Vàng / Đỏ / Tím / NNS ↔ Green / Yellow / Red / Purple / Additional budget.
+Giao diện **song ngữ Anh / Việt** (mặc định English; nút ở góc landing hoặc header, nhớ lựa chọn cho lần sau). Thuật ngữ được dịch đồng nhất: CBQLNS ↔ BMO (Budget Management Officer), TĐ1–TĐ4 ↔ R1–R4, TĐ* ↔ R*, PD ↔ Approval, Xanh / Vàng / Đỏ / Tím / NNS ↔ Green / Yellow / Red / Purple / Additional budget.
 
 ---
 
 ## Hai module, một cây tổ chức
 
-Mở app là vào **màn hình chọn module**. Cả hai module dùng chung **một cây tổ chức và một file JSON**: vẽ ở module nào thì module kia cũng cập nhật. Module Trình bày có thêm thông tin riêng (định biên, ghi chú, mô tả, vị trí kéo tay…) — module Luồng duyệt không cần và không bị ảnh hưởng; box tạo ở Luồng duyệt sang Trình bày chỉ để trống các thông tin đó.
+Mở app là vào **landing chọn module**: hai nửa màn hình (Trình bày = xanh ngọc, Luồng duyệt = vàng), rê chuột nửa nào thì nửa đó nở ra, bấm là chuyển module. Lần đầu mở mỗi phiên bản, **popup giới thiệu + Có gì mới** tự bật (cờ `ob_seen` trong localStorage); sau đó mở lại bằng nút **Có gì mới** / **Về dự án** ở góc dưới-trái landing. Cả hai module dùng chung **một cây tổ chức và một file JSON**: vẽ ở module nào thì module kia cũng cập nhật. Module Trình bày có thêm thông tin riêng (định biên, ghi chú, mô tả, vị trí kéo tay…) — module Luồng duyệt không cần và không bị ảnh hưởng; box tạo ở Luồng duyệt sang Trình bày chỉ để trống các thông tin đó.
 
 | Module | Dùng để |
 |---|---|
 | 📄 **Trình bày sơ đồ** | Vẽ và căn chỉnh sơ đồ trên trang in, xuất PDF |
 | 📗 **Luồng duyệt** | Sơ đồ + ngành dọc + ma trận luật → bảng luồng duyệt theo nhóm Fund Center |
+
+Chuyển động trong app chỉ dùng transform/opacity, 120–450 ms, tôn trọng `prefers-reduced-motion`: chuyển module / tab nổi lên, tab đang chọn "lún" như nút bấm, toast là viên mực trượt lên từ đáy, box mới pop / box vừa chọn nháy vòng xanh / box xoá mờ dần, chip thả vào ô luật "đáp" xuống và ô đích đập nhịp khi rê qua, bảng luồng duyệt nổi so le khi vừa hiện, ô định vị minimap trượt mềm, nút Tải PDF chạy ba chấm khi đang dựng. Không animate khi render lại lúc đang gõ.
 
 ## 📄 Module Trình bày sơ đồ
 
@@ -88,7 +90,7 @@ Deploy tự động lên **Cloudflare Workers** (static assets) mỗi khi merge 
 ```
 org-chart-builder/
 ├── public/
-│   ├── index.html          # markup: header, landing, module Luồng duyệt (4 tab), module Trình bày
+│   ├── index.html          # markup: header, landing + popup giới thiệu, module Luồng duyệt (4 tab), module Trình bày, toast
 │   ├── css/app.css         # toàn bộ style (cả rule in)
 │   ├── js/01…12-*.js       # mỗi section một file, nạp theo thứ tự: hằng số, i18n, state, model, render,
 │   │                       #   export, ngành dọc, luồng, luật, zoom, module Trình bày (11-doc.js), wiring
@@ -118,17 +120,17 @@ Deploy thủ công: `npx wrangler deploy`
 | Thao tác | Cách làm |
 |---|---|
 | Hoàn tác | `Ctrl/⌘ + Z` (trong ô "Dán từ Excel" vẫn là undo gõ phím của trình duyệt) |
-| Đổi ngôn ngữ | Nút **English / Tiếng Việt** ở header |
+| Đổi ngôn ngữ | Nút **English / Tiếng Việt** ở góc landing hoặc header |
+| Xem lại Có gì mới / Về dự án | Nút ở góc dưới-trái landing (Esc hoặc bấm ra ngoài để đóng) |
 | Zoom sơ đồ | Lăn chuột trên canvas (quanh con trỏ), hoặc nút −/＋/100%/Vừa màn hình |
 | Di chuyển vùng nhìn | Kéo nền canvas, hoặc bấm/kéo trên minimap |
 | Sửa nhanh một box | Nháy đúp vào box |
 | Đổi thứ tự box ngang hàng | Nút ◀ ▶ trong panel Chi tiết |
-| Dịch box trong hàng (Trình bày) | Kéo box sang trái/phải; "Về vị trí tự động" để bỏ |
 | Nhóm box xếp dọc (Trình bày) | Tick "Xếp dọc thành nhóm" trên từng box con muốn gộp |
 | Đổi hàng của box (Trình bày) | Kéo box lên/xuống theo đường kẻ hàng, hoặc nút ▲ ▼ trong panel Box |
 | Zoom / di chuyển trang (Trình bày) | Lăn chuột trên trang / kéo nền |
 | In / PDF (Trình bày) | "In / Save as PDF" (hộp thoại in) hoặc "⬇ Tải PDF" |
-| Quay lại chọn module | Nút "⌂ Module" ở header; địa chỉ `#doc` / `#flow` mở thẳng module |
+| Quay lại chọn module | Nút "⌂ Module" ở header; địa chỉ `#doc` / `#flow` mở thẳng module (bỏ qua landing) |
 | Thả box vai trò vào ô luật | Kéo ở tay nắm ⠿ trên card trong palette |
 | Đổi phạm vi của box đã thả | Bấm nhãn phạm vi trên chip (chế độ Luồng) |
 | Nhập FCG hàng loạt | "Dán từ Excel" trên card Nhóm Fund Center (Mã ⇥ Tên ⇥ Tên người CBQLNS) |

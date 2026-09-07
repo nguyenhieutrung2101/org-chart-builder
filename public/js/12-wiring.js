@@ -218,7 +218,7 @@ $('bPasteGrpCancel').onclick = function(){ $('pasteTaGrp').value=''; $('pasteBox
 $('bFlowView').onclick = function(){
   flowViewByFc = !flowViewByFc;
   refreshStateLabels();
-  renderFlowResult();
+  renderFlowResult(true);
 };
 $('bCopyFlow').onclick = copyFlowTable;
 
@@ -232,23 +232,71 @@ $('bTgl').onclick = function(){ tblCollapsed = !tblCollapsed; applyTblCollapsed(
 
 /* ---------- [10] Landing + module Trình bày sơ đồ ---------- */
 // MOD: 'landing' | 'flow' | 'doc'. renderAll()/select()/refreshView() rẽ nhánh theo MOD nên mọi thao tác model dùng chung.
+// Landing không có header (cụm brand / Có gì mới / Về dự án / ngôn ngữ ở góc dưới-trái thay thế).
 var MOD = 'landing', dzoomInit = false, dpanelHidden = false;
+var hdr = document.querySelector('header'), lsplit = $('landingSplit'), lcorner = $('landingCorner'), overlay = $('overlay'), modal = overlay.querySelector('.modal');
+var REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;   // người dùng tắt chuyển động: bỏ chờ animation
 function showModule(m){
   MOD = m;
+  hdr.style.display           = m === 'landing' ? 'none' : '';
   $('landing').style.display  = m === 'landing' ? 'flex' : 'none';
   $('tabDoc').style.display   = m === 'doc' ? 'flex' : 'none';
   $('flowTabs').style.display = m === 'flow' ? '' : 'none';
   if (m === 'flow'){ renderAll(); showTab(curTab); }
   else ['tabOrg', 'tabVline', 'tabRules', 'tabFlow'].forEach(function(id){ $(id).style.display = 'none'; });
   if (m === 'doc'){ renderDocAll(); if (!dzoomInit){ dZoomFit(); dzoomInit = true; } }
+  if (m === 'landing') landingEnter();
   var want = m === 'landing' ? '' : '#' + m;
   if (location.hash !== want) history.replaceState(null, '', location.pathname + location.search + want);
 }
 function moduleFromHash(){ var m = /^#(doc|flow)$/.exec(location.hash); return m ? m[1] : 'landing'; }
 window.addEventListener('hashchange', function(){ var m = moduleFromHash(); if (m !== MOD) showModule(m); });
-$('bModDoc').onclick  = function(){ showModule('doc'); };
-$('bModFlow').onclick = function(){ showModule('flow'); };
-$('bHome').onclick    = function(){ showModule('landing'); };
+$('bHome').onclick = function(){ showModule('landing'); };
+
+// Popup giới thiệu tự mở một lần mỗi phiên bản (localStorage ob_seen = APP_VER) và tối đa một lần mỗi phiên; sau đó chỉ mở
+// bằng nút "Có gì mới" / "Về dự án". Khi popup mở: nội dung sau lưng mờ và inert (không nhận focus/Tab), focus nằm trên hộp.
+var introShown = false;
+function landingEnter(){
+  lsplit.classList.remove('choosing');
+  Array.prototype.forEach.call(lsplit.querySelectorAll('.chosen'), function(h){ h.classList.remove('chosen'); });
+  var seen = null; try{ seen = localStorage.getItem('ob_seen'); }catch(_){/**/}
+  if (!introShown && seen !== String(APP_VER)){ introShown = true; setTimeout(function(){ if (MOD === 'landing') openModal('intro'); }, 250); }
+  else replay(lsplit, 'entering');                 // hai nửa trượt vào
+}
+function openModal(mode){                          // 'intro' | 'log' | 'about'
+  overlay.classList.toggle('logonly', mode === 'log');
+  overlay.classList.toggle('aboutonly', mode === 'about');
+  overlay.classList.remove('closing'); overlay.classList.add('open');
+  document.body.classList.add('intro'); lsplit.inert = lcorner.inert = true;
+  modal.focus();
+}
+function closeModal(){
+  if (!overlay.classList.contains('open') || overlay.classList.contains('closing')) return;
+  try{ localStorage.setItem('ob_seen', String(APP_VER)); }catch(_){/**/}
+  var intro = !overlay.classList.contains('logonly') && !overlay.classList.contains('aboutonly');
+  overlay.classList.add('closing');
+  setTimeout(function(){
+    overlay.classList.remove('open', 'closing');
+    document.body.classList.remove('intro'); lsplit.inert = lcorner.inert = false;
+    if (intro) replay(lsplit, 'entering');
+  }, REDUCE ? 0 : 380);
+}
+function chooseModule(h, m){                       // nửa được chọn nở hết màn hình rồi mới chuyển module
+  if (lsplit.classList.contains('choosing')) return;
+  lsplit.classList.add('choosing'); h.classList.add('chosen');
+  setTimeout(function(){ showModule(m); }, REDUCE ? 0 : 520);
+}
+$('bModDoc').onclick  = function(){ chooseModule(this, 'doc'); };
+$('bModFlow').onclick = function(){ chooseModule(this, 'flow'); };
+['go', 'skip', 'close', 'closeAbout'].forEach(function(id){ $(id).onclick = closeModal; });
+$('openLog').onclick      = function(){ openModal('log'); };
+$('openAbout').onclick    = function(){ openModal('about'); };
+$('bLangLanding').onclick = $('bLang').onclick;
+overlay.addEventListener('click', function(e){ if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', function(e){
+  if (!overlay.classList.contains('open')) return;
+  if (e.key === 'Escape' || (e.key === 'Enter' && !/^(BUTTON|A)$/.test(document.activeElement.tagName))) closeModal();   // Enter ngoài nút/link = đóng
+});
 $('bDocRoot').onclick   = addRoot;
 $('bDZoomIn').onclick    = function(){ dAnimateZoomTo((dzoomAnim ? dzoomAnim.target : dzoom) * ZSTEP); };
 $('bDZoomOut').onclick   = function(){ dAnimateZoomTo((dzoomAnim ? dzoomAnim.target : dzoom) / ZSTEP); };
@@ -308,6 +356,7 @@ wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
 window.onbeforeunload = function(){ return dirty ? true : null; };   // dirty đã bao trùm mọi dữ liệu (FC, luật, ngành dọc…), không chỉ box sơ đồ
 
 seedRules();
+$('ver').textContent = $('verCorner').textContent = 'version ' + APP_VER;
 applyStatic();
 applyTblCollapsed();
 renderAll();

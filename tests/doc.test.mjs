@@ -8,7 +8,8 @@ const vis = (selr) => page.evaluate((s) => { const el = document.querySelector(s
 
 // ---- landing ----
 check('landing visible, modules hidden', await vis('#landing') && !(await vis('#tabDoc')) && !(await vis('#tabOrg')));
-await page.click('#bModDoc');
+await page.waitForSelector('#overlay.open'); await page.click('#go'); await page.waitForSelector('#overlay:not(.open)');   // popup giới thiệu lần đầu
+await page.click('#bModDoc'); await page.waitForSelector('#tabDoc', { state: 'visible' });                                  // nửa được chọn nở ra rồi mới chuyển module
 check('doc module opens; hash #doc', await vis('#tabDoc') && !(await vis('#landing')) && (await ev(() => location.hash)) === '#doc' && (await ev(() => MOD)) === 'doc');
 check('empty page shows hint text', (await ev(() => document.querySelector('#docPage svg').textContent)).includes(await ev(() => t('docNoTree'))));
 check('classic scheme by default with the exact palette', (await ev(() => doc.scheme + '|' + TCOLOR_CLASSIC['ĐB'] + TCOLOR_CLASSIC.CC + TCOLOR_CLASSIC.T1 + TCOLOR_CLASSIC.T2 + TCOLOR_CLASSIC.T3 + TCOLOR_CLASSIC.T4 + TCOLOR_CLASSIC.T5 + TCOLOR_CLASSIC.T6)) === 'classic|#c8c82d#5e8cf9#ea9651#92d050#f6d5b9#77e3f2#cfc8dd#ffffff');
@@ -191,7 +192,7 @@ check('file without presentation fields loads with defaults', rt.legacyDoc === '
 
 // ---- chuyển module: cùng cây ----
 await page.click('#bHome'); check('home → landing', await vis('#landing'));
-await page.click('#bModFlow');
+await page.click('#bModFlow'); await page.waitForSelector('#tabOrg', { state: 'visible' });
 const flow = await ev(() => ({ mod: MOD, orgVisible: getComputedStyle(document.getElementById('tabOrg')).display !== 'none', nodesOnCanvas: document.querySelectorAll('#canvas .node').length }));
 check('flow module shows the same 8 boxes', flow.mod === 'flow' && flow.orgVisible && flow.nodesOnCanvas === 8, JSON.stringify(flow));
 await ev(() => { select(rootIds[0]); addChild(rootIds[0]); nodes.get(sel).dept = 'THÊM Ở LUỒNG'; select(rootIds[0]); });

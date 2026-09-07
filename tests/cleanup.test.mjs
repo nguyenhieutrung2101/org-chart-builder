@@ -4,7 +4,8 @@ const { page, errors, close } = await openApp();
 const results = [];
 const check = (name, ok, extra) => results.push((ok ? 'PASS' : 'FAIL') + '  ' + name + (extra ? '  → ' + extra : ''));
 
-// 1. i18n static labels (vi)
+// 1. i18n static labels (vi) — app mặc định English, nên đặt vi trước rồi mới bấm nút chuyển
+await page.evaluate(() => setLang('vi'));
 let fcH = await page.textContent('#fcSec .cardH span[data-i18n="fcH"]');
 let focusLbl = await page.textContent('#focusChip span[data-i18n="focusLbl"]');
 check('vi: fcH', fcH === 'Fund Center', fcH);

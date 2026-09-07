@@ -3,7 +3,7 @@
 /* ============ [6] RENDER TAB SƠ ĐỒ ============ */
 function renderCanvas(L){
   var cv = $('canvas'), svg = $('svg');
-  cv.querySelectorAll('.node').forEach(function(e){ e.remove(); });
+  cv.querySelectorAll('.node:not(.gone)').forEach(function(e){ e.remove(); });   // .gone = bản sao box vừa xoá đang mờ dần
   while (svg.firstChild) svg.removeChild(svg.firstChild);
 
   var maxX = 0;
@@ -35,7 +35,8 @@ function renderCanvas(L){
   L.vis.forEach(function(id){
     var n = nodes.get(id), pv = L.pos.get(id);
     var d = document.createElement('div');
-    d.className = 'node' + (id === sel ? ' sel' : '');
+    var ac = takeAnim(id);
+    d.className = 'node' + (id === sel ? ' sel' : '') + (ac ? ' ' + ac : '');
     d.dataset.id = id;                                 // cho select() vá class tại chỗ
     d.style.left = pv.x + 'px'; d.style.top = pv.y + 'px';
     d.style.background = TCOLOR[n.t] || '#ffffff';

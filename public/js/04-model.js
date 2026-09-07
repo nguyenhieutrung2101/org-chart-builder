@@ -55,6 +55,8 @@ function delNode(id){
   fcGroups.forEach(function(g){ if (g.cbqlns && !nodes.has(g.cbqlns)) g.cbqlns = null; });
   pruneVlineOrphans();                           // node import trên cây ngành dọc trỏ box vừa xóa
   var gone = pruneNodeRoles();                   // box vai trò link tới box vừa xóa (+ ô luật đang dùng nó)
+  var el = document.querySelector('#canvas .node[data-id="' + id + '"]');   // bản sao mờ dần tại chỗ cũ (renderCanvas bỏ qua .gone)
+  if (el){ el.classList.add('gone'); setTimeout(function(){ el.remove(); }, 250); }
   sel = null; renderAll();
   if (gone.boxes) msg(tf('msgRolesPruned', { n: gone.boxes, c: gone.cells }));
 }
@@ -154,7 +156,7 @@ function select(id, focusInput){
   sel = id;
   var onCanvas = !id || document.querySelector('#canvas .node[data-id="' + id + '"]');
   if (onCanvas){ applySelDom(); renderPanel(); }
-  else renderAll();
+  else { animNextBox(id, 'pop'); renderAll(); }   // box mới tạo: pop khi xuất hiện
   if (focusInput){ var f = $('fD'); if (f) f.focus(); }
 }
 function applySelDom(){
@@ -166,6 +168,8 @@ function applySelDom(){
     r.setAttribute('stroke', s ? '#6B8FE8' : '#1F1B16');
     r.setAttribute('stroke-width', s ? 8 : 3);
   });
+  var cur = sel && document.querySelector('#canvas .node[data-id="' + sel + '"]');
+  if (cur) replay(cur, 'flash');                  // vòng chọn nháy một nhịp cho mắt tìm thấy box trên sơ đồ lớn
 }
 
 /* ============ [4] HIỂN THỊ / ẨN ============ */

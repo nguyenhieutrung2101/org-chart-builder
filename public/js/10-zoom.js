@@ -102,12 +102,12 @@ function syncMiniView(){
     syncMiniView();
   }
   mm.addEventListener('pointerdown', function(e){
-    dragging = true; pid = e.pointerId;
+    dragging = true; pid = e.pointerId; mm.classList.add('live');   // đang kéo: ô định vị bám tay, không trượt trễ
     if (mm.setPointerCapture){ try{ mm.setPointerCapture(pid); }catch(_){/**/} }
     jump(e); e.preventDefault();
   });
   mm.addEventListener('pointermove', function(e){ if (dragging) jump(e); });
-  function up(){ dragging = false;
+  function up(){ dragging = false; mm.classList.remove('live');
     if (mm.releasePointerCapture && pid!=null){ try{ mm.releasePointerCapture(pid); }catch(_){/**/} }
     pid = null; }
   mm.addEventListener('pointerup', up);

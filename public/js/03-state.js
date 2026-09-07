@@ -5,6 +5,11 @@ var nodes    = new Map();
 var rootIds  = [];
 var sel      = null;
 var focusId  = null;
+// Animation một lần cho phần tử sắp được render lại (box mới pop, box vừa chọn nháy, chip vừa thả "đáp"): renderer gọi takeAnim(id)
+// và chỉ phần tử khớp id nhận class — render lại vì gõ phím không nháy lại.
+var animNext = null;
+function animNextBox(id, cls){ animNext = { id:id, cls:cls }; }
+function takeAnim(id){ if (animNext && animNext.id === id){ var c = animNext.cls; animNext = null; return c; } return ''; }
 var seq = 1, gseq = 1, fseq = 1;
 
 var fcGroups = [];          // [{id, code, name, cbqlns}]

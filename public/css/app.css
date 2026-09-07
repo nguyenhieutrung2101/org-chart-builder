@@ -12,7 +12,9 @@
   --green:#A8D989; --cyan:#7ECEE0; --lilac:#C3AEE8; --peach:#FFB98A;
   --rose:#F0A6C0;                       /* phạm vi "Còn lại" — tách khỏi tím của Kế toán */
   --muted:#8C857A;
-  --bd:2px solid var(--ink); --r:6px; --sh:2px 2px 0 var(--ink);
+  --bd:2px solid var(--ink); --r:6px; --sh:2px 2px 0 var(--ink); --sh4:4px 4px 0 var(--ink);
+  --ease:cubic-bezier(.2,.8,.2,1);      /* ease-out chung cho mọi chuyển cảnh */
+  --doc:var(--cyan); --doc-wash:#E9F7F9; --flow:var(--yellow); --flow-wash:#FFF6D6;   /* màu 2 module trên landing */
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -43,17 +45,23 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:var(--s
 button.primary{background:var(--yellow)}
 button.danger{background:var(--coral)}
 button.tabbtn{background:var(--paper)}
-button.tabbtn.active{background:var(--yellow)}
+button.tabbtn.active{background:var(--yellow);transform:translate(2px,2px);box-shadow:none}   /* tab đang chọn = nút đang lún */
 button.tgl{padding:1px 8px;font-size:12px}
 button.ghost{background:var(--paper)}
+/* Nút đang bận (tải PDF): giữ nguyên độ đậm, thêm ba chấm chạy sau nhãn */
+button.busy:disabled{opacity:1;cursor:progress}
+button.busy::after{content:"...";display:inline-block;width:0;overflow:hidden;vertical-align:bottom;animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{to{width:1.1em}}
 /* Nhóm nút theo chức năng. Nút KHÔNG dính sát nhau: hiệu ứng lún cần mỗi nút
    sở hữu khoảng trống ≥ shadow quanh nó, nếu không nút trái lún sẽ đè mép nút phải. */
 .grp{display:flex;align-items:center;gap:7px}
 .grp+.grp{padding-left:11px;border-left:2px solid var(--line)}
 .seg{gap:5px}                                   /* seg = nhóm liên quan chặt, khe hẹp hơn chút */
-#msg{color:var(--ink);font-size:12.5px;margin-left:4px;font-weight:600;
-     background:var(--green);border:var(--bd);border-radius:var(--r);padding:1px 8px}
-#msg:empty{display:none}
+/* Toast: viên mực nổi giữa đáy màn hình, trượt lên khi có thông báo (msg()), tự trượt xuống sau 3,5 s */
+#msg{position:fixed;left:50%;bottom:22px;z-index:30;max-width:min(90vw,640px);pointer-events:none;
+     transform:translate(-50%,240%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:var(--r);
+     font-size:13px;font-weight:700;line-height:1.4;transition:transform .35s var(--ease)}
+#msg.show{transform:translate(-50%,0)}
 
 /* Scrollbar cùng ngôn ngữ thiết kế: máng kem, con trượt vàng viền mực */
 ::-webkit-scrollbar{width:13px;height:13px}
@@ -75,6 +83,14 @@ select:focus{outline:none;box-shadow:0 0 0 3px var(--cyan)}
 
 /* ---- Tab Sơ đồ ---- */
 #tabOrg{flex:1;min-height:0;display:flex;flex-direction:column}
+/* Chuyển cảnh chung: phần tử đi từ display:none -> hiện thì animation chạy lại từ đầu, nên chỉ cần khai báo một lần.
+   Áp cho tab / module (rise .2s) và thân card thu/mở (rise .15s). .rise dùng cho phần tử được replay() bằng JS. */
+#tabOrg,#tabVline,#tabRules,#tabFlow,#tabDoc,.rise{animation:rise .2s var(--ease)}
+#resBody,#cigBody,#paletteBody,#dBoxBody,#dPageBody,#tblHost,#flowInputs,#pasteBox,#pasteBoxGrp,#panel,#dpanel{animation:rise .15s var(--ease)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+@keyframes pop{from{opacity:0;transform:scale(.92)}}
+@keyframes fadeOut{to{opacity:0;transform:scale(.94)}}
+@keyframes fadeIn{from{opacity:0}}
 #orgBar{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
         padding:9px 12px;border-bottom:2px solid var(--line);background:var(--wash)}
 #focusChip{font-size:12.5px;font-weight:600;border:var(--bd);border-radius:var(--r);
@@ -95,7 +111,9 @@ main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overla
 #minimap.hidden{display:none}
 #miniSvg{position:absolute;left:0;top:0;width:100%;height:100%}
 #miniView{position:absolute;border:2px solid var(--coral);background:rgba(244,100,92,.14);
-          cursor:move;pointer-events:none}
+          cursor:move;pointer-events:none;
+          transition:left .12s var(--ease),top .12s var(--ease),width .12s var(--ease),height .12s var(--ease)}   /* ô định vị trượt mềm thay vì nhảy */
+#minimap.live #miniView{transition:none}          /* đang kéo trên minimap: bám tay, không trễ */
 #zoomLbl{font-size:12.5px;min-width:42px;text-align:center;font-weight:700}
 
 .node{position:absolute;width:176px;height:96px;border:var(--bd);background:var(--paper);
@@ -105,6 +123,10 @@ main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overla
 .node:hover{transform:translate(2px,2px);box-shadow:none}
 .node.sel{box-shadow:0 0 0 3px var(--blue), var(--sh)}
 .node.sel:hover{box-shadow:0 0 0 3px var(--blue)}
+.node.flash{animation:selFlash .3s var(--ease)}                       /* vừa chọn: vòng xanh nháy một nhịp */
+@keyframes selFlash{from{box-shadow:0 0 0 9px rgba(107,143,232,.35),0 0 0 3px var(--blue),var(--sh)}}
+.node.pop{animation:pop .2s var(--ease)}                              /* box vừa thêm */
+.node.gone{animation:fadeOut .18s var(--ease) forwards;pointer-events:none}   /* bản sao box vừa xoá, mờ dần rồi tự gỡ */
 .node .tt{position:absolute;right:6px;top:4px;font-size:10.5px;font-weight:700;opacity:.6}
 .node .st{position:absolute;right:6px;top:19px;font-size:11px}
 .node .vh{position:absolute;right:5px;bottom:4px;font-size:9.5px;font-weight:800;letter-spacing:.04em;
@@ -211,7 +233,12 @@ td.dash{color:var(--muted);text-align:center}
 #cigSec>.cardH>span:first-child,#paletteSec>.cardH>span:first-child{min-width:0}
 #cigSec>.cardH,#paletteSec>.cardH{gap:7px}
 #ruleTbl td.slot{height:90px;vertical-align:top;background:var(--paper)}
-#ruleTbl td.slot.over{background:var(--cyan)}
+#ruleTbl td.slot.over{background:var(--cyan);animation:slotPulse .6s ease-in-out infinite alternate}   /* rê box qua ô: viền mực đập nhịp */
+@keyframes slotPulse{from{box-shadow:inset 0 0 0 0 var(--ink)}to{box-shadow:inset 0 0 0 3px var(--ink)}}
+.chip.land{animation:land .25s var(--ease)}                           /* chip vừa thả vào ô: "đáp" xuống */
+@keyframes land{from{transform:scale(1.06);opacity:.4}}
+.chip.flip .sc{animation:flip .25s var(--ease)}                       /* vừa xoay phạm vi: nhãn lật nhanh */
+@keyframes flip{from{transform:scaleX(0)}}
 body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con của ô không nhận drag event -> không bắn dragleave giả, hết nhấp nháy */
 #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:800;background:var(--wash)}
 .chip{display:block;border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
@@ -286,6 +313,7 @@ body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con c�
            text-transform:none;letter-spacing:0;font-weight:400}
 #resFilter:focus{border-color:var(--ink);outline:none}
 tr.hideRow{display:none}
+#flowResult tr.rise{animation-duration:.25s}      /* 30 dòng đầu bảng luồng: nổi lên so le (delay đặt inline) khi bảng vừa hiện */
 .cardH{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 10px;
        text-transform:uppercase;letter-spacing:.06em;font-weight:800}
 .flowTop{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
@@ -330,19 +358,117 @@ tr.hideRow{display:none}
   #rulesSide{width:auto}
 }
 
-/* ---- Landing: chọn module ---- */
-#landing{flex:1;display:none;align-items:center;justify-content:center;padding:24px}
-#landingBox{max-width:780px;width:100%;text-align:center}
-#landingBox h2{font-size:17px;font-weight:800;margin:0 0 18px;letter-spacing:.06em;text-transform:uppercase}
-#landingCards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
-.modCard{flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 18px;
-         text-align:center;font:inherit;border:var(--bd);border-radius:var(--r);box-shadow:4px 4px 0 var(--ink);cursor:pointer}
-.modCard:hover{transform:translate(4px,4px);box-shadow:none}
-.modCard .modIcon{font-size:36px;line-height:1}
-.modCard b{font-size:15px}
-.modCard .hint{white-space:normal;font-weight:400;color:var(--ink);opacity:.8}
-#bModDoc{background:var(--cyan)}
-#bModFlow{background:var(--yellow)}
+/* ---- Landing: chọn module (không header; cụm brand / Có gì mới / Về dự án / ngôn ngữ ở góc dưới-trái) ---- */
+#landing{flex:1;min-height:0;display:none;position:relative;flex-direction:column}
+.split{flex:1;min-height:0;display:flex;overflow:hidden;transition:filter .5s var(--ease)}   /* overflow:hidden: hai nửa trượt vào không tạo thanh cuộn */
+.corner{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:8px;z-index:5;transition:filter .5s var(--ease)}
+body.intro .split,body.intro .corner{filter:blur(5px) saturate(.8)}
+body.intro .corner,body.intro .half{pointer-events:none}
+.corner .brand{font-size:12px;font-weight:800;margin-right:4px}
+.corner .brand small{color:var(--muted);font-weight:600;margin-left:4px}
+.corner .new i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--coral);margin-right:6px;vertical-align:1px;animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+#landing button:focus-visible,.overlay button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+/* Mỗi nửa là một <button>: bỏ viền/shadow/lún của nút chung, cả nửa là vùng bấm */
+.half{position:relative;flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:44px 48px 96px;overflow:hidden;
+      border:0;border-radius:0;box-shadow:none;text-align:left;font-weight:inherit;color:inherit;
+      transition:flex .5s var(--ease),opacity .4s var(--ease)}
+.half:hover,.half:active{transform:none;box-shadow:none;filter:none}
+.half.doc{background:var(--doc-wash)} .half.flow{background:var(--flow-wash);border-left:var(--bd)}
+.half:focus-visible{outline-offset:-6px}
+.split.entering .half.doc{animation:fromLeft .6s var(--ease)}
+.split.entering .half.flow{animation:fromRight .6s var(--ease)}
+@keyframes fromLeft{from{transform:translateX(-32px);opacity:0}}
+@keyframes fromRight{from{transform:translateX(32px);opacity:0}}
+.split:hover .half{opacity:.6}
+.split .half:hover{flex:1.35;opacity:1}
+.kicker{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.half h2{font-size:clamp(30px,4.2vw,58px);line-height:1;letter-spacing:-.02em;font-weight:800;margin:0 0 12px}
+.half p{max-width:44ch;color:var(--muted);font-size:15px;line-height:1.55;font-weight:500;margin:0}
+/* mock: khung có viền mực + shadow cứng, nằm trên khối chữ (flex) nên không bao giờ đè chữ; "nổi" khi hover nửa đó */
+.mock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 0 28px;transition:transform .5s var(--ease)}
+.half:hover .mock{transform:translate(-3px,-8px)}
+.mock > .frame{width:300px;height:196px;flex:none}
+.frame{background:var(--paper);border:var(--bd);border-radius:var(--r);box-shadow:var(--sh4)}
+.page{padding:14px 18px}                          /* mock trang in: sơ đồ 1 cha 2 con, bảng màu gốc văn bản */
+.page svg{width:100%;height:100%;display:block}
+.page rect,.page line{stroke:var(--ink);stroke-width:1.3}
+.page .ln{fill:var(--line);stroke:none}
+.matrix{padding:14px;display:grid;grid-template-columns:22px repeat(4,1fr);gap:6px;align-items:center}   /* mock ma trận luồng */
+.matrix .fdot{width:12px;height:12px;margin:0}
+.matrix .cell{height:26px;border:2px dashed var(--line);border-radius:var(--r)}
+.matrix .chip{height:26px;margin:0;padding:0}
+.matrix .chip.lock{background:var(--wash);box-shadow:none;border-color:var(--line)}
+.matrix .chip.vh{background:var(--blue)} .matrix .chip.c{background:var(--cyan)}
+/* chọn module: nửa được chọn nở hết màn hình rồi showModule() */
+.split.choosing .half{pointer-events:none}
+.split.choosing .half.chosen{flex:100;opacity:1}
+.split.choosing .half:not(.chosen){flex:.0001;padding:0;opacity:0;border:0}
+
+/* ---- Popup giới thiệu / Có gì mới / Về dự án ---- */
+.overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(31,27,22,.28);opacity:0;pointer-events:none;transition:opacity .35s var(--ease)}
+.overlay.open{opacity:1;pointer-events:auto}
+.modal{width:min(900px,100%);background:var(--paper);border:var(--bd);border-radius:var(--r);box-shadow:6px 6px 0 var(--ink);outline:none;
+       display:grid;grid-template-columns:1.05fr 1fr;overflow:hidden;
+       transform:translateY(20px) scale(.98);opacity:0;transition:transform .45s var(--ease),opacity .35s var(--ease)}
+.overlay.open .modal{transform:none;opacity:1}
+.overlay.closing .modal{transform:translateY(32px) scale(.97);opacity:0}
+.introBox{padding:36px 32px;display:flex;flex-direction:column;gap:16px;background:var(--wash);border-right:var(--bd)}
+.cup{width:44px;height:44px;border:var(--bd);border-radius:var(--r);background:var(--doc);box-shadow:var(--sh);position:relative;overflow:hidden}   /* icon app */
+.cup::after{content:"";position:absolute;left:0;right:0;top:0;height:46%;background:var(--flow);border-bottom:var(--bd)}
+.introBox h1{font-size:clamp(22px,2.6vw,30px);font-weight:800;line-height:1.1;letter-spacing:-.02em;max-width:22ch;margin:0}
+.introBox p{color:var(--muted);font-size:14px;line-height:1.55;max-width:42ch;font-weight:500;margin:0}
+.mods{display:flex;flex-direction:column;gap:9px}
+.mod{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.45}
+.mod b{width:12px;height:12px;border:2px solid var(--ink);border-radius:3px;flex:none;margin-top:4px}
+.mod.doc b{background:var(--doc)} .mod.flow b{background:var(--flow)}
+.mod span{color:var(--muted)}
+.actions{margin-top:auto;display:flex;align-items:center;gap:12px;padding-top:10px}
+.go{padding:10px 18px;font-size:14px;font-weight:800}
+.skip{background:none;border:0;box-shadow:none;padding:5px 4px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.skip:hover{transform:none;color:var(--ink)}
+.log{padding:32px 28px 24px;display:flex;flex-direction:column;min-width:0}
+.log h2,.about h2{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 16px;display:flex;justify-content:space-between;align-items:center}
+.close{width:30px;height:30px;padding:0;display:grid;place-items:center}
+.entries{display:flex;flex-direction:column;gap:16px;overflow:auto;max-height:52vh;padding-right:6px}
+.entry{display:grid;grid-template-columns:64px 1fr;gap:12px}
+.entry .ver{font-weight:800;font-size:16px;line-height:1.1}
+.entry .ver small{display:block;color:var(--muted);font-weight:600;font-size:11px;margin-top:3px}
+.entry ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border:2px solid var(--ink);border-radius:var(--r);margin-right:6px;vertical-align:1px;letter-spacing:.02em}
+.tag.doc{background:var(--doc)} .tag.flow{background:var(--flow)} .tag.all{background:var(--wash)}
+.entry.new .ver::after{content:"new";margin-left:6px;font-size:10px;font-weight:800;background:var(--coral);border:2px solid var(--ink);padding:0 5px;border-radius:var(--r);vertical-align:3px}
+html[lang="vi"] .entry.new .ver::after{content:"mới"}
+.log .foot{margin-top:auto;padding-top:14px;font-size:12px;color:var(--muted);font-weight:500}
+.log .foot kbd{font-family:inherit;border:2px solid var(--line);border-radius:4px;padding:0 5px;background:var(--wash);font-weight:700;color:var(--ink)}
+/* nội dung popup nổi lên so le khi mở */
+.overlay.open .introBox > *,.overlay.open .entry,.overlay.open .about > *{animation:rise .45s var(--ease) both}
+.overlay.open .introBox > :nth-child(2),.overlay.open .about > :nth-child(2){animation-delay:.05s}
+.overlay.open .introBox > :nth-child(3),.overlay.open .about > :nth-child(3){animation-delay:.1s}
+.overlay.open .introBox > :nth-child(4),.overlay.open .about > :nth-child(4){animation-delay:.15s}
+.overlay.open .introBox > :nth-child(5),.overlay.open .about > :nth-child(5){animation-delay:.2s}
+.overlay.open .about > :nth-child(6){animation-delay:.25s}.overlay.open .about > :nth-child(7){animation-delay:.3s}.overlay.open .about > :nth-child(8){animation-delay:.35s}
+.overlay.open .entry:nth-child(1){animation-delay:.18s}.overlay.open .entry:nth-child(2){animation-delay:.26s}.overlay.open .entry:nth-child(3){animation-delay:.34s}.overlay.open .entry:nth-child(4){animation-delay:.42s}.overlay.open .entry:nth-child(5){animation-delay:.5s}
+.overlay.logonly .introBox,.overlay.logonly .about,.overlay.aboutonly .introBox,.overlay.aboutonly .log{display:none}
+.overlay.logonly .modal{grid-template-columns:1fr;width:min(540px,100%)}
+.about{display:none;padding:32px 32px 28px;flex-direction:column;gap:12px;background:var(--wash)}
+.overlay.aboutonly .about{display:flex}
+.overlay.aboutonly .modal{grid-template-columns:1fr;width:min(600px,100%)}
+.about h3{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:0}
+.about h4{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 0}
+.about p,.about li{font-size:13.5px;line-height:1.55;color:var(--ink);font-weight:500;margin:0}
+.about ul{padding-left:18px;margin:0;display:flex;flex-direction:column;gap:6px}
+.about .links{color:var(--muted)}
+.about .links a{color:var(--ink);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+@media (max-width:820px){
+  #landing{overflow:auto}
+  .corner{position:static;margin:0 22px 8px;justify-content:center;flex-wrap:wrap}
+  .split{flex-direction:column;flex:none;min-height:100%}
+  .half{padding:34px 22px 36px;min-height:52vh} .half.flow{border-left:0;border-top:var(--bd)}
+  .mock{flex:none;padding-bottom:18px} .mock > .frame{width:min(300px,100%)}
+  .modal{grid-template-columns:1fr;max-height:92vh;overflow:auto}
+  .introBox{border-right:0;border-bottom:var(--bd)} .log{padding:22px} .entries{max-height:none}
+}
 
 /* ---- Module Trình bày sơ đồ: trang in SVG ---- */
 #tabDoc{flex:1;min-height:0;display:none;flex-direction:column}
@@ -372,6 +498,15 @@ tr.hideRow{display:none}
 .drow{stroke:#6B8FE8;stroke-width:0.3;stroke-dasharray:1.5 1.2;opacity:.35}   /* đường kẻ hàng hướng dẫn khi kéo box đổi hàng */
 .drow.cur{opacity:.9;stroke-width:0.5}
 .dbox.sel rect.bg{stroke:#6B8FE8;stroke-width:0.9}
+.dbox.flash rect.bg{animation:dflash .3s var(--ease)}                 /* vừa chọn: viền xanh dày rồi thu về */
+@keyframes dflash{from{stroke-width:2.4}}
+.dbox.pop{animation:pop .2s var(--ease);transform-box:fill-box;transform-origin:center}
+.dbox.drag{filter:drop-shadow(0.7px 0.7px 0 rgba(31,27,22,.45))}     /* box đang kéo đổi hàng: nâng lên */
+.drows.in{animation:fadeIn .15s var(--ease)}                          /* đường kẻ hàng hiện dần lần đầu trong một lượt kéo */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
+  body.intro .split,body.intro .corner{filter:none}
+}
 @media print{
   html,body{background:#fff}
   body>*:not(#tabDoc){display:none!important}

@@ -23,17 +23,17 @@ function dropRole(flow, col, rid){
   snap(null);
   var g = curGrid();
   var row = g[flow] || (g[flow] = {});
-  if (ruleMode === 'vline'){                        // mode Ngành dọc: mỗi ô đúng 1 box, thả là thay
-    row[col] = {ALL: rid};
-    renderRules(); renderFlowResult(); return;
+  var a = row[col], placed = 'ALL';
+  // ô đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết (hoặc ô trống / "Tất cả" / mode Ngành dọc) thì thay bằng "Tất cả"
+  if (a && !a.ALL){
+    var free = BRANCHES.concat('REST').filter(function(s){ return !a[s]; })[0];
+    if (free){ a[free] = rid; placed = free; }
   }
-  var a = row[col];
-  if (!a || a.ALL){ row[col] = {ALL: rid}; return void (renderRules(), renderFlowResult()); }
-  // đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết thì thay bằng "Tất cả"
-  var free = BRANCHES.concat('REST').filter(function(s){ return !a[s]; })[0];
-  if (free) a[free] = rid; else row[col] = {ALL: rid};
+  if (placed === 'ALL') row[col] = {ALL: rid};
+  animNextBox(chipKey(flow, col, placed), 'land');
   renderRules(); renderFlowResult();
 }
+function chipKey(flow, col, scope){ return 'chip:' + flow + ':' + col + ':' + scope; }   // id cho takeAnim của chip trong ô
 function cycleScope(flow, col, scope){   // Tất cả -> Vận hành -> Kinh doanh -> Hỗ trợ -> Còn lại -> ...
   snap(null);
   var a = curGrid()[flow][col];
@@ -47,6 +47,7 @@ function cycleScope(flow, col, scope){   // Tất cả -> Vận hành -> Kinh do
   delete a[scope];
   if (next === 'ALL'){ BRANCHES.concat('REST').forEach(function(s){ delete a[s]; }); a.ALL = rid; }
   else { delete a.ALL; a[next] = rid; }
+  animNextBox(chipKey(flow, col, next), 'flip');
   renderRules(); renderFlowResult();
 }
 function removeAssign(flow, col, scope){
@@ -125,7 +126,8 @@ function patchRoleChips(rb){
 }
 function chipEl(flow, col, scope, rid){
   var rb = roleById(rid), pr = rolePair(rb);
-  var ch = document.createElement('div'); ch.className = 'chip' + (rid === VLINE ? ' vlineChip' : '');
+  var ac = takeAnim(chipKey(flow, col, scope));
+  var ch = document.createElement('div'); ch.className = 'chip' + (rid === VLINE ? ' vlineChip' : '') + (ac ? ' ' + ac : '');
   ch.dataset.rid = rid;
   var top = document.createElement('div'); top.className = 'chipTop';
   if (ruleMode !== 'vline'){                        // mode Ngành dọc không phân phạm vi -> ẩn nhãn

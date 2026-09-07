@@ -34,21 +34,130 @@
     <button id="bLang" class="ghost" title="Switch language / Chuyển ngôn ngữ">English</button>
   </div>
   <input type="file" id="fileIn" accept=".json,application/json" hidden>
-  <span id="msg"></span>
   <div id="credit"><b>project affogato</b><br>made with ❤️ by Trung</div>
 </header>
 
-<!-- ================= LANDING: chọn module ================= -->
+<!-- ================= LANDING: chọn module (không header; popup giới thiệu / Có gì mới / Về dự án) ================= -->
 <div id="landing">
-  <div id="landingBox">
-    <h2 data-i18n="landingTitle">Chọn module</h2>
-    <div id="landingCards">
-      <button class="modCard" id="bModDoc"><span class="modIcon">📄</span><b data-i18n="modDocH">Trình bày sơ đồ</b>
-        <span class="hint" data-i18n="modDocD">Vẽ và căn chỉnh sơ đồ tổ chức trên trang in: khổ giấy, font, bảng màu, ghi chú, định biên, in / PDF.</span></button>
-      <button class="modCard" id="bModFlow"><span class="modIcon">📗</span><b data-i18n="modFlowH">Luồng duyệt</b>
-        <span class="hint" data-i18n="modFlowD">Sơ đồ tổ chức, ngành dọc, ma trận luật và bảng luồng duyệt theo nhóm Fund Center.</span></button>
-    </div>
-    <div class="hint" data-i18n="landingHint">Hai module dùng chung một cây tổ chức và một file JSON — vẽ ở module nào cũng cập nhật ở cả hai.</div>
+  <div class="split" id="landingSplit">
+    <button class="half doc" id="bModDoc">
+      <div class="mock">
+        <div class="frame page" aria-hidden="true">
+          <svg viewBox="0 0 132 84">
+            <rect class="ln" x="4" y="4" width="26" height="3" rx="1"/><rect class="ln" x="4" y="9" width="18" height="3" rx="1"/>
+            <rect class="ln" x="106" y="4" width="22" height="3.5" rx="1"/><rect class="ln" x="106" y="9.5" width="22" height="3.5" rx="1"/><rect class="ln" x="106" y="15" width="22" height="3.5" rx="1"/>
+            <line x1="66" y1="34" x2="66" y2="44"/><line x1="38" y1="44" x2="94" y2="44"/>
+            <line x1="38" y1="44" x2="38" y2="54"/><line x1="94" y1="44" x2="94" y2="54"/>
+            <rect x="47" y="16" width="38" height="18" fill="#ea9651"/>
+            <rect x="19" y="54" width="38" height="18" fill="#f6d5b9"/>
+            <rect x="75" y="54" width="38" height="18" fill="#92d050"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kicker" data-i18n="mod1">Module 1</div>
+      <h2 data-i18n="modDocH">Chart layout</h2>
+      <p data-i18n="modDocD">Lay the org chart out on a real printed page and export a PDF.</p>
+    </button>
+    <button class="half flow" id="bModFlow">
+      <div class="mock">
+        <div class="frame matrix" aria-hidden="true">
+          <i class="fdot" style="background:#A8D989"></i><div class="chip vh"></div><div class="cell"></div><div class="cell"></div><div class="chip lock"></div>
+          <i class="fdot" style="background:#FFD93D"></i><div class="chip lock"></div><div class="chip"></div><div class="cell"></div><div class="chip"></div>
+          <i class="fdot" style="background:#F4645C"></i><div class="chip lock"></div><div class="chip"></div><div class="chip vh"></div><div class="chip"></div>
+          <i class="fdot" style="background:#C3AEE8"></i><div class="chip lock"></div><div class="cell"></div><div class="chip c"></div><div class="cell"></div>
+          <i class="fdot" style="background:#6B8FE8"></i><div class="chip lock"></div><div class="cell"></div><div class="cell"></div><div class="chip"></div>
+        </div>
+      </div>
+      <div class="kicker" data-i18n="mod2">Module 2</div>
+      <h2 data-i18n="modFlowH">Approval flow</h2>
+      <p data-i18n="modFlowD">From the chart and the rule matrix, derive the budget approval-flow table for every Fund Center group.</p>
+    </button>
+  </div>
+  <div class="corner" id="landingCorner">
+    <span class="brand">Org Builder<small id="verCorner">version 11</small></span>
+    <button class="new" id="openLog"><i></i><span data-i18n="whatsNew">What's new</span></button>
+    <button id="openAbout" data-i18n="about">About this project</button>
+    <button id="bLangLanding" title="Switch language / Chuyển ngôn ngữ">Tiếng Việt</button>
+  </div>
+</div>
+
+<!-- Popup: intro (tự mở một lần mỗi phiên bản, localStorage ob_seen) | Có gì mới | Về dự án -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal" tabindex="-1">
+    <section class="introBox">
+      <div class="cup" aria-hidden="true"></div>
+      <h1 id="mTitle" data-i18n="introH">Org Builder — org charts &amp; approval flows.</h1>
+      <p data-i18n="introP">Runs offline in the browser with no back-end; data is stored locally as a JSON file.</p>
+      <div class="mods">
+        <div class="mod doc"><b></b><div><span data-i18n="modDocH">Chart layout</span> <span data-i18n="introDoc">· draw the chart on a printed page, export PDF</span></div></div>
+        <div class="mod flow"><b></b><div><span data-i18n="modFlowH">Approval flow</span> <span data-i18n="introFlow">· derive the budget approval-flow table from the chart</span></div></div>
+      </div>
+      <div class="actions">
+        <button class="primary go" id="go" data-i18n="btnGo">Choose a module</button>
+        <button class="skip" id="skip" data-i18n="btnSkip">Skip</button>
+      </div>
+    </section>
+    <section class="about">
+      <h2><span data-i18n="about">About this project</span> <button class="close" id="closeAbout" aria-label="Close">✕</button></h2>
+      <div class="cup" aria-hidden="true"></div>
+      <h3 data-i18n="abH">Org Builder · project affogato</h3>
+      <p data-i18n="abP1">A small tool for one recurring job: draw a company's org tree once, then use it twice — as a printable organisation chart that goes into an official document, and as the source that decides who reviews and approves each budget request.</p>
+      <h4 data-i18n="abIdeoH">What it believes in</h4>
+      <ul>
+        <li data-i18n-html="abI1"><b>Local-first.</b> No back-end, no account. Your data is one JSON file that you own, save and reopen.</li>
+        <li data-i18n-html="abI2"><b>One source of truth.</b> One org tree feeds both modules; change a box once and it changes everywhere.</li>
+        <li data-i18n-html="abI3"><b>What you see is what prints.</b> The page is laid out in millimetres, so the screen, the printout and the PDF match.</li>
+        <li data-i18n-html="abI4"><b>Hand-built and plain.</b> Static HTML + vanilla JavaScript, no framework, no build step, every feature covered by browser tests.</li>
+      </ul>
+      <h4 data-i18n="abMeH">About me</h4>
+      <p data-i18n="abMe">I'm Trung. I built Org Builder for the budget-approval work I deal with every day, starting from a simple frustration: the org chart already knows who approves what, so nobody should have to retype it into a matrix. "Affogato" is the espresso-over-gelato that fuelled most of the commits.</p>
+      <p class="links"><a href="https://github.com/nguyenhieutrung2101/org-chart-builder" target="_blank" rel="noopener">GitHub · org-chart-builder</a><span> · </span><a href="https://org-chart-builder.nguyenhieutrung2101.workers.dev" target="_blank" rel="noopener">Live app</a></p>
+    </section>
+    <aside class="log">
+      <h2><span data-i18n="whatsNew">What's new</span> <button class="close" id="close" aria-label="Close">✕</button></h2>
+      <div class="entries">
+        <div class="entry new">
+          <div class="ver">v11 <small>09/2026</small></div>
+          <ul>
+            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l11a">New module: printable SVG page in mm (A4/A3/A2, auto height), shelf rows, stacked groups, logo, document code, lettered notes, headcount, PDF with embedded fonts.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n-html="l11b">Module chooser; new <b>ĐB</b> level above CC; one org tree shared by both modules.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l11c">New landing with What's new / About popups; transitions and small animations across the app.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n-html="l11d">Source split into one file per section; Playwright test suite ships with the repo.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v10 <small>09/2026</small></div>
+          <ul>
+            <li><span class="tag flow" data-i18n="tagFlow">Flow</span><span data-i18n="l10a">Excel paste recognises header rows; deleting every CIG survives reload; role boxes follow deleted chart boxes.</span></li>
+            <li><span class="tag flow" data-i18n="tagFlow">Flow</span><span data-i18n="l10b">Fund Center table 6× faster on large data; formula injection blocked when copying to Excel.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n-html="l10c">Unsaved-changes warning on close; full function inventory in <code>docs/</code>.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v9 <small>08/2026</small></div>
+          <ul>
+            <li><span class="tag flow" data-i18n="tagFlow">Flow</span><span data-i18n-html="l9a"><b>Vertical line</b> tab: market BMOs attached to Global; Flow / Vertical-line rule modes with independent rule sets.</span></li>
+            <li><span class="tag flow" data-i18n="tagFlow">Flow</span><span data-i18n="l9b">Copy and paste from Excel for both FC groups and Fund Centers.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l9c">Smooth zoom around the cursor; minimap sizes itself to the chart.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v8 <small>07–08/2026</small></div>
+          <ul>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l8a">Pastel neo-brutalism UI; Vietnamese / English toggle.</span></li>
+            <li><span class="tag flow" data-i18n="tagFlow">Flow</span><span data-i18n="l8b">Sales, Back-office, IT and Accounting branches; CIG cost groups with their own rules; "BMO below approves directly" trigger.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v5–v7 <small>07/2026</small></div>
+          <ul>
+            <li><span class="tag flow" data-i18n="tagFlow">Flow</span><span data-i18n="l7a">Flow Rules tab: drag role boxes into the matrix; boxes linked from the chart.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l7b">Org chart, hierarchy table, JSON save/open, .drawio export, zoom + minimap.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot" data-i18n-html="foot">Tip: <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes in every module; the <b>⌂ Modules</b> button in the header brings you back here.</div>
+    </aside>
   </div>
 </div>
 
@@ -292,6 +401,8 @@
     </div>
   </main>
 </div>
+
+<div id="msg"></div>   <!-- toast: msg() -->
 
 <script src="js/01-consts.js"></script>
 <script src="js/02-i18n.js"></script>

@@ -385,8 +385,11 @@ function flowBlocks(){
   }
   return blocks;
 }
-function renderFlowResult(){
+// animate=true: 30 dòng đầu nổi lên so le (đổi cách xem). Tự bật khi tab Luồng duyệt đang ẩn — animation chạy lúc tab hiện ra,
+// người dùng thấy bảng đã tính lại sau khi sửa luật; đang gõ trong tab (render lại liên tục) thì không.
+function renderFlowResult(animate){
   var host = $('flowResult'); host.innerHTML = '';
+  var stagger = animate || MOD !== 'flow' || curTab !== 'flow', ri = 0;
   if (!fcs.length && !fcGroups.length){
     host.innerHTML = '<div class="hint">' + t('flowEmptyHint') + '</div>';
     return;
@@ -414,6 +417,8 @@ function renderFlowResult(){
   flowBlocks().forEach(function(b, bi){
     order.forEach(function(flow, idx){
       var trr = document.createElement('tr');
+      if (stagger && ri < 30){ trr.className = 'rise'; trr.style.animationDelay = (ri * 20) + 'ms'; }
+      ri++;
       trr.dataset.blk = bi;                       // đánh dấu block để lọc theo tên nhóm/FC
       trr.dataset.hay = b.head.toLowerCase();
       if (idx === 0){

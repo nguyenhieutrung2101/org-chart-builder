@@ -328,7 +328,8 @@ function buildDocSvg(forExport){
 
   // đường kẻ hàng hướng dẫn khi đang kéo box đổi hàng (chỉ trên màn hình)
   if (!forExport && docRowDrag){
-    var gg = sv('g', { class:'drows' }, g), cur = pos.get(docRowDrag.id).row;
+    var gg = sv('g', { class:'drows' + (docRowDrag.shown ? '' : ' in') }, g), cur = pos.get(docRowDrag.id).row;   // hiện dần lần đầu trong lượt kéo
+    docRowDrag.shown = true;
     for (var r = 0; r <= L.maxRow + 2; r++){
       var yy = r * PITCH;
       sv('line', { x1:minX - 8, y1:yy, x2:maxX + 8, y2:yy, class:'drow' + (r === cur ? ' cur' : '') }, gg);
@@ -350,7 +351,8 @@ function buildDocSvg(forExport){
   // box: nền theo cấp; nội dung căn giữa dọc; badge chữ cái góc trên-trái (nằm trong khoảng giữa hai hàng); định biên góc dưới-phải
   ids.forEach(function(id){
     var n = nodes.get(id), p = pos.get(id), c = L.box.get(id), w = p.w, h = p.h;
-    var gb = sv('g', { class:'dbox' + (!forExport && id === sel ? ' sel' : ''), 'data-id':id }, g);
+    var ac = forExport ? '' : takeAnim(id);
+    var gb = sv('g', { class:'dbox' + (!forExport && id === sel ? ' sel' : '') + (!forExport && docRowDrag && docRowDrag.id === id ? ' drag' : '') + (ac ? ' ' + ac : ''), 'data-id':id }, g);
     sv('rect', { class:'bg', x:p.x, y:p.y, width:w, height:h, fill:COL[n.t] || '#fff', stroke:INK, 'stroke-width':0.35 }, gb);
     var cx = p.x + w / 2, cur = p.y + (h - c.contentH) / 2, firstTop = cur;
     [['dept', 'bold', null], ['title', 'bold', null], ['person', null, 'italic']].forEach(function(spec){
@@ -427,6 +429,7 @@ function renderDocAll(){ renderDoc(); renderDPanel(); renderDPage(); }
 // Chọn box trong module trình bày (select() chuyển sang đây khi MOD === 'doc')
 function dSelect(id, focusInput){
   sel = id;
+  if (id) animNextBox(id, document.querySelector('#docPage .dbox[data-id="' + id + '"]') ? 'flash' : 'pop');   // box đã có: nháy viền; box mới: pop
   renderDoc(); renderDPanel();
   if (focusInput){ var f = $('dfD'); if (f) f.focus(); }
 }
@@ -651,7 +654,8 @@ function loadPdfFont(famName){
   return _pdfFonts[famName];
 }
 function docPdf(){
-  var F = docFont(), P = docPageSize();
+  var F = docFont(), P = docPageSize(), b = $('bPdf');
+  b.disabled = true; b.classList.add('busy');                     // ba chấm chạy trên nút trong lúc nạp font / dựng PDF
   msg(t('msgPdfLoading'));
   return loadPdfLibs().then(function(){ return loadPdfFont(F.pdf); }).then(function(fonts){
     var svg = buildDocSvg(true), PH = docView.pageH;               // dựng trước để biết chiều cao trang thực tế (autoH)
@@ -666,5 +670,6 @@ function docPdf(){
       pdf.save((doc.header.trim() || 'org-chart') + '.pdf');
       msg(t('msgPdfDone'));
     }, function(e){ holder.remove(); throw e; });
-  }).catch(function(e){ console.error(e); msg(t('msgPdfFail')); });
+  }).catch(function(e){ console.error(e); msg(t('msgPdfFail')); })
+    .then(function(){ b.disabled = false; b.classList.remove('busy'); });
 }
