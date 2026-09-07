@@ -13,8 +13,9 @@
   --rose:#F0A6C0;                       /* phạm vi "Còn lại" — tách khỏi tím của Kế toán */
   --muted:#8C857A;
   --bd:2px solid var(--ink); --r:6px;
-  /* shadow cứng vẽ 2 lớp lệch 1px: lấp khe khử răng cưa giữa viền và shadow khi phần tử đứng ở toạ độ lẻ pixel */
-  --sh:2px 2px 0 var(--ink), 1px 1px 0 var(--ink);
+  /* Shadow cứng bằng filter:drop-shadow (dùng "filter:var(--sh)"), không phải box-shadow: Chrome cắt box-shadow đúng mép viền
+     bo góc nên ở DPI lẻ (125 %/150 % Windows) hai mép khử răng cưa chồng nhau thành vệt sáng; drop-shadow tính từ hình đã vẽ. */
+  --sh:drop-shadow(2px 2px 0 var(--ink)); --sh1:drop-shadow(1px 1px 0 var(--ink)); --sh4:drop-shadow(4px 4px 0 var(--ink));
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -22,10 +23,10 @@ body{margin:0;font:13px/1.45 system-ui,"Segoe UI",Arial,sans-serif;color:var(--i
      display:flex;flex-direction:column}
 
 /* Thụt xuống che shadow khi hover — dùng cho mọi thứ bấm được */
-.press{transition:transform .06s ease, box-shadow .06s ease}
-.press:hover{transform:translate(2px,2px);box-shadow:none !important}
-.press:active{transform:translate(2px,2px);box-shadow:none !important;filter:brightness(.96)}
-.press:disabled,.press[disabled]{transform:none !important;box-shadow:var(--sh) !important;
+.press{transition:transform .06s ease, filter .06s ease}
+.press:hover{transform:translate(2px,2px);filter:none !important}
+.press:active{transform:translate(2px,2px);filter:brightness(.96) !important}
+.press:disabled,.press[disabled]{transform:none !important;filter:var(--sh) !important;
      opacity:.45;cursor:not-allowed}
 
 header{flex:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;
@@ -37,11 +38,11 @@ header h1{font-size:14px;margin:0;font-weight:800;line-height:1.15;letter-spacin
 #credit b{font-weight:700;color:var(--ink)}
 
 button{font:inherit;font-weight:600;padding:5px 9px;border:var(--bd);background:var(--paper);
-       color:var(--ink);cursor:pointer;border-radius:var(--r);box-shadow:var(--sh);
-       transition:transform .06s ease, box-shadow .06s ease}
-button:hover{transform:translate(2px,2px);box-shadow:none}
-button:active{transform:translate(2px,2px);box-shadow:none;filter:brightness(.96)}
-button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:var(--sh)}
+       color:var(--ink);cursor:pointer;border-radius:var(--r);filter:var(--sh);
+       transition:transform .06s ease, filter .06s ease}
+button:hover{transform:translate(2px,2px);filter:none}
+button:active{transform:translate(2px,2px);filter:brightness(.96)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:var(--sh)}
 button.primary{background:var(--yellow)}
 button.danger{background:var(--coral)}
 button.tabbtn{background:var(--paper)}
@@ -81,7 +82,7 @@ select:focus{outline:none;box-shadow:0 0 0 3px var(--cyan)}
         padding:9px 12px;border-bottom:2px solid var(--line);background:var(--wash)}
 #focusChip{font-size:12.5px;font-weight:600;border:var(--bd);border-radius:var(--r);
            padding:3px 8px;background:var(--peach)}
-#focusChip button{padding:0 5px;font-size:12px;border:none;box-shadow:none;background:none}
+#focusChip button{padding:0 5px;font-size:12px;border:none;filter:none;background:none}
 #focusChip button:hover{transform:none}          /* nút không có shadow thì không lún */
 main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overlay */
 #canvasWrap{flex:1;overflow:auto;background:var(--wash);cursor:grab;touch-action:none;user-select:none}   /* kéo nền không bôi đen chữ */
@@ -93,7 +94,7 @@ main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overla
 /* Minimap: overlay góc dưới-trái vùng canvas, không cuộn theo nội dung */
 #minimap{position:absolute;left:12px;bottom:12px;width:200px;height:150px;z-index:4;
          border:var(--bd);border-radius:var(--r);background:var(--paper);
-         box-shadow:var(--sh);overflow:hidden;cursor:pointer;touch-action:none}
+         filter:var(--sh);overflow:hidden;cursor:pointer;touch-action:none}
 #minimap.hidden{display:none}
 #miniSvg{position:absolute;left:0;top:0;width:100%;height:100%}
 #miniView{position:absolute;border:2px solid var(--coral);background:rgba(244,100,92,.14);
@@ -101,11 +102,11 @@ main{flex:1;min-height:0;display:flex;position:relative}   /* neo minimap overla
 #zoomLbl{font-size:12.5px;min-width:42px;text-align:center;font-weight:700}
 
 .node{position:absolute;width:176px;height:96px;border:var(--bd);background:var(--paper);
-      border-radius:var(--r);box-shadow:var(--sh);cursor:pointer;overflow:hidden;padding:6px 8px;
+      border-radius:var(--r);filter:var(--sh);cursor:pointer;overflow:hidden;padding:6px 8px;
       display:flex;flex-direction:column;justify-content:flex-start;gap:2px;
-      transition:transform .06s ease, box-shadow .06s ease}
-.node:hover{transform:translate(2px,2px);box-shadow:none}
-.node.sel{box-shadow:0 0 0 3px var(--blue), var(--sh)}
+      transition:transform .06s ease, filter .06s ease}
+.node:hover{transform:translate(2px,2px);filter:none}
+.node.sel{box-shadow:0 0 0 3px var(--blue)}          /* vòng chọn vẫn là box-shadow (không phải shadow lệch) */
 .node.sel:hover{box-shadow:0 0 0 3px var(--blue)}
 .node .tt{position:absolute;right:6px;top:4px;font-size:10.5px;font-weight:700;opacity:.6}
 .node .st{position:absolute;right:6px;top:19px;font-size:11px}
@@ -216,7 +217,7 @@ td.dash{color:var(--muted);text-align:center}
 #ruleTbl td.slot.over{background:var(--cyan)}
 body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con của ô không nhận drag event -> không bắn dragleave giả, hết nhấp nháy */
 #ruleTbl td.flowName{white-space:normal;overflow-wrap:break-word;font-weight:800;background:var(--wash)}
-.chip{display:block;border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
+.chip{display:block;border:var(--bd);border-radius:var(--r);filter:var(--sh);
       background:var(--paper);padding:4px 7px;margin:0 0 6px;font-size:12px}
 .chip .chipTop{display:flex;align-items:center;justify-content:space-between;gap:5px}
 .chip .cn{font-weight:700;font-size:11.5px;line-height:1.25;margin-top:2px;
@@ -233,13 +234,13 @@ body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con c�
 .chip .sc-AC{background:var(--lilac)}
 .chip .sc-REST{background:var(--rose)}
 .chip .rm,.roleCard .rm{border:none;padding:0 4px;font-size:11px;font-weight:800;cursor:pointer;
-                        background:none;box-shadow:none;border-radius:3px}
+                        background:none;filter:none;border-radius:3px}
 .chip .rm:hover,.roleCard .rm:hover{background:var(--coral);transform:none}
 .pdCk input:hover{transform:none}
-.chip.locked{border-style:dashed;background:var(--yellow);display:inline-block;box-shadow:none;font-weight:700}
+.chip.locked{border-style:dashed;background:var(--yellow);display:inline-block;filter:none;font-weight:700}
 .slotHint{color:#BDB5A8;font-size:11px;text-align:center;padding:9px 0;
           border:2px dashed var(--line);border-radius:var(--r)}
-.roleCard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
+.roleCard{border:var(--bd);border-radius:var(--r);filter:var(--sh);
           background:var(--paper);padding:7px 9px;margin-bottom:9px}
 .roleCard .topRow{display:flex;align-items:center;gap:6px;cursor:grab}
 .roleCard .topRow.dragging{opacity:.5}
@@ -263,11 +264,11 @@ body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con c�
 #cigTbl input{width:100%;font:inherit;font-size:12.5px;padding:4px 7px;
               border:2px solid var(--line);border-radius:5px;background:#fff}
 #cigTbl input:focus{border-color:var(--ink);outline:none}
-#cigTbl button{padding:2px 7px;font-size:12px;box-shadow:1px 1px 0 var(--ink)}
+#cigTbl button{padding:2px 7px;font-size:12px;filter:var(--sh1)}
 #cigTbl button:hover{transform:translate(1px,1px)}
 
 /* Toggle CIG trên dòng nhóm FC */
-.cigTgl{padding:2px 7px;font-size:11px;box-shadow:1px 1px 0 var(--ink)}
+.cigTgl{padding:2px 7px;font-size:11px;filter:var(--sh1)}
 .cigTgl:hover{transform:translate(1px,1px)}
 .cigTgl.on{background:var(--cyan)}
 .lblScen{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
@@ -291,7 +292,7 @@ tr.hideRow{display:none}
 .cardH{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 10px;
        text-transform:uppercase;letter-spacing:.06em;font-weight:800}
 .flowTop{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
-.flowCard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);
+.flowCard{border:var(--bd);border-radius:var(--r);filter:var(--sh);
           background:var(--paper);padding:11px 12px}
 /* Nhóm FC có 6 cột (thêm CIG) nên cần rộng hơn card Fund Center 4 cột */
 #grpSec{flex:1.25 1 460px;min-width:400px}
@@ -305,7 +306,7 @@ tr.hideRow{display:none}
 .gcnt{font-size:11px;font-weight:800;background:var(--ink);color:var(--paper);
       border-radius:4px;padding:1px 7px;letter-spacing:.04em;white-space:nowrap}
 /* nút ✕ trong ô bảng: gọn lại cho vừa cột hẹp */
-#grpTbl button,#fcTbl button{padding:2px 7px;font-size:12px;box-shadow:1px 1px 0 var(--ink)}
+#grpTbl button,#fcTbl button{padding:2px 7px;font-size:12px;filter:var(--sh1)}
 #grpTbl button:hover,#fcTbl button:hover{transform:translate(1px,1px)}
 /* Bảng Nhóm FC + FC: input trần trong ô, lọc nhanh, cuộn riêng ~1/2 view, hàng đầu freeze (th sticky) */
 .inScroll{max-height:48vh;overflow-x:hidden}   /* tab Luồng duyệt: chỉ cuộn dọc */
@@ -338,8 +339,8 @@ tr.hideRow{display:none}
 #landingBox h2{font-size:17px;font-weight:800;margin:0 0 18px;letter-spacing:.06em;text-transform:uppercase}
 #landingCards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
 .modCard{flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 18px;
-         text-align:center;font:inherit;border:var(--bd);border-radius:var(--r);box-shadow:4px 4px 0 var(--ink),2px 2px 0 var(--ink),1px 1px 0 var(--ink);cursor:pointer}
-.modCard:hover{transform:translate(4px,4px);box-shadow:none}
+         text-align:center;font:inherit;border:var(--bd);border-radius:var(--r);filter:var(--sh4);cursor:pointer}
+.modCard:hover{transform:translate(4px,4px);filter:none}
 .modCard .modIcon{font-size:36px;line-height:1}
 .modCard b{font-size:15px}
 .modCard .hint{white-space:normal;font-weight:400;color:var(--ink);opacity:.8}
@@ -353,9 +354,9 @@ tr.hideRow{display:none}
 #docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px;cursor:grab;touch-action:none;user-select:none}
 #docWrap.panning{cursor:grabbing}
 #docPage{display:inline-block;vertical-align:top}
-#docPage svg{display:block;background:#fff;border:var(--bd);box-shadow:4px 4px 0 var(--ink),2px 2px 0 var(--ink),1px 1px 0 var(--ink)}
+#docPage svg{display:block;background:#fff;border:var(--bd);filter:var(--sh4)}
 #dpanel{width:300px;flex:none;overflow:auto;border-left:var(--bd);background:var(--wash);padding:10px;display:flex;flex-direction:column;gap:10px}
-.dcard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);background:var(--paper);padding:10px}
+.dcard{border:var(--bd);border-radius:var(--r);filter:var(--sh);background:var(--paper);padding:10px}
 .dcard.collapsed>.cardH{border-bottom:none;margin-bottom:0}
 .dcard label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:9px 0 4px}
 .dcard input,.dcard select,.dcard textarea{width:100%;font:inherit;padding:6px 8px;border:var(--bd);border-radius:var(--r);background:#fff;color:var(--ink)}
@@ -386,5 +387,5 @@ tr.hideRow{display:none}
   html,body{height:100%;overflow:hidden}
   #tabDoc,#dmain,#docWrap,#docPage{height:100%;overflow:hidden}
   /* @page = đúng khổ trang nên svg phủ trọn viewport in -> đúng 1 trang, không dư trang trắng */
-  #docPage svg{border:none!important;box-shadow:none!important;width:100vw!important;height:100vh!important}
+  #docPage svg{border:none!important;filter:none!important;width:100vw!important;height:100vh!important}
 }
