@@ -119,6 +119,10 @@ function cleanDoc(src){
 var doc = defaultDoc();
 
 var undoStack = [], lastSnapKey = null, dirty = false;
+// Tab của module Luồng duyệt đang "cũ" (dữ liệu đổi từ lần vẽ cuối). renderAll/refreshView chỉ vẽ tab đang mở;
+// showTab vẽ tab cũ đúng lúc mở nó. snap() đánh dấu tất cả vì mọi thay đổi dữ liệu đều đi qua đó.
+var staleTabs = { org:true, vline:true, rules:true, flow:true };
+function markStale(){ Object.keys(staleTabs).forEach(function(k){ staleTabs[k] = true; }); }
 
 function serializeAll(){
   return { v:SCHEMA_V, roots:rootIds.map(ser),
@@ -126,12 +130,24 @@ function serializeAll(){
            vlineGrids:vlineGrids, ruleMode:ruleMode, vroots:vroots.map(vser),
            cigs:cigs, doc:doc };
 }
+// Chụp snapshot cho Undo trước một thay đổi. key khác null = đang gõ liên tục vào cùng một ô: cả chuỗi gõ chỉ chụp một lần.
+// dirty + cờ tab cũ đặt TRƯỚC khi quyết định gộp, vì thay đổi vẫn là thay đổi dù không chụp thêm snapshot
+// (trước đây: Save rồi gõ tiếp đúng ô cũ -> gộp -> dirty vẫn false -> đóng tab không cảnh báo).
 function snap(key){
+  dirty = true; markStale();
   if (key !== null && key === lastSnapKey) return;
   undoStack.push(JSON.stringify(serializeAll()));
   if (undoStack.length > 60) undoStack.shift();
   lastSnapKey = key;
-  dirty = true;
+}
+// CỬA DUY NHẤT cho mọi thay đổi dữ liệu: snapshot + dirty + chạy fn + vẽ lại. Không nơi nào gọi snap() rồi tự sửa state nữa.
+// after: hàm vẽ lại sau thay đổi, mặc định renderAll (vẽ module/tab đang mở); đang gõ thì truyền refreshView hoặc hàm vá nhẹ hơn.
+// Trả về kết quả của fn.
+function mutate(key, fn, after){
+  snap(key);
+  var r = fn();
+  (after || renderAll)();
+  return r;
 }
 function undo(){
   if (!undoStack.length){ msg(t('msgNoUndo')); return; }
@@ -139,4 +155,50 @@ function undo(){
   catch(e){ msg(t('msgUndoErr')); return; }
   lastSnapKey = null; dirty = true;
   renderAll(); msg(t('msgUndone'));
+}
+// Bất biến dữ liệu — test gọi sau mỗi thao tác (và fuzz). Trả về danh sách vi phạm, rỗng = ổn.
+// Cây: mỗi node đến được đúng một lần từ rootIds, parent/children khớp nhau, cấp con >= cấp cha, stack chỉ ở node có cha.
+// Tham chiếu: focus, CBQLNS nhóm, nhóm của FC, box vai trò từ sơ đồ, ô luật -> box vai trò, grid -> CIG, node ngành dọc import -> box.
+function checkInvariants(){
+  var bad = [], seen = new Set();
+  function walk(id, parent){
+    var n = nodes.get(id);
+    if (!n){ bad.push('missing node ' + id); return; }
+    if (seen.has(id)){ bad.push('node reached twice ' + id); return; }
+    seen.add(id);
+    if (n.parent !== parent) bad.push('parent mismatch ' + id);
+    if (parent && rnum(n.t) < rnum(nodes.get(parent).t)) bad.push('level below parent ' + id);
+    if (n.stack && !parent) bad.push('stacked root ' + id);
+    n.children.forEach(function(c){ walk(c, id); });
+  }
+  rootIds.forEach(function(r){ walk(r, null); });
+  if (seen.size !== nodes.size) bad.push('unreachable nodes ' + (nodes.size - seen.size));
+  if (focusId && !nodes.has(focusId)) bad.push('focus dangling');
+  function uniq(list, label){ var s = new Set(list.map(function(x){ return x.id; })); if (s.size !== list.length) bad.push('duplicate ' + label + ' id'); return s; }
+  var gids = uniq(fcGroups, 'group'), rids = uniq(roleBoxes, 'role'), cids = uniq(cigs, 'cig'); uniq(fcs, 'fc');
+  fcGroups.forEach(function(g){ if (g.cbqlns && !nodes.has(g.cbqlns)) bad.push('group cbqlns dangling ' + g.id); });
+  fcs.forEach(function(f){ if (f.groupId && !gids.has(f.groupId)) bad.push('fc group dangling ' + f.id); });
+  roleBoxes.forEach(function(r){ if (r.kind === 'node' && !nodes.has(r.nodeId)) bad.push('role node dangling ' + r.id); });
+  [ruleGrids, vlineGrids].forEach(function(fam){
+    Object.keys(fam).forEach(function(k){
+      if (k && !cids.has(k)) bad.push('grid for missing cig ' + k);
+      FLOWS.forEach(function(fl){ COLS.forEach(function(c){
+        var a = (fam[k][fl] || {})[c];
+        if (a) SCOPES.forEach(function(s){ if (a[s] && a[s] !== VLINE && !rids.has(a[s])) bad.push('rule role dangling ' + a[s]); });
+      }); });
+    });
+  });
+  var vseen = new Set();
+  function vwalk(id, parent){
+    var n = vnodes.get(id);
+    if (!n){ bad.push('missing vnode ' + id); return; }
+    if (vseen.has(id)){ bad.push('vnode reached twice ' + id); return; }
+    vseen.add(id);
+    if (n.parent !== parent) bad.push('vnode parent mismatch ' + id);
+    if (n.orgId && !nodes.has(n.orgId)) bad.push('vnode org dangling ' + id);
+    n.children.forEach(function(c){ vwalk(c, id); });
+  }
+  vroots.forEach(function(r){ vwalk(r, null); });
+  if (vseen.size !== vnodes.size) bad.push('unreachable vnodes ' + (vnodes.size - vseen.size));
+  return bad;
 }

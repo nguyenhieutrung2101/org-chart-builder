@@ -121,6 +121,7 @@
           <ul>
             <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l15a">PDF download embeds the very font you picked (Arial / Times New Roman) from your computer on Chrome/Edge; falls back to the metric-compatible Liberation.</span></li>
             <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l15b">Transitions and small animations across the app: module/tab switch, toast, box pop/flash/fade, chips landing, staggered result rows, eased minimap; honours reduced-motion.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l15c">Sturdier data core: every change goes through one door (undo, unsaved warning and redraw always travel together — no more "Save, keep typing, no warning"); only the open tab is drawn; Excel paste auto-assigns only unique names and lists rows to review; JSON files with duplicate ids are rejected and broken references reported; logic + fuzz tests run in Node.</span></li>
           </ul>
         </div>
         <div class="entry">
@@ -336,7 +337,7 @@
           <button id="bPasteGrp" data-i18n="btnPaste">Dán từ Excel</button>
         </div>
         <div id="pasteBoxGrp" style="display:none;margin-top:9px">
-          <div class="hint" data-i18n-html="pasteGrpHint">Dán 3 cột từ Excel: <b>Mã FCG ⇥ Tên nhóm ⇥ Tên người CBQLNS</b> (cột CBQLNS được phép trống; khớp theo tên người của box ★ trên sơ đồ, không phân biệt hoa thường).</div>
+          <div class="hint" data-i18n-html="pasteGrpHint">Dán 3 cột từ Excel: <b>Mã FCG ⇥ Tên nhóm ⇥ Tên người CBQLNS</b> (cột CBQLNS được phép trống; khớp theo tên người của box ★ trên sơ đồ, chỉ tự gán khi có đúng một box ★ tên đó; trùng mã FCG thì cập nhật dòng cũ).</div>
           <textarea id="pasteTaGrp" placeholder="FCG01&#9;VH Vùng 1&#9;Nguyễn Văn A"></textarea>
           <div class="miniRow"><button id="bPasteGrpGo" class="primary" data-i18n="btnPasteGo">Nhập</button><button id="bPasteGrpCancel" data-i18n="btnPasteCancel">Hủy</button></div>
         </div>
@@ -362,8 +363,8 @@
           <button id="bPaste" data-i18n="btnPaste">Dán từ Excel</button>
         </div>
         <div id="pasteBox">
-          <div class="hint" data-i18n-html="pasteHint">Dán 3 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm</b> (cột nhóm được phép trống;
-          nhóm chưa tồn tại sẽ được tạo và khớp theo tên, không phân biệt hoa thường).</div>
+          <div class="hint" data-i18n-html="pasteHint">Dán 3–4 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm ⇥ Mã nhóm</b> (hai cột nhóm được phép trống; nhóm tìm theo mã rồi theo tên,
+          chỉ tự gán khi duy nhất, chưa có thì tạo; trùng thì FC để không nhóm và app liệt kê dòng cần xem).</div>
           <textarea id="pasteTa" placeholder="ID00T00101&#9;Depot 1 - Kapuk&#9;VH Vùng 1&#10;ID00T00201&#9;Depot 2 - Limo&#9;VH Vùng 1"></textarea>
           <div class="miniRow"><button id="bPasteGo" class="primary" data-i18n="btnPasteGo">Nhập</button><button id="bPasteCancel" data-i18n="btnPasteCancel">Hủy</button></div>
         </div>

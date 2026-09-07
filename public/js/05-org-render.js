@@ -114,15 +114,16 @@ function renderPanel(){
 
   var fD = $('fD'); fD.value = n.dept;
   fD.oninput = function(){
-    snap('e:' + sel + ':d');
-    var s = fD.selectionStart, up = fD.value.toUpperCase();
-    if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s,s); }catch(_){/**/} }
-    n.dept = fD.value; refreshView();
+    mutate('e:' + sel + ':d', function(){
+      var s = fD.selectionStart, up = fD.value.toUpperCase();
+      if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s,s); }catch(_){/**/} }
+      n.dept = fD.value;
+    }, refreshView);
   };
   var fC = $('fC'); fC.value = n.title;
-  fC.oninput = function(){ snap('e:' + sel + ':c'); n.title = fC.value; refreshView(); };
+  fC.oninput = function(){ mutate('e:' + sel + ':c', function(){ n.title = fC.value; }, refreshView); };
   var fP = $('fP'); fP.value = n.person;
-  fP.oninput = function(){ snap('e:' + sel + ':p'); n.person = fP.value; refreshView(); };
+  fP.oninput = function(){ mutate('e:' + sel + ':p', function(){ n.person = fP.value; }, refreshView); };
 
   var sT = $('fT'); sT.value = n.t;
   sT.onchange = function(){ setT(sel, sT.value); };
@@ -200,14 +201,30 @@ function renderTable(L){
   sc.appendChild(tb); host.appendChild(sc);
 }
 
-function renderAll(){
-  if (MOD === 'doc'){ renderDocAll(); return; }
-  var L = layout();
-  if (sel && !L.vis.has(sel)) sel = null;
-  renderCanvas(L); renderPanel(); renderTable(L); renderVline(); renderVPanel(); renderFlow(); renderRules();
+// Vẽ một tab của module Luồng duyệt (và xoá cờ "cũ" của nó). Bảng luồng duyệt vẽ với hiệu ứng nổi so le vì vừa hiện ra.
+function renderTab(which){
+  staleTabs[which] = false;
+  if (which === 'org'){
+    var L = layout();
+    if (sel && !L.vis.has(sel)) sel = null;
+    renderCanvas(L); renderPanel(); renderTable(L);
+  }
+  else if (which === 'vline'){ renderVline(); renderVPanel(); }
+  else if (which === 'rules') renderRules();
+  else if (which === 'flow') renderFlow(true);
 }
+// Master re-render sau một thay đổi dữ liệu: đánh dấu mọi tab là cũ, chỉ vẽ module/tab ĐANG MỞ.
+// Tab ẩn vẽ khi mở (showTab) — với 2.000 FC, một thao tác ở sơ đồ không còn dựng lại bảng FC/luồng duyệt đang ẩn.
+function renderAll(){
+  markStale();
+  if (MOD === 'doc') renderDocAll();
+  else if (MOD === 'flow') renderTab(curTab);
+}
+// Đang gõ: vá nhẹ phần đang nhìn (không dựng lại panel đang giữ focus); tab khác cũng thành cũ
 function refreshView(){
+  markStale();
   if (MOD === 'doc'){ renderDoc(); return; }
+  if (MOD !== 'flow' || curTab !== 'org') return;
   var L = layout();
-  renderCanvas(L); renderTable(L); refreshFlowResultSoon();
+  renderCanvas(L); renderTable(L); staleTabs.org = false;
 }

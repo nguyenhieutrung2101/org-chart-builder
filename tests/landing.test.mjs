@@ -63,6 +63,7 @@ check('minimap viewport box eases (transition on left/top)', await ev(() => /lef
 
 // ---- chip: đáp khi thả, lật nhãn khi xoay phạm vi; ô ma trận pulse khi rê qua ----
 const chip = await ev(() => {
+  showTab('rules');                                          // tab ẩn không được vẽ: mở tab trước khi kiểm tra DOM của nó
   addFreeRole(); const rid = roleBoxes[roleBoxes.length - 1].id;
   dropRole('Xanh', 'TĐ1', rid);
   const land = document.querySelector('#ruleTbl .chip[data-rid="' + rid + '"]').classList.contains('land');
@@ -75,19 +76,21 @@ const chip = await ev(() => {
 });
 check('dropped chip lands, cycled scope flips, plain re-render stays still; hovered slot pulses', chip.land && chip.flip && chip.again === 'chip' && chip.pulse === 'slotPulse', JSON.stringify(chip));
 
-// ---- bảng luồng duyệt: dòng nổi so le khi tab ẩn / đổi cách xem, không khi render lại trong tab ----
+// ---- bảng luồng duyệt: dòng nổi so le khi tab vừa mở (tab cũ) hoặc đổi cách xem; render lại trong tab (như lúc gõ) thì không ----
 const rows = await ev(() => {
   for (let i = 0; i < 8; i++){ addGroup(); fcGroups[fcGroups.length - 1].code = 'G' + i; }
-  showTab('rules'); renderFlowResult();                       // tab Luồng duyệt đang ẩn -> animation chạy lúc hiện
-  const hidden = document.querySelectorAll('#flowResult tr.rise').length;
+  showTab('rules'); addFreeRole();                            // thao tác ở tab khác -> tab Luồng duyệt thành cũ
+  const staleBefore = staleTabs.flow;
+  showTab('flow');                                            // mở tab cũ -> vẽ lại với hiệu ứng nổi so le
+  const revealed = document.querySelectorAll('#flowResult tr.rise').length;
   const delay = document.querySelectorAll('#flowResult tr.rise')[3].style.animationDelay;
-  showTab('flow'); renderFlowResult();                        // đang xem tab -> render lại (như lúc gõ) không nổi lại
+  renderFlowResult();                                         // render lại khi đang xem (như lúc gõ) -> không nổi lại
   const visible = document.querySelectorAll('#flowResult tr.rise').length;
   renderFlowResult(true);                                     // đổi cách xem -> nổi so le
   const forced = document.querySelectorAll('#flowResult tr.rise').length;
-  return { hidden, delay, visible, forced, total: document.querySelectorAll('#flowResult tr[data-blk]').length };
+  return { staleBefore, revealed, delay, visible, forced, total: document.querySelectorAll('#flowResult tr[data-blk]').length };
 });
-check('result rows stagger (max 30, 20 ms apart) only when the table is (re)revealed', rows.hidden === 30 && rows.delay === '60ms' && rows.visible === 0 && rows.forced === 30 && rows.total === 40, JSON.stringify(rows));
+check('result rows stagger (max 30, 20 ms apart) only when the table is (re)revealed', rows.staleBefore && rows.revealed === 30 && rows.delay === '60ms' && rows.visible === 0 && rows.forced === 30 && rows.total === 40, JSON.stringify(rows));
 
 // ---- module Trình bày: pop / nháy trên SVG, đường kẻ hàng hiện dần một lần, nút PDF bận ----
 await ev(() => showModule('doc'));

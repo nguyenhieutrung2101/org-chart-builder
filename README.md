@@ -61,8 +61,9 @@ Chuyển động trong app chỉ dùng transform/opacity, 120–450 ms, tôn tr�
 
 ### 4. 📗 Luồng duyệt
 - **Nhóm Fund Center** (mã FCG, tên, gán CBQLNS, toggle *1 luồng / Theo CIG*) và **Fund Center** (mã, tên, nhóm) — có lọc nhanh, nút **Copy** (TSV) và **Dán từ Excel** trên cả hai card:
-  - FCG: `Mã ⇥ Tên ⇥ Tên người CBQLNS` — khớp người theo tên box ★; trùng mã thì cập nhật dòng cũ.
-  - FC: `Mã ⇥ Tên ⇥ Tên nhóm` — nhóm chưa có thì tạo mới.
+  - FCG: `Mã ⇥ Tên ⇥ Tên người CBQLNS` — khớp người theo tên box ★ **chỉ khi có đúng một box ★ tên đó**; trùng mã thì cập nhật dòng cũ.
+  - FC: `Mã ⇥ Tên ⇥ Tên nhóm ⇥ Mã nhóm` — nhóm tìm theo **mã** trước rồi theo tên, chỉ tự gán khi duy nhất; chưa có thì tạo mới.
+  - Dòng không gán được (tên trùng, không có box ★) để trống và **được liệt kê trong toast** thay vì gán nhầm âm thầm. Nút Copy xuất đúng các cột này (FC kèm mã nhóm) nên copy ở app rồi dán lại vẫn khớp nhóm.
   - Dòng tiêu đề (đúng nhãn app xuất ra, hoặc "Mã"/"Code"…) tự bỏ qua; mã thật dạng `FCG01` không bao giờ bị nuốt.
 - **Bảng luồng duyệt** sinh tự động: mỗi nhóm × 5 luồng, người duyệt từng bước tính từ ma trận luật của chế độ đang chọn (Luồng: theo nhánh của CBQLNS; Ngành dọc: theo cây Ngành dọc). Nhóm bật "Theo CIG" được tách thành một khối cho mỗi CIG với bộ luật tương ứng.
 - Xem gộp theo nhóm hoặc bung theo từng FC; **ô lọc nhanh** theo tên nhóm/FC; **copy bảng** dán thẳng vào Excel; nút ẩn khu nhập liệu để bảng chiếm trọn màn hình.
@@ -96,7 +97,8 @@ org-chart-builder/
 │   │                       #   export, ngành dọc, luồng, luật, zoom, module Trình bày (11-doc.js), wiring
 │   ├── js/vendor/          # jsPDF + svg2pdf (MIT) — chỉ nạp khi bấm "Tải PDF"
 │   └── fonts/              # Liberation Sans/Serif (SIL OFL) nhúng vào PDF
-├── tests/                  # bộ test Playwright (npm test): server tĩnh + Chromium
+├── tests/                  # ba tầng: logic + fuzz trong Node (_node.mjs), hành vi UI và chất lượng bằng Playwright (_browser.mjs)
+├── docs/ARCHITECTURE.md    # một trang: dòng dữ liệu (mutate -> renderAll), ai được sửa gì, nạp/lưu, ba tầng test
 ├── docs/FUNCTIONS.md       # inventory mọi hàm theo file: chữ ký, mục đích, ai gọi ai, side-effect
 ├── package.json            # chỉ có devDependency playwright + script test/check
 ├── wrangler.jsonc          # cấu hình Cloudflare (assets = ./public)
@@ -108,8 +110,15 @@ org-chart-builder/
 ```bash
 npm install          # cài playwright (Chromium)
 npm test             # chạy mọi tests/*.test.mjs; node tests/run.mjs doc  -> chỉ bộ "doc"
+node tests/run.mjs logic   # tầng Node: không cần Chromium, vài giây
 npm run check        # node --check từng file js/
 ```
+
+Ba tầng test (chi tiết trong `docs/ARCHITECTURE.md`):
+
+- **Logic + fuzz trong Node** (`tests/logic.test.mjs`): nạp thẳng `js/01…11` vào một `vm` context với DOM giả, thay lớp vẽ bằng hàm rỗng. Kiểm tra mốc Save/undo, `applyState` nghiêm ngặt (ID trùng bị từ chối, tham chiếu hỏng được đếm), dán Excel, layout, engine luồng, và **400 thao tác ngẫu nhiên có seed**: sau mỗi bước bất biến dữ liệu (`checkInvariants`) phải rỗng, undo phải về đúng trạng thái trước, serialize → apply → serialize phải idempotent.
+- **Hành vi UI** (`cleanup`, `review1`, `review2`, `doc`, `landing`): Playwright, những gì cần DOM thật.
+- **Chất lượng** (`tests/quality.test.mjs`): mốc Save qua UI thật, **ngưỡng hiệu năng** với 2.000 FC (thao tác ở sơ đồ không dựng lại bảng đang ẩn, dưới 150 ms), dán mơ hồ qua UI, mở file JSON trùng ID / tham chiếu hỏng qua ô chọn file.
 
 Có sẵn Playwright ở nơi khác thì trỏ vào: `PW_MODULE=<…/playwright-core/index.mjs> PW_CHROMIUM=<…/chromium> npm test`.
 
@@ -134,8 +143,10 @@ Deploy thủ công: `npx wrangler deploy`
 | Thả box vai trò vào ô luật | Kéo ở tay nắm ⠿ trên card trong palette |
 | Đổi phạm vi của box đã thả | Bấm nhãn phạm vi trên chip (chế độ Luồng) |
 | Nhập FCG hàng loạt | "Dán từ Excel" trên card Nhóm Fund Center (Mã ⇥ Tên ⇥ Tên người CBQLNS) |
-| Nhập Fund Center hàng loạt | "Dán từ Excel" trên card Fund Center (Mã ⇥ Tên ⇥ Nhóm) |
+| Nhập Fund Center hàng loạt | "Dán từ Excel" trên card Fund Center (Mã ⇥ Tên ⇥ Tên nhóm ⇥ Mã nhóm; khớp mã trước, tên chỉ khi duy nhất) |
 
 ## Tài liệu cho người sửa code
 
-`docs/FUNCTIONS.md` liệt kê toàn bộ hàm trong `public/index.html` theo từng section (số dòng, chữ ký, mục đích, gọi đến / được gọi bởi, side-effect, entry point **[PUBLIC]**) kèm nhật ký các lần dọn dead code và sửa lỗi từ code review.
+`docs/ARCHITECTURE.md` là bản đồ một trang: mọi thay đổi dữ liệu đi qua `mutate()` (snapshot undo + cờ chưa lưu + vẽ lại luôn đi cùng nhau), `renderAll()` chỉ vẽ tab đang mở, `applyState()` là bộ validate duy nhất khi nạp file, `checkInvariants()` mô tả bất biến dữ liệu bằng code.
+
+`docs/FUNCTIONS.md` liệt kê toàn bộ hàm trong `public/js/*.js` theo từng file (số dòng, chữ ký, mục đích, gọi đến / được gọi bởi, side-effect, entry point **[PUBLIC]**) kèm nhật ký các lần dọn dead code và sửa lỗi từ code review.

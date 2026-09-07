@@ -11,27 +11,31 @@ function nn(dept, title, person, lv, parent, id){
                   hc:null, annot:'', desc:'', rowShift:0, hideLv:false, stack:false});
   return nid;
 }
+// Thêm box: select() của box mới tự vẽ toàn bộ (kèm hiệu ứng pop) nên làm bước "vẽ lại" của mutate
 function addRoot(){
-  if (focusId){ focusId = null; msg(t('msgUnfocusRoot')); }
-  snap(null);
-  var id = nn('','','','CC', null);
-  rootIds.push(id); select(id, true);
+  var id;
+  mutate(null, function(){
+    if (focusId){ focusId = null; msg(t('msgUnfocusRoot')); }
+    id = nn('','','','CC', null); rootIds.push(id);
+  }, function(){ select(id, true); });
 }
 function addChild(pid){
-  snap(null);
-  var p = nodes.get(pid);
-  p.collapsed = false;
-  var r = Math.min(LMAX, rnum(p.t) + 1);
-  var id = nn('','','', LEVELS[r], pid);
-  p.children.push(id); select(id, true);
+  var id;
+  mutate(null, function(){
+    var p = nodes.get(pid);
+    p.collapsed = false;
+    id = nn('','','', LEVELS[Math.min(LMAX, rnum(p.t) + 1)], pid);
+    p.children.push(id);
+  }, function(){ select(id, true); });
 }
 function addSib(id){
-  snap(null);
-  var n = nodes.get(id);
-  var nid = nn('','','', n.t, n.parent);
-  var arr = n.parent ? nodes.get(n.parent).children : rootIds;
-  arr.splice(arr.indexOf(id) + 1, 0, nid);
-  select(nid, true);
+  var nid;
+  mutate(null, function(){
+    var n = nodes.get(id);
+    nid = nn('','','', n.t, n.parent);
+    var arr = n.parent ? nodes.get(n.parent).children : rootIds;
+    arr.splice(arr.indexOf(id) + 1, 0, nid);
+  }, function(){ select(nid, true); });
 }
 function subCount(id){
   var n = nodes.get(id), s = 1;
@@ -47,17 +51,18 @@ function delNode(id){
   var n = nodes.get(id);
   if (n.children.length &&
       !confirm(tf('cfmDelNode', { name: dispName(n), n: subCount(id)-1 }))) return;
-  snap(null);
-  var arr = n.parent ? nodes.get(n.parent).children : rootIds;
-  arr.splice(arr.indexOf(id), 1);
-  wipe(id);
-  if (focusId && !nodes.has(focusId)) focusId = null;
-  fcGroups.forEach(function(g){ if (g.cbqlns && !nodes.has(g.cbqlns)) g.cbqlns = null; });
-  pruneVlineOrphans();                           // node import trên cây ngành dọc trỏ box vừa xóa
-  var gone = pruneNodeRoles();                   // box vai trò link tới box vừa xóa (+ ô luật đang dùng nó)
-  var el = document.querySelector('#canvas .node[data-id="' + id + '"]');   // bản sao mờ dần tại chỗ cũ (renderCanvas bỏ qua .gone)
-  if (el){ el.classList.add('gone'); setTimeout(function(){ el.remove(); }, 250); }
-  sel = null; renderAll();
+  var gone = mutate(null, function(){
+    var arr = n.parent ? nodes.get(n.parent).children : rootIds;
+    arr.splice(arr.indexOf(id), 1);
+    wipe(id);
+    if (focusId && !nodes.has(focusId)) focusId = null;
+    fcGroups.forEach(function(g){ if (g.cbqlns && !nodes.has(g.cbqlns)) g.cbqlns = null; });
+    pruneVlineOrphans();                         // node import trên cây ngành dọc trỏ box vừa xóa
+    var el = document.querySelector('#canvas .node[data-id="' + id + '"]');   // bản sao mờ dần tại chỗ cũ (renderCanvas bỏ qua .gone)
+    if (el){ el.classList.add('gone'); setTimeout(function(){ el.remove(); }, 250); }
+    sel = null;
+    return pruneNodeRoles();                     // box vai trò link tới box vừa xóa (+ ô luật đang dùng nó)
+  });
   if (gone.boxes) msg(tf('msgRolesPruned', { n: gone.boxes, c: gone.cells }));
 }
 function moveSib(id, dir){
@@ -65,35 +70,25 @@ function moveSib(id, dir){
   var arr = n.parent ? nodes.get(n.parent).children : rootIds;
   var i = arr.indexOf(id), j = i + dir;
   if (j < 0 || j >= arr.length) return;
-  snap(null);
-  var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-  renderAll();
+  mutate(null, function(){ var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp; });
 }
 function setT(id, t){
-  snap(null);
-  var n = nodes.get(id); n.t = t;
-  var fixed = 0;
-  (function fix(pid){
-    nodes.get(pid).children.forEach(function(c){
-      var ch = nodes.get(c);
-      if (rnum(ch.t) < rnum(nodes.get(pid).t)){ ch.t = nodes.get(pid).t; fixed++; }
-      fix(c);
-    });
-  })(id);
-  if (fixed) msg(tf('msgRaised', { n: fixed }));
-  renderAll();
+  mutate(null, function(){
+    nodes.get(id).t = t;
+    var fixed = 0;
+    (function fix(pid){                          // con thấp hơn cha mới -> nâng lên bằng cha
+      nodes.get(pid).children.forEach(function(c){
+        var ch = nodes.get(c);
+        if (rnum(ch.t) < rnum(nodes.get(pid).t)){ ch.t = nodes.get(pid).t; fixed++; }
+        fix(c);
+      });
+    })(id);
+    if (fixed) msg(tf('msgRaised', { n: fixed }));
+  });
 }
-function toggleStar(id){
-  snap(null);
-  var n = nodes.get(id); n.star = !n.star;
-  renderAll();
-}
+function toggleStar(id){ mutate(null, function(){ var n = nodes.get(id); n.star = !n.star; }); }
 // Một loại nhánh gán được nhiều box (vd Vận hành bike + Vận hành car là 2 gốc VH riêng).
-function setBranch(id, kind){
-  snap(null);
-  nodes.get(id).br = kind || '';
-  renderAll();
-}
+function setBranch(id, kind){ mutate(null, function(){ nodes.get(id).br = kind || ''; }); }
 // Trong cây con của id (không tính chính nó) có box nào đánh dấu ★ CBQLNS không?
 function hasStarBelow(id){
   if (!id || !nodes.has(id)) return false;
@@ -116,26 +111,22 @@ function isAncestor(a, b){
 function toggleCollapse(id){
   var n = nodes.get(id);
   if (!n.children.length) return;
-  if (!n.collapsed && focusId && isAncestor(id, focusId)){
-    focusId = null; msg(t('msgFocusCleared'));
-  }
-  snap(null);
-  n.collapsed = !n.collapsed;
-  renderAll();
+  mutate(null, function(){
+    if (!n.collapsed && focusId && isAncestor(id, focusId)){ focusId = null; msg(t('msgFocusCleared')); }
+    n.collapsed = !n.collapsed;
+  });
 }
 function setFocus(id){
-  snap(null);
-  focusId = id;
-  var a = nodes.get(id).parent;
-  while (a){ nodes.get(a).collapsed = false; a = nodes.get(a).parent; }
-  renderAll();
+  mutate(null, function(){
+    focusId = id;
+    var a = nodes.get(id).parent;
+    while (a){ nodes.get(a).collapsed = false; a = nodes.get(a).parent; }
+  });
   scrollNodeIntoView(id);
 }
 function clearFocus(){
-  snap(null);
   var keep = focusId;             // giữ box vừa bỏ focus trong tầm nhìn (điểm neo định hướng)
-  focusId = null;
-  renderAll();
+  mutate(null, function(){ focusId = null; });
   scrollNodeIntoView(keep);
 }
 // Cuộn canvas sao cho box nằm giữa vùng nhìn — layout() thuần nên gọi lại không có side effect
@@ -257,7 +248,7 @@ function hcOf(id){
   return 1 + n.children.reduce(function(s, c){ return s + hcOf(c); }, 0);
 }
 function setHc(id, v){
-  snap('e:' + id + ':hc');
-  nodes.get(id).hc = (v === '' || v == null || !isFinite(+v)) ? null : Math.max(0, Math.round(+v));
-  refreshView();
+  mutate('e:' + id + ':hc', function(){
+    nodes.get(id).hc = (v === '' || v == null || !isFinite(+v)) ? null : Math.max(0, Math.round(+v));
+  }, refreshView);
 }

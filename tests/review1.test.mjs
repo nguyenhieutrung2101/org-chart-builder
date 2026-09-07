@@ -53,6 +53,7 @@ check('#8 serializeAll writes v:SCHEMA_V (11)', c2.v === 11, String(c2.v));
 
 // ---------- #3 CIG delete clears both families; scenOwn note reads current family ----------
 const c3 = await ev(() => {
+  showTab('rules');                                  // tab ẩn không được vẽ nữa: mở tab Định nghĩa trước khi đụng DOM của nó
   setRuleMode('vline'); setCurCig('c1');          // clones Common into vlineGrids.c1
   const cloned = !!vlineGrids.c1 && !ruleGrids.c1;
   const note = (document.querySelector('#scenNote') || document.querySelector('.scenNote') || { textContent: '' }).textContent;

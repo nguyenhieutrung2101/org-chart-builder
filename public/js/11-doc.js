@@ -470,7 +470,7 @@ function dZoomStep(){
 function setRowShift(id, v){
   var n = nodes.get(id), nv = Math.max(0, Math.round(v));
   if (nv === (n.rowShift || 0)) return;
-  snap(null); n.rowShift = nv; renderDoc(); renderDPanel();
+  mutate(null, function(){ n.rowShift = nv; }, function(){ renderDoc(); renderDPanel(); });
 }
 function renderDPanel(){
   var p = $('dBoxBody');
@@ -499,27 +499,28 @@ function renderDPanel(){
     + '<div class="row"><button id="dbL">◀</button><button id="dbR">▶</button><button id="dbDel" class="danger">' + t('btnDel') + '</button></div>';
   var fD = $('dfD'); fD.value = n.dept;
   fD.oninput = function(){
-    snap('e:' + sel + ':d');
-    var s = fD.selectionStart, up = fD.value.toUpperCase();
-    if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s, s); }catch(_){/**/} }
-    n.dept = fD.value; renderDoc();
+    mutate('e:' + sel + ':d', function(){
+      var s = fD.selectionStart, up = fD.value.toUpperCase();
+      if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s, s); }catch(_){/**/} }
+      n.dept = fD.value;
+    }, renderDoc);
   };
   var fC = $('dfC'); fC.value = n.title;
-  fC.oninput = function(){ snap('e:' + sel + ':c'); n.title = fC.value; renderDoc(); };
+  fC.oninput = function(){ mutate('e:' + sel + ':c', function(){ n.title = fC.value; }, renderDoc); };
   var fLv = $('dfLv'); fLv.checked = !n.hideLv;
-  fLv.onchange = function(){ snap(null); n.hideLv = !fLv.checked; renderDoc(); };
+  fLv.onchange = function(){ mutate(null, function(){ n.hideLv = !fLv.checked; }, renderDoc); };
   var fP = $('dfP'); fP.value = n.person;
-  fP.oninput = function(){ snap('e:' + sel + ':p'); n.person = fP.value; renderDoc(); };
+  fP.oninput = function(){ mutate('e:' + sel + ':p', function(){ n.person = fP.value; }, renderDoc); };
   var sT = $('dfT'); sT.value = n.t;
   sT.onchange = function(){ setT(sel, sT.value); };
   var fHc = $('dfHc'); fHc.value = leaf ? (n.hc == null ? '' : n.hc) : hcOf(sel);
   fHc.oninput = function(){ setHc(sel, fHc.value); };
   var fA = $('dfA'); fA.value = n.annot || '';
-  fA.onchange = function(){ snap(null); n.annot = fA.value; renderDoc(); };
+  fA.onchange = function(){ mutate(null, function(){ n.annot = fA.value; }, renderDoc); };
   var fS = $('dfStack');
-  if (fS){ fS.checked = !!n.stack; fS.onchange = function(){ snap(null); n.stack = fS.checked; renderDoc(); }; }
+  if (fS){ fS.checked = !!n.stack; fS.onchange = function(){ mutate(null, function(){ n.stack = fS.checked; }, renderDoc); }; }
   var fDesc = $('dfDesc'); fDesc.value = n.desc || '';
-  fDesc.oninput = function(){ snap('e:' + sel + ':desc'); n.desc = fDesc.value; renderDoc(); };
+  fDesc.oninput = function(){ mutate('e:' + sel + ':desc', function(){ n.desc = fDesc.value; }, renderDoc); };
   $('dbUp').onclick    = function(){ setRowShift(sel, (n.rowShift || 0) - 1); };
   $('dbDown').onclick  = function(){ setRowShift(sel, (n.rowShift || 0) + 1); };
   $('dbChild').onclick = function(){ addChild(sel); };
@@ -530,7 +531,7 @@ function renderDPanel(){
 }
 
 /* ---------- panel Trang ---------- */
-function docSet(key, fn){ snap('doc:' + key); fn(); renderDoc(); }
+function docSet(key, fn){ mutate('doc:' + key, fn, renderDoc); }   // thiết lập trang: gõ liên tục cùng một ô gộp một snapshot
 function renderDPage(){
   var p = $('dPageBody');
   function sel1(id, opts, val){
@@ -578,11 +579,11 @@ function renderDPage(){
   });
   renderDNotes();
   $('dpAddNote').onclick = function(){
-    snap(null);
-    var used = doc.notes.map(function(x){ return x.key; }), k = 'A';
-    while (used.indexOf(k) >= 0 && k < 'Z') k = String.fromCharCode(k.charCodeAt(0) + 1);
-    doc.notes.push({ key:k, text:'' });
-    renderDNotes(); renderDoc(); renderDPanel();
+    mutate(null, function(){
+      var used = doc.notes.map(function(x){ return x.key; }), k = 'A';
+      while (used.indexOf(k) >= 0 && k < 'Z') k = String.fromCharCode(k.charCodeAt(0) + 1);
+      doc.notes.push({ key:k, text:'' });
+    }, function(){ renderDNotes(); renderDoc(); renderDPanel(); });
     var last = document.querySelector('#dpNotes .noteRow:last-child input.txt'); if (last) last.focus();
   };
 }
@@ -596,7 +597,7 @@ function renderDNotes(){
     var del = document.createElement('button'); del.className = 'danger'; del.textContent = '✕'; del.title = t('tipDelNote');
     k.oninput  = function(){ docSet('note:' + i + ':k', function(){ nt.key = k.value.trim().slice(0, 3); }); renderDPanel(); };
     tx.oninput = function(){ docSet('note:' + i + ':t', function(){ nt.text = tx.value; }); };
-    del.onclick = function(){ snap(null); doc.notes.splice(i, 1); renderDNotes(); renderDoc(); renderDPanel(); };
+    del.onclick = function(){ mutate(null, function(){ doc.notes.splice(i, 1); }, function(){ renderDNotes(); renderDoc(); renderDPanel(); }); };
     row.appendChild(k); row.appendChild(tx); row.appendChild(del); host.appendChild(row);
   });
 }
@@ -607,13 +608,13 @@ function startRowDrag(id, e){
   return { id:id, y0:e.clientY, top:r.top, base:docView.rowBase.get(id), shift0:nodes.get(id).rowShift || 0, moved:false };
 }
 function moveRowDrag(d, e){
-  if (!d.moved){ if (Math.abs(e.clientY - d.y0) < 6) return; d.moved = true; snap(null); docRowDrag = { id:d.id }; }
+  // Cả lượt kéo là MỘT thay đổi: mutate ở bước đầu (snapshot + dirty + vẽ đường kẻ hàng), các bước sau chỉ đổi rowShift và vẽ lại
+  if (!d.moved){ if (Math.abs(e.clientY - d.y0) < 6) return; d.moved = true; mutate(null, function(){ docRowDrag = { id:d.id }; }, renderDoc); }
   var mm = (e.clientY - d.top) / (PX_PER_MM * dzoom);                 // toạ độ trang (mm)
   var chartY = (mm - docView.ty) / docView.scale;                     // toạ độ sơ đồ
   var target = Math.max(d.base, Math.round((chartY - DBOX.h / 2) / rowPitch()));
   var n = nodes.get(d.id), shift = target - d.base;
   if (shift !== (n.rowShift || 0)){ n.rowShift = shift; renderDoc(); }
-  else if (!$('docPage').querySelector('.drows')) renderDoc();        // lần đầu: chỉ để hiện đường kẻ hàng
 }
 function endRowDrag(d){
   if (!d.moved) return;
