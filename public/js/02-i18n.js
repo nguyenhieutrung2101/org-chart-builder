@@ -28,6 +28,7 @@ vi: {
   abMe:'Tôi là Trung. Tôi làm Org Builder cho chính công việc phê duyệt ngân sách hằng ngày, xuất phát từ một bực bội đơn giản: sơ đồ tổ chức đã biết ai duyệt cái gì, không ai nên phải gõ lại nó thành ma trận. "Affogato" là ly espresso đổ lên gelato đã nuôi phần lớn các commit.',
   l15a:'Tải PDF nhúng đúng font đang chọn (Arial / Times New Roman) lấy từ máy bạn trên Chrome/Edge; không lấy được thì dùng Liberation cùng metric.',
   l15b:'Chuyển cảnh và animation nhỏ khắp app: chuyển module/tab, toast, box pop/nháy/mờ, chip đáp xuống, bảng luồng nổi so le, minimap trượt mềm; tôn trọng reduced-motion.',
+  l15c:'Lõi dữ liệu chắc hơn: mọi thay đổi đi qua một cửa (undo, cảnh báo chưa lưu, vẽ lại luôn đi cùng nhau — hết lỗi Save rồi gõ tiếp không được cảnh báo); chỉ vẽ tab đang mở; dán Excel chỉ tự gán khi tên duy nhất và liệt kê dòng cần xem; file JSON trùng ID bị từ chối, tham chiếu hỏng được báo; test logic + fuzz chạy trong Node.',
   l14a:'Landing mới hai nửa màn hình với popup giới thiệu, Có gì mới, Về dự án; mặc định English; icon trên tab trình duyệt.',
   l14b:'Sửa viền trắng quanh nút khi popup mở (vòng focus của Chrome); focus bàn phím có vòng xanh riêng.',
   l13a:'Logo SVG dán vào là hiện ngay (cố định 8 mm, lọc script); thanh ngang nối con nằm ngay trên hàng con; badge không đè box; sơ đồ chỉ né khối ghi chú / bảng màu khi một box hoặc một đoạn đường kẻ thật sự chạm; bỏ chỉnh bề rộng box.',
@@ -86,8 +87,11 @@ vi: {
   noVlineDef:'(chưa định nghĩa ngành dọc)',
   // --- copy/paste bảng nhập liệu ---
   btnCopyTbl:'Copy', msgCopiedTbl:'Đã copy bảng — dán thẳng vào Excel',
-  pasteGrpHint:'Dán 3 cột từ Excel: <b>Mã FCG ⇥ Tên nhóm ⇥ Tên người CBQLNS</b> (cột CBQLNS được phép trống; khớp theo tên người của box ★ trên sơ đồ, không phân biệt hoa thường; trùng mã FCG thì cập nhật dòng cũ).',
+  pasteGrpHint:'Dán 3 cột từ Excel: <b>Mã FCG ⇥ Tên nhóm ⇥ Tên người CBQLNS</b> (cột CBQLNS được phép trống; khớp theo tên người của box ★ trên sơ đồ, không phân biệt hoa thường, chỉ tự gán khi có đúng một box ★ tên đó; trùng mã FCG thì cập nhật dòng cũ; dòng không gán được sẽ được liệt kê).',
   msgGrpImported:'Đã nhập {n} nhóm mới, cập nhật {u} nhóm trùng mã',
+  msgImportNotes:'{n} dòng cần xem lại: ',
+  impAmbCb:"'{name}': {n} box ★ trùng tên — chưa gán CBQLNS", impNoCb:"'{name}': không có box ★ tên này — chưa gán CBQLNS",
+  impAmbCode:"'{code}': {n} nhóm trùng mã — bỏ qua dòng", impAmbGrp:"'{name}': {n} nhóm trùng — FC để không nhóm",
   btnSave:'Lưu JSON', btnOpen:'Mở JSON', btnUndo:'↶ Hoàn tác',
   btnRoot:'＋ Box gốc', btnCopy:'Copy bảng', btnDrawio:'Xuất .drawio',
   tipZoomOut:'Thu nhỏ', tipZoomReset:'Về 100%', tipZoomIn:'Phóng to', btnZoomFit:'Vừa màn hình',
@@ -141,7 +145,8 @@ vi: {
   hiddenSuffix:' (đang ẩn {n} box)',
   msgSavedJson:'Đã tải orgchart.json',
   msgBadJson:'File không phải JSON hợp lệ — giữ nguyên dữ liệu hiện tại',
-  msgBadStruct:'Cấu trúc file không đúng — giữ nguyên dữ liệu hiện tại',
+  msgBadStructWhy:'File lỗi ({why}) — giữ nguyên dữ liệu hiện tại', msgDroppedRefs:'{n} tham chiếu hỏng đã bị bỏ (CBQLNS / nhóm / box vai trò / ô luật / ngành dọc)',
+  errBadRoot:'thiếu danh sách roots', errBadNode:'node không phải object', errDupId:'ID trùng {id}',
   msgOpened:'Đã mở file', msgReadFail:'Không đọc được file',
   msgNewerFile:'File lưu bằng bản mới hơn (schema v{v}, app này hỗ trợ tới v{s}) — đã mở, dữ liệu lạ có thể bị bỏ qua',
   msgRolesPruned:'Đã gỡ {n} box vai trò link tới box vừa xóa ({c} ô luật) — Ctrl+Z để hoàn tác',
@@ -159,7 +164,7 @@ vi: {
   grpHint:'Mỗi nhóm gán 1 CBQLNS (box có ★ bên tab Sơ đồ). Luồng duyệt tính theo nhóm.',
   grpEmpty:'Chưa có nhóm nào — bấm "＋ Nhóm" hoặc Dán từ Excel.',
   fcFilterPh:'Lọc nhanh theo mã / tên / nhóm…', btnPaste:'Dán từ Excel',
-  pasteHint:'Dán 3 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm</b> (cột nhóm được phép trống; nhóm chưa tồn tại sẽ được tạo và khớp theo tên, không phân biệt hoa thường).',
+  pasteHint:'Dán 3–4 cột từ Excel: <b>Mã FC ⇥ Tên ⇥ Tên nhóm ⇥ Mã nhóm</b> (hai cột nhóm được phép trống; nhóm tìm theo mã rồi theo tên, chỉ tự gán khi duy nhất, chưa có thì tạo; trùng thì FC để không nhóm và app liệt kê dòng cần xem).',
   btnPasteGo:'Nhập', btnPasteCancel:'Hủy',
   thFcCode:'Mã', thFcName:'Tên Fund Center', thFcGroup:'Nhóm',
   phCode:'Mã', phName:'Tên', optNoGroup:'(chưa gán nhóm)', tipDelFc:'Xóa FC',
@@ -215,6 +220,7 @@ en: {
   abMe:"I'm Trung. I built Org Builder for the budget-approval work I deal with every day, starting from a simple frustration: the org chart already knows who approves what, so nobody should have to retype it into a matrix. \"Affogato\" is the espresso-over-gelato that fuelled most of the commits.",
   l15a:'PDF download embeds the very font you picked (Arial / Times New Roman) from your computer on Chrome/Edge; falls back to the metric-compatible Liberation.',
   l15b:'Transitions and small animations across the app: module/tab switch, toast, box pop/flash/fade, chips landing, staggered result rows, eased minimap; honours reduced-motion.',
+  l15c:'Sturdier data core: every change goes through one door (undo, unsaved warning and redraw always travel together — no more "Save, keep typing, no warning"); only the open tab is drawn; Excel paste auto-assigns only unique names and lists rows to review; JSON files with duplicate ids are rejected and broken references reported; logic + fuzz tests run in Node.',
   l14a:"New split-screen landing with intro, What's new and About popups; English by default; browser-tab icon.",
   l14b:"Fixed the white ring around the popup button (Chrome's focus ring); custom blue keyboard-focus ring.",
   l13a:'Pasted SVG logo renders at once (fixed 8 mm, scripts stripped); the child bus sits right above the child row; badge clearance; the chart avoids the notes / legend blocks only when a box or a connector segment actually touches them; box width setting removed.',
@@ -268,8 +274,11 @@ en: {
   vlineBoxHint:"Drop into a cell: the approver becomes that group's BMO vertical-line superior (defined on the Vertical Line tab).",
   noVlineDef:'(vertical line not defined)',
   btnCopyTbl:'Copy', msgCopiedTbl:'Table copied — paste straight into Excel',
-  pasteGrpHint:'Paste 3 columns from Excel: <b>FCG code ⇥ Group name ⇥ BMO person name</b> (BMO column may be blank; matched against ★ box person names, case-insensitive; existing FCG codes are updated in place).',
+  pasteGrpHint:'Paste 3 columns from Excel: <b>FCG code ⇥ Group name ⇥ BMO person name</b> (BMO column may be blank; matched against ★ box person names, case-insensitive, only when exactly one ★ box has that name; existing FCG codes are updated in place; rows that could not be matched are listed).',
   msgGrpImported:'Imported {n} new groups, updated {u} matching codes',
+  msgImportNotes:'{n} rows to review: ',
+  impAmbCb:"'{name}': {n} ★ boxes share this name — BMO left blank", impNoCb:"'{name}': no ★ box with this name — BMO left blank",
+  impAmbCode:"'{code}': {n} groups share this code — row skipped", impAmbGrp:"'{name}': {n} groups match — FC left without a group",
   btnSave:'Save JSON', btnOpen:'Open JSON', btnUndo:'↶ Undo',
   btnRoot:'＋ Root box', btnCopy:'Copy table', btnDrawio:'Export .drawio',
   tipZoomOut:'Zoom out', tipZoomReset:'Reset to 100%', tipZoomIn:'Zoom in', btnZoomFit:'Fit to screen',
@@ -318,7 +327,8 @@ en: {
   hiddenSuffix:' ({n} boxes hidden)',
   msgSavedJson:'Downloaded orgchart.json',
   msgBadJson:'Not a valid JSON file — current data kept',
-  msgBadStruct:'Unexpected file structure — current data kept',
+  msgBadStructWhy:'Bad file ({why}) — current data kept', msgDroppedRefs:'{n} broken references dropped (BMO / group / role box / rule cell / vertical line)',
+  errBadRoot:'roots list missing', errBadNode:'node is not an object', errDupId:'duplicate id {id}',
   msgOpened:'File opened', msgReadFail:'Could not read the file',
   msgNewerFile:'Saved by a newer version (schema v{v}, this app supports up to v{s}) — opened, unknown data may be ignored',
   msgRolesPruned:'Removed {n} role box(es) linked to the deleted box ({c} rule cells) — Ctrl+Z to undo',
@@ -334,7 +344,7 @@ en: {
   grpHint:'Each group is assigned one BMO (★ box on the Org Chart tab). Flows are computed per group.',
   grpEmpty:'No groups yet — click "＋ Group" or Paste from Excel.',
   fcFilterPh:'Quick filter by code / name / group…', btnPaste:'Paste from Excel',
-  pasteHint:'Paste 3 columns from Excel: <b>FC code ⇥ Name ⇥ Group name</b> (the group column may be blank; unknown groups are created and matched by name, case-insensitive).',
+  pasteHint:'Paste 3–4 columns from Excel: <b>FC code ⇥ Name ⇥ Group name ⇥ Group code</b> (both group columns may be blank; groups are matched by code, then by name, only when unique; unknown groups are created; ambiguous ones leave the FC ungrouped and are listed for review).',
   btnPasteGo:'Import', btnPasteCancel:'Cancel',
   thFcCode:'Code', thFcName:'Fund Center name', thFcGroup:'Group',
   phCode:'Code', phName:'Name', optNoGroup:'(no group)', tipDelFc:'Delete FC',
@@ -403,9 +413,9 @@ var TCOLOR = {'ĐB':'#F0A6C0',CC:'#6B8FE8',T1:'#FFB98A',T2:'#A8D989',T3:'#FFD93D
 
 function $(id){ return document.getElementById(id); }
 function rnum(lv){ return LEVELS.indexOf(lv); }
-function msg(s){                                 // toast: viên mực trượt lên từ đáy, tự trượt xuống sau 3,5 s
+function msg(s){                                 // toast: viên mực trượt lên từ đáy; 3,5 s, thông báo dài (dòng cần xem lại) ở lâu hơn, tối đa 10 s
   var m = $('msg'); m.textContent = s; m.classList.add('show');
-  clearTimeout(msg._t); msg._t = setTimeout(function(){ m.classList.remove('show'); }, 3500);
+  clearTimeout(msg._t); msg._t = setTimeout(function(){ m.classList.remove('show'); }, Math.min(10000, 3500 + 25 * Math.max(0, s.length - 60)));
 }
 // Chạy lại animation CSS theo class (bỏ class, ép reflow, thêm lại) — cho phần tử không đi qua display:none
 function replay(el, cls){ if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }

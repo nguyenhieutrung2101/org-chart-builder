@@ -4,7 +4,9 @@
 /* [8a] Engine: ô = CBQLNS cố định, box vai trò chọn theo nhánh (Tất cả / VH / SM / BO / IT / KT / Còn lại),
    hoặc ngành dọc của CBQLNS (chế độ Ngành dọc). */
 var flowViewByFc = false;                     // false = gộp theo nhóm (mặc định)
-var refreshFlowResultSoon = debounce(function(){ renderFlowResult(); }, 150);
+// Gõ trong bảng nhóm/FC/CIG/box vai trò -> tính lại bảng kết quả sau khi ngừng gõ, chỉ khi tab Luồng duyệt đang mở
+// (tab ẩn đã được snap() đánh dấu cũ, sẽ vẽ lúc mở)
+var refreshFlowResultSoon = debounce(function(){ if (MOD === 'flow' && curTab === 'flow') renderFlowResult(); }, 150);
 
 function starredNodes(){
   var out = [];
@@ -75,7 +77,7 @@ function resolveCell(flow, col, seg, cb, grid){
 
 // renderFlow: dựng lại TOÀN BỘ tab (dùng khi đổi tab / undo / mở file / thay đổi từ tab Sơ đồ).
 // Các thao tác lẻ bên trong tab dùng cập nhật ĐÍCH DANH ở dưới, không gọi hàm này.
-function renderFlow(){ renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult(); }
+function renderFlow(animate){ renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult(animate); }
 
 /* ---------- [8b] NHÓM FC — bảng Mã FCG / Tên / CBQLNS, cập nhật đích danh ---------- */
 function groupLabel(g){ return (g.code ? g.code + ' · ' : '') + (g.name || t('groupUnnamed')); }
@@ -106,12 +108,13 @@ function groupRow(g){
 
   var td0 = document.createElement('td');
   var code = document.createElement('input'); code.placeholder = t('phFcg'); code.value = g.code || '';
-  code.oninput = function(){ snap('g:' + g.id + ':code'); g.code = code.value; patchGroupOptionLabels(g); refreshFlowResultSoon(); };
+  var patch = function(){ patchGroupOptionLabels(g); refreshFlowResultSoon(); };
+  code.oninput = function(){ mutate('g:' + g.id + ':code', function(){ g.code = code.value; }, patch); };
   td0.appendChild(code);
 
   var td1 = document.createElement('td');
   var inp = document.createElement('input'); inp.placeholder = t('phGrpName'); inp.value = g.name;
-  inp.oninput = function(){ snap('g:' + g.id + ':name'); g.name = inp.value; patchGroupOptionLabels(g); refreshFlowResultSoon(); };
+  inp.oninput = function(){ mutate('g:' + g.id + ':name', function(){ g.name = inp.value; }, patch); };
   td1.appendChild(inp);
 
   var td2 = document.createElement('td');
@@ -127,7 +130,7 @@ function groupRow(g){
     selE.appendChild(o);
   });
   selE.value = g.cbqlns || '';
-  selE.onchange = function(){ snap(null); g.cbqlns = selE.value || null; renderFlowResult(); };
+  selE.onchange = function(){ mutate(null, function(){ g.cbqlns = selE.value || null; }, renderFlowResult); };
   td2.appendChild(selE);
 
   var td3 = document.createElement('td');
@@ -140,10 +143,11 @@ function groupRow(g){
   cig.textContent = g.byCig ? t('grpCigSplit') : t('grpCigAll');
   cig.title = t('tipGrpCig');
   cig.onclick = function(){
-    snap(null); g.byCig = !g.byCig;
-    cig.textContent = g.byCig ? t('grpCigSplit') : t('grpCigAll');
-    cig.classList.toggle('on', g.byCig);
-    renderFlowResult();
+    mutate(null, function(){ g.byCig = !g.byCig; }, function(){
+      cig.textContent = g.byCig ? t('grpCigSplit') : t('grpCigAll');
+      cig.classList.toggle('on', g.byCig);
+      renderFlowResult();
+    });
   };
   tdC.appendChild(cig);
 
@@ -167,25 +171,27 @@ function renderGroups(){
   applyGrpFilter();
 }
 function addGroup(){
-  snap(null);
-  var g = { id:'g' + (gseq++), code:'', name:'', cbqlns:null };
-  fcGroups.push(g);
-  var empty = $('grpEmpty'); if (empty) empty.remove();
-  $('grpTbody').appendChild(groupRow(g));                      // append 1 hàng, không đập cả bảng
-  updateGroupCounts();
-  renderFlowResult();
+  var g = { id:'g' + (gseq++), code:'', name:'', cbqlns:null, byCig:false };   // cùng hình dạng với applyState/mergeGroupRows
+  mutate(null, function(){ fcGroups.push(g); }, function(){
+    var empty = $('grpEmpty'); if (empty) empty.remove();
+    $('grpTbody').appendChild(groupRow(g));                    // append 1 hàng, không đập cả bảng
+    updateGroupCounts();
+    renderFlowResult();
+  });
 }
 function delGroup(g, rowEl){
-  snap(null);
-  fcGroups = fcGroups.filter(function(x){ return x !== g; });
-  fcs.forEach(function(f){ if (f.groupId === g.id) f.groupId = null; });
-  if (rowEl) rowEl.remove();
-  document.querySelectorAll('#fcTbody select').forEach(function(s){   // dòng FC đang thuộc nhóm này -> về "Không"
-    if (s.value === g.id) fillGroupSelect(s, null, false);
+  mutate(null, function(){
+    fcGroups = fcGroups.filter(function(x){ return x !== g; });
+    fcs.forEach(function(f){ if (f.groupId === g.id) f.groupId = null; });
+  }, function(){
+    if (rowEl) rowEl.remove();
+    document.querySelectorAll('#fcTbody select').forEach(function(s){   // dòng FC đang thuộc nhóm này -> về "Không"
+      if (s.value === g.id) fillGroupSelect(s, null, false);
+    });
+    if (!fcGroups.length) renderGroups();
+    updateGroupCounts();
+    renderFlowResult();
   });
-  if (!fcGroups.length) renderGroups();
-  updateGroupCounts();
-  renderFlowResult();
 }
 function applyGrpFilter(){
   var qy = ($('grpFilter').value || '').toLowerCase();
@@ -213,23 +219,23 @@ function fcRow(f){
   var tr = document.createElement('tr'); tr.dataset.fcid = f.id;
   var td1 = document.createElement('td');
   var code = document.createElement('input'); code.placeholder = t('phCode'); code.value = f.code;
-  code.oninput = function(){ snap('fc:'+f.id+':code'); f.code = code.value; refreshFlowResultSoon(); };
+  code.oninput = function(){ mutate('fc:'+f.id+':code', function(){ f.code = code.value; }, refreshFlowResultSoon); };
   td1.appendChild(code);
   var td2 = document.createElement('td');
   var name = document.createElement('input'); name.placeholder = t('phName'); name.value = f.name;
-  name.oninput = function(){ snap('fc:'+f.id+':name'); f.name = name.value; refreshFlowResultSoon(); };
+  name.oninput = function(){ mutate('fc:'+f.id+':name', function(){ f.name = name.value; }, refreshFlowResultSoon); };
   td2.appendChild(name);
   var td3 = document.createElement('td');
   var selE = document.createElement('select');
   fillGroupSelect(selE, f.groupId, false);
   selE.onmousedown = selE.onfocus = function(){ if (selE.options.length !== fcGroups.length + 1) fillGroupSelect(selE, f.groupId, true); };
   selE.onblur = function(){ fillGroupSelect(selE, f.groupId, false); };
-  selE.onchange = function(){ snap(null); f.groupId = selE.value || null; updateGroupCounts(); renderFlowResult(); };
+  selE.onchange = function(){ mutate(null, function(){ f.groupId = selE.value || null; }, function(){ updateGroupCounts(); renderFlowResult(); }); };
   td3.appendChild(selE);
   var td4 = document.createElement('td');
   var del = document.createElement('button'); del.className='danger'; del.textContent='✕';
   del.title = t('tipDelFc');
-  del.onclick = function(){ snap(null); fcs = fcs.filter(function(x){ return x !== f; }); tr.remove(); updateGroupCounts(); renderFlowResult(); };
+  del.onclick = function(){ delFc(f, tr); };
   td4.appendChild(del);
   tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
   return tr;
@@ -239,14 +245,17 @@ function renderFcs(){
   fcs.forEach(function(f){ tb.appendChild(fcRow(f)); });
   applyFcFilter();
 }
+function delFc(f, rowEl){
+  mutate(null, function(){ fcs = fcs.filter(function(x){ return x !== f; }); }, function(){ if (rowEl) rowEl.remove(); updateGroupCounts(); renderFlowResult(); });
+}
 function addFc(){
-  snap(null);
   var f = { id:'f' + (fseq++), code:'', name:'', groupId:null };
-  fcs.push(f);
-  $('fcTbody').appendChild(fcRow(f));                          // append 1 dòng
-  updateGroupCounts();
-  applyFcFilter();
-  renderFlowResult();
+  mutate(null, function(){ fcs.push(f); }, function(){
+    $('fcTbody').appendChild(fcRow(f));                        // append 1 dòng
+    updateGroupCounts();
+    applyFcFilter();
+    renderFlowResult();
+  });
 }
 function applyFcFilter(){
   var qy = ($('fcFilter').value || '').toLowerCase();
@@ -271,69 +280,109 @@ function isHeaderRow(line){
   if (labels.indexOf(first) >= 0) return true;
   return /^(mã|ma|code|fcg?)(\s|$)/.test(first);
 }
-// Dán nhóm FCG: Mã ⇥ Tên ⇥ Tên người CBQLNS (khớp person của box ★, không phân biệt hoa thường);
-// trùng mã thì cập nhật dòng cũ thay vì tạo mới.
-function importGrpPaste(txt){
+/* ---------- dán từ Excel: tách dòng (thuần) -> gộp vào state (thuần) -> vỏ DOM ---------- */
+// Tách text dán thành mảng dòng × ô đã trim, bỏ dòng tiêu đề nếu có. Thuần — test Node gọi trực tiếp.
+function parsePaste(txt){
   var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
-  if (!lines.length){ msg(t('msgNothingImport')); return; }
-  if (isHeaderRow(lines[0])) lines.shift();
-  if (!lines.length){ msg(t('msgNothingImport')); return; }
-  snap(null);
-  var starByPerson = {};
-  starredNodes().forEach(function(n){
-    if (n.person) starByPerson[n.person.trim().toLowerCase()] = n.id;
-  });
-  var byCode = {};
-  fcGroups.forEach(function(g){ if (g.code) byCode[g.code.trim().toLowerCase()] = g; });
-  var nG = 0, nUp = 0;
-  lines.forEach(function(l){
-    var c = l.split('\t');
-    var code = (c[0]||'').trim(), name = (c[1]||'').trim(), person = (c[2]||'').trim();
+  if (lines.length && isHeaderRow(lines[0])) lines.shift();
+  return lines.map(function(l){ return l.split('\t').map(function(c){ return c.trim(); }); });
+}
+function normKey(v){ return String(v || '').trim().toLowerCase(); }
+// key chuẩn hoá -> MẢNG mục trùng key. Chỉ tự gán khi đúng một mục; trùng thì để trống và báo — không còn "mục sau đè mục trước"
+// (cùng một người kiêm nhiệm hai box ★, hai nhóm cùng tên: gán nhầm người duyệt mà không ai biết nguy hiểm hơn để trống).
+function multiIndex(list, keyFn){
+  var m = {};
+  list.forEach(function(x){ var k = normKey(keyFn(x)); if (k) (m[k] = m[k] || []).push(x); });
+  return m;
+}
+// Gộp dòng FCG (Mã ⇥ Tên ⇥ Tên người CBQLNS) vào fcGroups. Trùng mã -> cập nhật dòng cũ; CBQLNS khớp tên người của box ★,
+// chỉ gán khi duy nhất. Trả về { added, updated, notes[] } — notes = dòng cần người xem lại.
+function mergeGroupRows(rows){
+  var st = { added:0, updated:0, notes:[] };
+  var starByPerson = multiIndex(starredNodes(), function(n){ return n.person; });
+  var byCode = multiIndex(fcGroups, function(g){ return g.code; });
+  rows.forEach(function(c){
+    var code = c[0] || '', name = c[1] || '', person = c[2] || '';
     if (!code && !name) return;
-    var cb = person ? (starByPerson[person.toLowerCase()] || null) : null;
-    var ex = code ? byCode[code.toLowerCase()] : null;
-    if (ex){                                        // trùng mã -> cập nhật tên/CBQLNS
-      ex.name = name || ex.name;
-      if (cb) ex.cbqlns = cb;
-      nUp++;
-    } else {
+    var cb = null;
+    if (person){
+      var hits = starByPerson[normKey(person)] || [];
+      if (hits.length === 1) cb = hits[0].id;
+      else st.notes.push(hits.length ? tf('impAmbCb', { name:person, n:hits.length }) : tf('impNoCb', { name:person }));
+    }
+    var ex = code ? (byCode[normKey(code)] || []) : [];
+    if (ex.length > 1){ st.notes.push(tf('impAmbCode', { code:code, n:ex.length })); return; }
+    if (ex.length === 1){ ex[0].name = name || ex[0].name; if (cb) ex[0].cbqlns = cb; st.updated++; }
+    else {
       var g = { id:'g'+(gseq++), code:code, name:name, cbqlns:cb, byCig:false };
       fcGroups.push(g);
-      if (code) byCode[code.toLowerCase()] = g;
-      nG++;
+      if (code) byCode[normKey(code)] = [g];
+      st.added++;
     }
   });
-  $('pasteTaGrp').value = ''; $('pasteBoxGrp').style.display = 'none';
-  renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult();
-  msg(tf('msgGrpImported', { n: nG, u: nUp }));
+  return st;
 }
-// Dán FC: Mã ⇥ Tên ⇥ Tên nhóm. Nhóm khớp theo tên (không phân biệt hoa thường), chưa có thì tạo mới.
-function importPaste(txt){
-  var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
-  if (!lines.length){ msg(t('msgNothingImport')); return; }
-  if (isHeaderRow(lines[0])) lines.shift();
-  if (!lines.length){ msg(t('msgNothingImport')); return; }
-  snap(null);
-  var byName = {};
-  fcGroups.forEach(function(g){ byName[(g.name||'').trim().toLowerCase()] = g; });
-  var nFc = 0, nG = 0;
-  lines.forEach(function(l){
-    var c = l.split('\t');
-    var code = (c[0]||'').trim(), name = (c[1]||'').trim(), gn = (c[2]||'').trim();
+// Gộp dòng FC (Mã ⇥ Tên ⇥ Tên nhóm ⇥ [Mã nhóm]) vào fcs. Nhóm tìm theo MÃ trước (cột 4, rồi cột 3), không có thì theo tên,
+// chỉ gán khi duy nhất; chưa có thì tạo; trùng -> FC để không nhóm và báo. Trả về { added, groups, notes[] }.
+function mergeFcRows(rows){
+  var st = { added:0, groups:0, notes:[] };
+  var byCode = multiIndex(fcGroups, function(g){ return g.code; }), byName = multiIndex(fcGroups, function(g){ return g.name; });
+  function hits(ref){ var k = normKey(ref); if (!k) return []; var h = byCode[k] || []; return h.length ? h : (byName[k] || []); }
+  rows.forEach(function(c){
+    var code = c[0] || '', name = c[1] || '', gName = c[2] || '', gCode = c[3] || '';
     if (!code && !name) return;
-    var gid = null;
-    if (gn){
-      var key = gn.toLowerCase();
-      var g = byName[key];
-      if (!g){ g = { id:'g'+(gseq++), code:'', name:gn, cbqlns:null }; fcGroups.push(g); byName[key] = g; nG++; }
-      gid = g.id;
+    var h = gCode ? hits(gCode) : [];
+    if (!h.length && gName) h = hits(gName);
+    var g = null;
+    if (h.length === 1) g = h[0];
+    else if (h.length > 1) st.notes.push(tf('impAmbGrp', { name:gCode || gName, n:h.length }));
+    else if (gName || gCode){
+      g = { id:'g'+(gseq++), code:gCode, name:gName || gCode, cbqlns:null, byCig:false };
+      fcGroups.push(g); st.groups++;
+      if (gCode) byCode[normKey(gCode)] = [g];
+      if (gName) byName[normKey(gName)] = [g];
     }
-    fcs.push({ id:'f'+(fseq++), code:code, name:name, groupId:gid });
-    nFc++;
+    fcs.push({ id:'f'+(fseq++), code:code, name:name, groupId: g ? g.id : null });
+    st.added++;
   });
+  return st;
+}
+// Đuôi thông báo sau khi dán: số dòng cần xem lại + tối đa 3 lý do đầu
+function importNotes(st){
+  if (!st.notes.length) return '';
+  return ' · ' + tf('msgImportNotes', { n: st.notes.length }) + st.notes.slice(0, 3).join('; ') + (st.notes.length > 3 ? '; …' : '');
+}
+function importGrpPaste(txt){
+  var rows = parsePaste(txt);
+  if (!rows.length){ msg(t('msgNothingImport')); return; }
+  var st = mutate(null, function(){ return mergeGroupRows(rows); });
+  $('pasteTaGrp').value = ''; $('pasteBoxGrp').style.display = 'none';
+  msg(tf('msgGrpImported', { n: st.added, u: st.updated }) + importNotes(st));
+}
+function importPaste(txt){
+  var rows = parsePaste(txt);
+  if (!rows.length){ msg(t('msgNothingImport')); return; }
+  var st = mutate(null, function(){ return mergeFcRows(rows); });
   $('pasteTa').value = ''; $('pasteBox').style.display = 'none';
-  renderGroups(); renderFcs(); updateGroupCounts(); renderFlowResult();
-  msg(tf('msgImported', { n: nFc }) + (nG ? tf('msgImportedGroups', { g: nG }) : ''));
+  msg(tf('msgImported', { n: st.added }) + (st.groups ? tf('msgImportedGroups', { g: st.groups }) : '') + importNotes(st));
+}
+// TSV của hai bảng nhập liệu cho nút Copy — cùng cột với định dạng dán, nên copy ở app này rồi dán lại vẫn khớp đúng nhóm (theo mã)
+function groupsTsv(){
+  var lines = [ [t('thFcgCode'), t('thGrpName'), t('thCbqlns')].map(q).join('\t') ];
+  fcGroups.forEach(function(g){
+    var cb = cbqlnsOf(g);
+    lines.push([g.code || '', g.name || '', cb ? (cb.person || dispName(cb)) : ''].map(q).join('\t'));
+  });
+  return lines.join('\n');
+}
+function fcsTsv(){
+  var byId = new Map(fcGroups.map(function(g){ return [g.id, g]; }));
+  var lines = [ [t('thFcCode'), t('thFcName'), t('thFcGroup'), t('thFcgCode')].map(q).join('\t') ];
+  fcs.forEach(function(f){
+    var g = byId.get(f.groupId);
+    lines.push([f.code || '', f.name || '', g ? (g.name || '') : '', g ? (g.code || '') : ''].map(q).join('\t'));
+  });
+  return lines.join('\n');
 }
 
 /* ---------- [8d] BẢNG KẾT QUẢ — gộp theo nhóm / bung theo FC ---------- */
@@ -385,11 +434,11 @@ function flowBlocks(){
   }
   return blocks;
 }
-// animate=true: 30 dòng đầu nổi lên so le (đổi cách xem). Tự bật khi tab Luồng duyệt đang ẩn — animation chạy lúc tab hiện ra,
-// người dùng thấy bảng đã tính lại sau khi sửa luật; đang gõ trong tab (render lại liên tục) thì không.
+// animate=true: 30 dòng đầu nổi lên so le — khi tab vừa mở lại với dữ liệu mới (renderTab) hoặc đổi cách xem;
+// render lại trong lúc đang xem (gõ, đổi CBQLNS) thì không.
 function renderFlowResult(animate){
   var host = $('flowResult'); host.innerHTML = '';
-  var stagger = animate || MOD !== 'flow' || curTab !== 'flow', ri = 0;
+  var stagger = !!animate, ri = 0;
   if (!fcs.length && !fcGroups.length){
     host.innerHTML = '<div class="hint">' + t('flowEmptyHint') + '</div>';
     return;

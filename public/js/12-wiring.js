@@ -64,9 +64,7 @@ function showTab(which){
   $('tabBtnVline').classList.toggle('active', which === 'vline');
   $('tabBtnRules').classList.toggle('active', which === 'rules');
   $('tabBtnFlow').classList.toggle('active',  which === 'flow');
-  if (which === 'vline'){ renderVline(); renderVPanel(); }
-  if (which === 'rules') renderRules();
-  if (which === 'flow')  renderFlow();
+  if (staleTabs[which]) renderTab(which);        // tab có dữ liệu đổi từ lần vẽ cuối -> vẽ đúng lúc mở
 }
 $('tabBtnOrg').onclick   = function(){ showTab('org'); };
 $('tabBtnVline').onclick = function(){ showTab('vline'); };
@@ -190,25 +188,8 @@ $('bPasteGo').onclick     = function(){ importPaste($('pasteTa').value); };
 $('bPasteCancel').onclick = function(){ $('pasteTa').value=''; $('pasteBox').style.display='none'; };
 
 // Copy 2 bảng nhập liệu ra TSV (dán thẳng vào Excel) + dán nhóm FCG từ Excel
-$('bCopyGrp').onclick = function(){
-  if (!fcGroups.length){ msg(t('msgNothingCopy')); return; }
-  var lines = [ [t('thFcgCode'), t('thGrpName'), t('thCbqlns')].map(q).join('\t') ];
-  fcGroups.forEach(function(g){
-    var cb = cbqlnsOf(g);
-    lines.push([g.code || '', g.name || '', cb ? (cb.person || dispName(cb)) : ''].map(q).join('\t'));
-  });
-  copyText(lines.join('\n'), t('msgCopiedTbl'));
-};
-$('bCopyFc').onclick = function(){
-  if (!fcs.length){ msg(t('msgNothingCopy')); return; }
-  var gname = {};
-  fcGroups.forEach(function(g){ gname[g.id] = g.name || g.code || ''; });
-  var lines = [ [t('thFcCode'), t('thFcName'), t('thFcGroup')].map(q).join('\t') ];
-  fcs.forEach(function(f){
-    lines.push([f.code || '', f.name || '', f.groupId ? (gname[f.groupId] || '') : ''].map(q).join('\t'));
-  });
-  copyText(lines.join('\n'), t('msgCopiedTbl'));
-};
+$('bCopyGrp').onclick = function(){ if (!fcGroups.length){ msg(t('msgNothingCopy')); return; } copyText(groupsTsv(), t('msgCopiedTbl')); };
+$('bCopyFc').onclick  = function(){ if (!fcs.length){ msg(t('msgNothingCopy')); return; } copyText(fcsTsv(), t('msgCopiedTbl')); };
 $('bPasteGrp').onclick = function(){
   var pb = $('pasteBoxGrp');
   pb.style.display = (pb.style.display === 'none' || !pb.style.display) ? 'block' : 'none';
@@ -242,7 +223,7 @@ function showModule(m){
   $('landing').style.display  = m === 'landing' ? 'flex' : 'none';
   $('tabDoc').style.display   = m === 'doc' ? 'flex' : 'none';
   $('flowTabs').style.display = m === 'flow' ? '' : 'none';
-  if (m === 'flow'){ renderAll(); showTab(curTab); }
+  if (m === 'flow') showTab(curTab);             // tab cũ (dữ liệu đổi ở module khác) tự vẽ lại
   else ['tabOrg', 'tabVline', 'tabRules', 'tabFlow'].forEach(function(id){ $(id).style.display = 'none'; });
   if (m === 'doc'){ renderDocAll(); if (!dzoomInit){ dZoomFit(); dzoomInit = true; } }
   if (m === 'landing') landingEnter();
@@ -359,5 +340,4 @@ seedRules();
 $('ver').textContent = $('verCorner').textContent = 'version ' + APP_VER;
 applyStatic();
 applyTblCollapsed();
-renderAll();
 showModule(moduleFromHash());

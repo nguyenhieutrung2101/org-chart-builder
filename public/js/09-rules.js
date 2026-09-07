@@ -20,47 +20,47 @@ function usageCount(rid){                     // đếm trên mọi scenario, c�
 function dropRole(flow, col, rid){
   if (FIXED_CBQLNS[flow] === col){ msg(t('msgCellFixed')); return; }
   if (!roleById(rid)) return;
-  snap(null);
-  var g = curGrid();
-  var row = g[flow] || (g[flow] = {});
-  var a = row[col], placed = 'ALL';
-  // ô đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết (hoặc ô trống / "Tất cả" / mode Ngành dọc) thì thay bằng "Tất cả"
-  if (a && !a.ALL){
-    var free = BRANCHES.concat('REST').filter(function(s){ return !a[s]; })[0];
-    if (free){ a[free] = rid; placed = free; }
-  }
-  if (placed === 'ALL') row[col] = {ALL: rid};
-  animNextBox(chipKey(flow, col, placed), 'land');
-  renderRules(); renderFlowResult();
+  mutate(null, function(){
+    var g = curGrid();
+    var row = g[flow] || (g[flow] = {});
+    var a = row[col], placed = 'ALL';
+    // ô đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết (hoặc ô trống / "Tất cả" / mode Ngành dọc) thì thay bằng "Tất cả"
+    if (a && !a.ALL){
+      var free = BRANCHES.concat('REST').filter(function(s){ return !a[s]; })[0];
+      if (free){ a[free] = rid; placed = free; }
+    }
+    if (placed === 'ALL') row[col] = {ALL: rid};
+    animNextBox(chipKey(flow, col, placed), 'land');
+  });
 }
 function chipKey(flow, col, scope){ return 'chip:' + flow + ':' + col + ':' + scope; }   // id cho takeAnim của chip trong ô
 function cycleScope(flow, col, scope){   // Tất cả -> Vận hành -> Kinh doanh -> Hỗ trợ -> Còn lại -> ...
-  snap(null);
-  var a = curGrid()[flow][col];
-  var rid = a[scope];
-  var next = SCOPES[(SCOPES.indexOf(scope) + 1) % SCOPES.length];
-  // bỏ qua phạm vi đang bị box khác chiếm, tránh ghi đè
-  var guard = 0;
-  while (next !== 'ALL' && a[next] && a[next] !== rid && guard++ < SCOPES.length){
-    next = SCOPES[(SCOPES.indexOf(next) + 1) % SCOPES.length];
-  }
-  delete a[scope];
-  if (next === 'ALL'){ BRANCHES.concat('REST').forEach(function(s){ delete a[s]; }); a.ALL = rid; }
-  else { delete a.ALL; a[next] = rid; }
-  animNextBox(chipKey(flow, col, next), 'flip');
-  renderRules(); renderFlowResult();
+  var cur = (curGrid()[flow] || {})[col];
+  if (!cur || !cur[scope]) return;         // chip không tồn tại (gọi ngoài UI) -> không đụng ô
+  mutate(null, function(){
+    var a = curGrid()[flow][col];
+    var rid = a[scope];
+    var next = SCOPES[(SCOPES.indexOf(scope) + 1) % SCOPES.length];
+    // bỏ qua phạm vi đang bị box khác chiếm, tránh ghi đè
+    var guard = 0;
+    while (next !== 'ALL' && a[next] && a[next] !== rid && guard++ < SCOPES.length){
+      next = SCOPES[(SCOPES.indexOf(next) + 1) % SCOPES.length];
+    }
+    delete a[scope];
+    if (next === 'ALL'){ BRANCHES.concat('REST').forEach(function(s){ delete a[s]; }); a.ALL = rid; }
+    else { delete a.ALL; a[next] = rid; }
+    animNextBox(chipKey(flow, col, next), 'flip');
+  });
 }
 function removeAssign(flow, col, scope){
-  snap(null);
-  var row = curGrid()[flow], a = row[col];
-  delete a[scope];
-  if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
-  renderRules(); renderFlowResult();
+  mutate(null, function(){
+    var row = curGrid()[flow], a = row[col];
+    delete a[scope];
+    if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
+  });
 }
 function addFreeRole(){
-  snap(null);
-  roleBoxes.push({ id:'r' + (rseq++), kind:'free', title:'', person:'' });
-  renderRules();
+  mutate(null, function(){ roleBoxes.push({ id:'r' + (rseq++), kind:'free', title:'', person:'' }); });
   var last = document.querySelector('#roleList .roleCard:last-child input');
   if (last) last.focus();
 }
@@ -70,17 +70,15 @@ function addNodeRole(){
   if (roleBoxes.some(function(r){ return r.kind === 'node' && r.nodeId === nid; })){
     msg(t('msgBoxExists')); return;
   }
-  snap(null);
-  roleBoxes.push({ id:'r' + (rseq++), kind:'node', nodeId:nid, pdBelow:false });
-  renderRules();
+  mutate(null, function(){ roleBoxes.push({ id:'r' + (rseq++), kind:'node', nodeId:nid, pdBelow:false }); });
 }
 function deleteRole(rb){
   var used = usageCount(rb.id);
   if (used && !confirm(tf('cfmDelRole', { name: roleBoxName(rb), n: used }))) return;
-  snap(null);
-  roleBoxes = roleBoxes.filter(function(x){ return x !== rb; });
-  scrubRole(rb.id);
-  renderRules(); renderFlowResult();
+  mutate(null, function(){
+    roleBoxes = roleBoxes.filter(function(x){ return x !== rb; });
+    scrubRole(rb.id);
+  });
 }
 // Gỡ một box vai trò khỏi mọi ô luật (cả 2 chế độ, mọi scenario); trả về số ô đã gỡ
 function scrubRole(rid){
@@ -151,20 +149,14 @@ function chipEl(flow, col, scope, rid){
 function cigById(id){ return cigs.find(function(c){ return c.id === id; }) || null; }
 function setCurCig(id){
   if (id && !cigById(id)) id = '';
-  // lần đầu mở một CIG chưa có luật riêng -> chép từ "Chung" để chỉnh phần khác biệt
+  curCig = id;                                    // view-state, không vào snapshot
   var fam = gridFamily();
-  if (id && !fam[id]){
-    snap(null);
-    fam[id] = JSON.parse(JSON.stringify(fam[''] || {}));
-  }
-  curCig = id;
-  renderRules();
+  if (id && !fam[id]) mutate(null, function(){ fam[id] = JSON.parse(JSON.stringify(fam[''] || {})); });   // lần đầu mở CIG chưa có luật riêng -> chép từ "Chung"
+  else renderRules();
 }
 function setRuleMode(m){
   if (m === ruleMode) return;
-  snap(null);
-  ruleMode = m;
-  renderRules(); renderFlowResult();
+  mutate(null, function(){ ruleMode = m; });
 }
 function renderModeToggle(){
   var bF = $('modeFlow'), bV = $('modeVline');
@@ -210,31 +202,30 @@ function renderCigs(){
     var tr = document.createElement('tr');
     var td1 = document.createElement('td');
     var code = document.createElement('input'); code.value = c.code; code.placeholder = t('phCigCode');
-    code.oninput = function(){ snap('cig:'+c.id+':code'); c.code = code.value; renderCigToggle(); refreshFlowResultSoon(); };
+    code.oninput = function(){ mutate('cig:'+c.id+':code', function(){ c.code = code.value; }, function(){ renderCigToggle(); refreshFlowResultSoon(); }); };
     td1.appendChild(code);
     var td2 = document.createElement('td');
     var name = document.createElement('input'); name.value = c.name; name.placeholder = t('phCigName');
-    name.oninput = function(){ snap('cig:'+c.id+':name'); c.name = name.value; refreshFlowResultSoon(); };
+    name.oninput = function(){ mutate('cig:'+c.id+':name', function(){ c.name = name.value; }, refreshFlowResultSoon); };
     td2.appendChild(name);
     var td3 = document.createElement('td');
     var del = document.createElement('button'); del.className = 'danger'; del.textContent = '✕';
     del.title = t('tipDelCig');
-    del.onclick = function(){
-      snap(null);
-      cigs = cigs.filter(function(x){ return x !== c; });
-      delete ruleGrids[c.id]; delete vlineGrids[c.id]; // luật riêng của CIG đó bỏ theo (cả 2 chế độ)
-      if (curCig === c.id) curCig = '';
-      renderCigToggle(true); renderRules(); renderFlowResult();
-    };
+    del.onclick = function(){ delCig(c); };
     td3.appendChild(del);
     tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
     tb.appendChild(tr);
   });
 }
+function delCig(c){
+  mutate(null, function(){
+    cigs = cigs.filter(function(x){ return x !== c; });
+    delete ruleGrids[c.id]; delete vlineGrids[c.id]; // luật riêng của CIG đó bỏ theo (cả 2 chế độ)
+    if (curCig === c.id) curCig = '';
+  });
+}
 function addCig(){
-  snap(null);
-  cigs.push({ id:'c' + (cseq++), code:'', name:'' });
-  renderCigs(); renderCigToggle(true);
+  mutate(null, function(){ cigs.push({ id:'c' + (cseq++), code:'', name:'' }); });
   var last = document.querySelector('#cigTbody tr:last-child input');
   if (last) last.focus();
 }
@@ -331,16 +322,11 @@ function renderRolePalette(){
     card.appendChild(top);
     if (rb.kind === 'free'){
       var fT = document.createElement('input'); fT.placeholder = t('phRoleTitle'); fT.value = rb.title;
-      fT.oninput = function(){
-        snap('r:' + rb.id + ':t'); rb.title = fT.value;
-        ttl.textContent = roleBoxName(rb); patchRoleChips(rb); refreshFlowResultSoon();
-      };
+      var patch = function(){ ttl.textContent = roleBoxName(rb); patchRoleChips(rb); refreshFlowResultSoon(); };
+      fT.oninput = function(){ mutate('r:' + rb.id + ':t', function(){ rb.title = fT.value; }, patch); };
       var fP = document.createElement('input'); fP.placeholder = t('phRolePerson'); fP.value = rb.person;
       fP.style.fontStyle = 'italic';
-      fP.oninput = function(){
-        snap('r:' + rb.id + ':p'); rb.person = fP.value;
-        patchRoleChips(rb); refreshFlowResultSoon();
-      };
+      fP.oninput = function(){ mutate('r:' + rb.id + ':p', function(){ rb.person = fP.value; }, patch); };
       card.appendChild(fT); card.appendChild(fP);
     } else {
       var pr = rolePair(rb);
@@ -355,7 +341,7 @@ function renderRolePalette(){
       if (hasStarBelow(rb.nodeId)){
         var ckw = document.createElement('label'); ckw.className = 'pdCk';
         var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!rb.pdBelow;
-        cb.onchange = function(){ snap(null); rb.pdBelow = cb.checked; renderRules(); renderFlowResult(); };
+        cb.onchange = function(){ mutate(null, function(){ rb.pdBelow = cb.checked; }); };
         ckw.appendChild(cb);
         ckw.appendChild(document.createTextNode(t('ckPdBelow')));
         ckw.title = t('tipPdBelow');

@@ -58,10 +58,22 @@ function ser(id){
 function saveJSON(){
   dl(new Blob([JSON.stringify(serializeAll(), null, 1)], {type:'application/json'}), 'orgchart.json');
   dirty = false;
+  lastSnapKey = null;                              // mốc mới: lần gõ đầu tiên sau Save chụp đúng trạng thái vừa lưu
   msg(t('msgSavedJson'));
 }
+// Đọc một document (file JSON hoặc snapshot Undo) vào state. Kiểm tra: cấu trúc, ID hợp lệ và DUY NHẤT theo từng loại
+// (trùng -> ném lỗi, file bị từ chối vì không biết tham chiếu trỏ vào bản nào), cấp con >= cấp cha; ID thiếu/sai định dạng
+// thì cấp mới. Tham chiếu hỏng (CBQLNS, nhóm của FC, box vai trò, ô luật, grid theo CIG, node ngành dọc import) bị bỏ và
+// đếm vào kết quả trả về { dropped:[...] } để loadJSON báo cho người dùng thay vì im lặng.
 function applyState(d){
-  if (!d || typeof d !== 'object' || !Array.isArray(d.roots)) throw new Error('bad root');
+  if (!d || typeof d !== 'object' || !Array.isArray(d.roots)) throw new Error(t('errBadRoot'));
+  var dropped = [];
+  function idIn(o, prefix, seen){                // ID hợp lệ + chưa gặp -> dùng; sai định dạng -> null (cấp mới); trùng -> lỗi
+    if (!(typeof o.id === 'string' && new RegExp('^' + prefix + '\\d+$').test(o.id))) return null;
+    if (seen.has(o.id)) throw new Error(tf('errDupId', { id:o.id }));
+    seen.add(o.id); return o.id;
+  }
+  function maxOf(seen){ var m = 0; seen.forEach(function(id){ var v = parseInt(id.slice(1), 10); if (v > m) m = v; }); return m; }
 
   var used = new Set(), maxN = 0;
   (function scan(list){
@@ -75,14 +87,14 @@ function applyState(d){
   })(d.roots);
   function genId(){ do { maxN++; } while (used.has('n'+maxN)); return 'n'+maxN; }
 
-  var tN = new Map(), tRoots = [], tFocus = null;
+  var tN = new Map(), tRoots = [], tFocus = null, seenN = new Set();
   function mk(o, parentId){
-    if (!o || typeof o !== 'object') throw new Error('bad node');
+    if (!o || typeof o !== 'object') throw new Error(t('errBadNode'));
     var pr = parentId ? rnum(tN.get(parentId).t) : 0;
     var r  = rnum(o.t);
     if (r < 0) r = parentId ? Math.min(LMAX, pr+1) : rnum('CC');
     if (parentId && r < pr) r = pr;
-    var id = (typeof o.id === 'string' && /^n\d+$/.test(o.id) && !tN.has(o.id)) ? o.id : genId();
+    var id = idIn(o, 'n', seenN) || genId();
     // file cũ (v≤7) dùng cờ boolean vh -> quy về nhánh 'VH'; một loại nhánh gán được nhiều box
     var br = (o.br && BRANCHES.indexOf(o.br) >= 0) ? o.br : (o.vh ? 'VH' : '');
     tN.set(id, { id:id,
@@ -103,50 +115,47 @@ function applyState(d){
   }
   d.roots.forEach(function(rt){ tRoots.push(mk(rt, null)); });
 
-  var tCig = [], maxC = 0;
+  var tCig = [], seenC = new Set();
   (Array.isArray(d.cigs) ? d.cigs : []).forEach(function(c){
     if (!c || typeof c !== 'object') return;
-    var okId = (typeof c.id === 'string' && /^c\d+$/.test(c.id));
-    if (okId){ var v = parseInt(c.id.slice(1), 10); if (v > maxC) maxC = v; }
-    tCig.push({ id: okId ? c.id : ('c' + (++maxC)), code:String(c.code||''), name:String(c.name||'') });
+    tCig.push({ id: idIn(c, 'c', seenC), code:String(c.code||''), name:String(c.name||'') });
   });
+  var maxC = maxOf(seenC);
+  tCig.forEach(function(c){ if (!c.id){ c.id = 'c' + (++maxC); } });
 
-  var tG = [], tF = [], maxG = 0, maxF = 0;
+  var tG = [], tF = [], seenG = new Set(), seenF = new Set();
   (Array.isArray(d.fcGroups) ? d.fcGroups : []).forEach(function(g){
     if (!g || typeof g !== 'object') return;
-    var okId = (typeof g.id === 'string' && /^g\d+$/.test(g.id));
-    if (okId){ var v = parseInt(g.id.slice(1), 10); if (v > maxG) maxG = v; }
     var cbOk = g.cbqlns && tN.has(g.cbqlns);
-    tG.push({ id: okId ? g.id : ('g' + (++maxG)),
-              code: String(g.code||''),
-              name: String(g.name||''),
-              cbqlns: cbOk ? g.cbqlns : null,
-              byCig: !!g.byCig });
+    if (g.cbqlns && !cbOk) dropped.push('group ' + (g.code || g.name || g.id) + ' cbqlns ' + g.cbqlns);
+    tG.push({ id: idIn(g, 'g', seenG), code: String(g.code||''), name: String(g.name||''), cbqlns: cbOk ? g.cbqlns : null, byCig: !!g.byCig });
   });
+  var maxG = maxOf(seenG);
+  tG.forEach(function(g){ if (!g.id) g.id = 'g' + (++maxG); });
   (Array.isArray(d.fcs) ? d.fcs : []).forEach(function(x){
     if (!x || typeof x !== 'object') return;
-    var okId = (typeof x.id === 'string' && /^f\d+$/.test(x.id));
-    if (okId){ var v = parseInt(x.id.slice(1), 10); if (v > maxF) maxF = v; }
-    var gid = tG.some(function(g){ return g.id === x.groupId; }) ? x.groupId : null;
-    tF.push({ id: okId ? x.id : ('f' + (++maxF)),
-              code: String(x.code||''), name: String(x.name||''), groupId: gid });
+    var gOk = tG.some(function(g){ return g.id === x.groupId; });
+    if (x.groupId && !gOk) dropped.push('fc ' + (x.code || x.id) + ' group ' + x.groupId);
+    tF.push({ id: idIn(x, 'f', seenF), code: String(x.code||''), name: String(x.name||''), groupId: gOk ? x.groupId : null });
   });
+  var maxF = maxOf(seenF);
+  tF.forEach(function(f){ if (!f.id) f.id = 'f' + (++maxF); });
   // Box vai trò + ma trận luật; file bản cũ (chưa có roleBoxes) -> dựng bộ mặc định, giữ tên từ finance cũ
-  var tRB = [], maxR = 0;
+  var tRB = [], seenR = new Set();
   (Array.isArray(d.roleBoxes) ? d.roleBoxes : []).forEach(function(rb){
     if (!rb || typeof rb !== 'object') return;
-    var okId = (typeof rb.id === 'string' && /^r\d+$/.test(rb.id));
-    if (okId){ var v = parseInt(rb.id.slice(1), 10); if (v > maxR) maxR = v; }
-    var id = okId ? rb.id : ('r' + (++maxR));
+    var id = idIn(rb, 'r', seenR);
     if (rb.kind === 'node'){
-      if (typeof rb.nodeId === 'string' && tN.has(rb.nodeId))
-        tRB.push({ id:id, kind:'node', nodeId:rb.nodeId, pdBelow: !!rb.pdBelow });
+      if (typeof rb.nodeId === 'string' && tN.has(rb.nodeId)) tRB.push({ id:id, kind:'node', nodeId:rb.nodeId, pdBelow: !!rb.pdBelow });
+      else dropped.push('role ' + (rb.id || '?') + ' node ' + rb.nodeId);
     } else {
       tRB.push({ id:id, kind:'free', title:String(rb.title||''), person:String(rb.person||'') });
     }
   });
+  var maxR = maxOf(seenR);
+  tRB.forEach(function(r){ if (!r.id) r.id = 'r' + (++maxR); });
   // Luật: bản mới là ruleGrids theo scenario; bản cũ chỉ có ruleGrid -> thành scenario Chung ('')
-  function cleanGrid(src){
+  function cleanGrid(src, label){
     var out = {};
     if (!src || typeof src !== 'object') return out;
     FLOWS.forEach(function(fl){
@@ -160,6 +169,7 @@ function applyState(d){
         SCOPES.forEach(function(s){
           if (typeof a[s] !== 'string') return;
           if (a[s] === VLINE || tRB.some(function(r){ return r.id === a[s]; })) o[s] = a[s];
+          else dropped.push('rule ' + label + ' ' + fl + '/' + c + ' role ' + a[s]);
         });
         if (o.ALL) BRANCHES.concat('REST').forEach(function(s){ delete o[s]; });  // "Tất cả" đứng một mình
         if (SCOPES.some(function(s){ return o[s]; })) (out[fl] = out[fl] || {})[c] = o;
@@ -167,42 +177,42 @@ function applyState(d){
     });
     return out;
   }
-  function cleanFamily(src, legacy){
+  function cleanFamily(src, legacy, label){
     var out = { '': {} };
     if (src && typeof src === 'object'){
       Object.keys(src).forEach(function(k){
-        if (k !== '' && !tCig.some(function(c){ return c.id === k; })) return;  // grid mồ côi -> bỏ
-        out[k] = cleanGrid(src[k]);
+        if (k !== '' && !tCig.some(function(c){ return c.id === k; })){ dropped.push('grid ' + label + ' cig ' + k); return; }  // grid mồ côi -> bỏ
+        out[k] = cleanGrid(src[k], label + (k ? '/' + k : ''));
       });
     } else if (legacy && typeof legacy === 'object'){
-      out[''] = cleanGrid(legacy);
+      out[''] = cleanGrid(legacy, label);
     }
     return out;
   }
-  var tGrids  = cleanFamily(d.ruleGrids, d.ruleGrid);
-  var tVGrids = cleanFamily(d.vlineGrids, null);
+  var tGrids  = cleanFamily(d.ruleGrids, d.ruleGrid, 'flow');
+  var tVGrids = cleanFamily(d.vlineGrids, null, 'vline');
 
-  // Cây ngành dọc: node imported phải trỏ tới box còn tồn tại; hỏng thì hạ xuống manual rỗng? -> bỏ hẳn
-  var tVN = new Map(), tVRoots = [], maxV = 0;
+  // Cây ngành dọc: node import phải trỏ tới box còn tồn tại; hỏng thì bỏ cả nhánh đó (và báo). ID: quét trước để cấp mới không đụng ID có sẵn.
+  var usedV = new Set(), maxV = 0;
+  (function scanV(list){
+    list.forEach(function(o){
+      if (o && typeof o.id === 'string' && /^v\d+$/.test(o.id)){ usedV.add(o.id); var v = parseInt(o.id.slice(1), 10); if (v > maxV) maxV = v; }
+      if (o && Array.isArray(o.children)) scanV(o.children);
+    });
+  })(Array.isArray(d.vroots) ? d.vroots : []);
+  function genV(){ do { maxV++; } while (usedV.has('v'+maxV)); return 'v'+maxV; }
+  var tVN = new Map(), tVRoots = [], seenV = new Set();
   function vmk(o, parentId){
     if (!o || typeof o !== 'object') return null;
-    var okId = (typeof o.id === 'string' && /^v\d+$/.test(o.id) && !tVN.has(o.id));
-    if (okId){ var vv = parseInt(o.id.slice(1), 10); if (vv > maxV) maxV = vv; }
-    var id = okId ? o.id : ('v' + (++maxV));
     var orgId = (typeof o.orgId === 'string' && tN.has(o.orgId)) ? o.orgId : null;
-    if (o.orgId && !orgId) return null;            // box SĐTC đã xóa -> bỏ node import mồ côi
+    if (o.orgId && !orgId){ dropped.push('vnode ' + (o.id || '?') + ' org ' + o.orgId); return null; }
+    var id = idIn(o, 'v', seenV) || genV();
     tVN.set(id, { id:id, dept:String(o.dept||'').toUpperCase(), title:String(o.title||''),
                   person:String(o.person||''), orgId:orgId, parent:parentId, children:[] });
-    (o.children || []).forEach(function(c){
-      var cid = vmk(c, id);
-      if (cid) tVN.get(id).children.push(cid);
-    });
+    (o.children || []).forEach(function(c){ var cid = vmk(c, id); if (cid) tVN.get(id).children.push(cid); });
     return id;
   }
-  (Array.isArray(d.vroots) ? d.vroots : []).forEach(function(rt){
-    var id = vmk(rt, null);
-    if (id) tVRoots.push(id);
-  });
+  (Array.isArray(d.vroots) ? d.vroots : []).forEach(function(rt){ var id = vmk(rt, null); if (id) tVRoots.push(id); });
 
   nodes = tN; rootIds = tRoots; focusId = tFocus;
   fcGroups = tG; fcs = tF;
@@ -218,18 +228,21 @@ function applyState(d){
   curCig = '';
   doc = cleanDoc(d.doc);
   sel = null;
+  return { dropped: dropped };
 }
 function loadJSON(file){
   file.text().then(function(txt){
     var d;
     try { d = JSON.parse(txt); }
     catch(e){ msg(t('msgBadJson')); return; }
-    try { applyState(d); }
-    catch(e){ msg(t('msgBadStruct')); return; }
+    var st;
+    try { st = applyState(d); }
+    catch(e){ msg(tf('msgBadStructWhy', { why: e.message })); return; }
     undoStack.length = 0; lastSnapKey = null; dirty = false;
     renderAll();
-    if (typeof d.v === 'number' && d.v > SCHEMA_V) msg(tf('msgNewerFile', { v: d.v, s: SCHEMA_V }));
-    else msg(t('msgOpened'));
+    var note = st.dropped.length ? ' · ' + tf('msgDroppedRefs', { n: st.dropped.length }) : '';   // tham chiếu hỏng bị bỏ: nói ra, không im lặng
+    if (typeof d.v === 'number' && d.v > SCHEMA_V) msg(tf('msgNewerFile', { v: d.v, s: SCHEMA_V }) + note);
+    else msg(t('msgOpened') + note);
   }).catch(function(){ msg(t('msgReadFail')); });
 }
 function xesc(s){

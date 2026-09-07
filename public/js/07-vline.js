@@ -91,14 +91,16 @@ function renderVPanel(){
   var fC = $('vfC'); fC.value = dp.title;
   var fP = $('vfP'); fP.value = dp.person;
   if (!imported){
+    var patch = function(){ patchVNodeText(n); };
     fD.oninput = function(){
-      snap('v:' + vsel + ':d');
-      var s0 = fD.selectionStart, up = fD.value.toUpperCase();
-      if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s0,s0); }catch(_){/**/} }
-      n.dept = fD.value; patchVNodeText(n);
+      mutate('v:' + vsel + ':d', function(){
+        var s0 = fD.selectionStart, up = fD.value.toUpperCase();
+        if (up !== fD.value){ fD.value = up; try{ fD.setSelectionRange(s0,s0); }catch(_){/**/} }
+        n.dept = fD.value;
+      }, patch);
     };
-    fC.oninput = function(){ snap('v:' + vsel + ':c'); n.title = fC.value; patchVNodeText(n); };
-    fP.oninput = function(){ snap('v:' + vsel + ':p'); n.person = fP.value; patchVNodeText(n); };
+    fC.oninput = function(){ mutate('v:' + vsel + ':c', function(){ n.title = fC.value; }, patch); };
+    fP.oninput = function(){ mutate('v:' + vsel + ':p', function(){ n.person = fP.value; }, patch); };
   }
   $('vbChild').onclick = function(){ vAdd(vsel); };
   $('vbSib').onclick   = function(){ vAddSib(vsel); };
@@ -123,27 +125,23 @@ function vnn(dept, title, person, orgId, parent){
                    parent:parent||null, children:[] });
   return id;
 }
+// Thêm node: chọn luôn node mới (vsel là view-state, renderAll vẽ tab Ngành dọc với node đang chọn) rồi đưa focus vào ô đầu
 function vAddRoot(){
-  snap(null);
-  var id = vnn('','','',null,null);
-  vroots.push(id);
-  renderVline(); vselect(id);
+  mutate(null, function(){ vsel = vnn('','','',null,null); vroots.push(vsel); });
   var f = $('vfD'); if (f) f.focus();
 }
 function vAdd(pid){
-  snap(null);
-  var id = vnn('','','',null,pid);
-  vnodes.get(pid).children.push(id);
-  renderVline(); vselect(id);
+  mutate(null, function(){ vsel = vnn('','','',null,pid); vnodes.get(pid).children.push(vsel); });
   var f = $('vfD'); if (f) f.focus();
 }
 function vAddSib(id){
-  var n = vnodes.get(id);
-  snap(null);
-  var nid = vnn('','','',null,n.parent);
-  var arr = n.parent ? vnodes.get(n.parent).children : vroots;
-  arr.splice(arr.indexOf(id) + 1, 0, nid);
-  renderVline(); vselect(nid);
+  mutate(null, function(){
+    var n = vnodes.get(id);
+    var nid = vnn('','','',null,n.parent);
+    var arr = n.parent ? vnodes.get(n.parent).children : vroots;
+    arr.splice(arr.indexOf(id) + 1, 0, nid);
+    vsel = nid;
+  });
   var f = $('vfD'); if (f) f.focus();
 }
 function vMove(id, dir){
@@ -151,9 +149,7 @@ function vMove(id, dir){
   var arr = n.parent ? vnodes.get(n.parent).children : vroots;
   var i = arr.indexOf(id), j = i + dir;
   if (j < 0 || j >= arr.length) return;
-  snap(null);
-  arr[i] = arr[j]; arr[j] = id;
-  renderVline(); vselect(id);
+  mutate(null, function(){ arr[i] = arr[j]; arr[j] = id; });
 }
 function vSubCount(id){
   var c = 1; vnodes.get(id).children.forEach(function(x){ c += vSubCount(x); });
@@ -165,15 +161,15 @@ function vDel(id){
   if (n.children.length &&
       !confirm(tf('cfmDelNode', { name: nm.dept || nm.title || nm.person || t('emptyBox'),
                                   n: vSubCount(id)-1 }))) return;
-  snap(null);
-  (function rm(x){
-    vnodes.get(x).children.forEach(rm);
-    vnodes.delete(x);
-  })(id);
-  var arr = n.parent && vnodes.has(n.parent) ? vnodes.get(n.parent).children : vroots;
-  var i = arr.indexOf(id); if (i >= 0) arr.splice(i, 1);
-  vsel = null;
-  renderVline(); renderVPanel(); refreshFlowResultSoon();
+  mutate(null, function(){
+    (function rm(x){
+      vnodes.get(x).children.forEach(rm);
+      vnodes.delete(x);
+    })(id);
+    var arr = n.parent && vnodes.has(n.parent) ? vnodes.get(n.parent).children : vroots;
+    var i = arr.indexOf(id); if (i >= 0) arr.splice(i, 1);
+    vsel = null;
+  });
 }
 // Import: chỉ box ★ CBQLNS chưa có mặt trên cây ngành dọc
 function fillVImportPick(){
@@ -196,10 +192,11 @@ function vImport(){
   var nid = $('vImportPick').value;
   if (!nid || !nodes.has(nid)){ msg(t('msgPickStar')); return; }
   if (!vsel || !vnodes.has(vsel)){ msg(t('msgPickVParent')); return; }
-  snap(null);
-  var id = vnn('','','', nid, vsel);
-  vnodes.get(vsel).children.push(id);
-  renderVline(); vselect(id); refreshFlowResultSoon();
+  mutate(null, function(){
+    var id = vnn('','','', nid, vsel);
+    vnodes.get(vsel).children.push(id);
+    vsel = id;
+  });
 }
 // Box SĐTC bị xóa -> gỡ node import mồ côi (con của nó nối lên cha)
 function pruneVlineOrphans(){
