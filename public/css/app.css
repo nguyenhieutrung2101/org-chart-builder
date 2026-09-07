@@ -12,7 +12,9 @@
   --green:#A8D989; --cyan:#7ECEE0; --lilac:#C3AEE8; --peach:#FFB98A;
   --rose:#F0A6C0;                       /* phạm vi "Còn lại" — tách khỏi tím của Kế toán */
   --muted:#8C857A;
-  --bd:2px solid var(--ink); --r:6px; --sh:2px 2px 0 var(--ink);
+  --bd:2px solid var(--ink); --r:6px;
+  /* shadow cứng vẽ 2 lớp lệch 1px: lấp khe khử răng cưa giữa viền và shadow khi phần tử đứng ở toạ độ lẻ pixel */
+  --sh:2px 2px 0 var(--ink), 1px 1px 0 var(--ink);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -336,7 +338,7 @@ tr.hideRow{display:none}
 #landingBox h2{font-size:17px;font-weight:800;margin:0 0 18px;letter-spacing:.06em;text-transform:uppercase}
 #landingCards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
 .modCard{flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 18px;
-         text-align:center;font:inherit;border:var(--bd);border-radius:var(--r);box-shadow:4px 4px 0 var(--ink);cursor:pointer}
+         text-align:center;font:inherit;border:var(--bd);border-radius:var(--r);box-shadow:4px 4px 0 var(--ink),2px 2px 0 var(--ink),1px 1px 0 var(--ink);cursor:pointer}
 .modCard:hover{transform:translate(4px,4px);box-shadow:none}
 .modCard .modIcon{font-size:36px;line-height:1}
 .modCard b{font-size:15px}
@@ -351,7 +353,7 @@ tr.hideRow{display:none}
 #docWrap{flex:1;overflow:auto;background:var(--wash);padding:22px;cursor:grab;touch-action:none;user-select:none}
 #docWrap.panning{cursor:grabbing}
 #docPage{display:inline-block;vertical-align:top}
-#docPage svg{display:block;background:#fff;border:var(--bd);box-shadow:4px 4px 0 var(--ink)}
+#docPage svg{display:block;background:#fff;border:var(--bd);box-shadow:4px 4px 0 var(--ink),2px 2px 0 var(--ink),1px 1px 0 var(--ink)}
 #dpanel{width:300px;flex:none;overflow:auto;border-left:var(--bd);background:var(--wash);padding:10px;display:flex;flex-direction:column;gap:10px}
 .dcard{border:var(--bd);border-radius:var(--r);box-shadow:var(--sh);background:var(--paper);padding:10px}
 .dcard.collapsed>.cardH{border-bottom:none;margin-bottom:0}
