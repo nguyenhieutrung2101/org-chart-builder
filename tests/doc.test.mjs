@@ -204,6 +204,20 @@ check('box added in flow module appears in doc module with blank presentation fi
 const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#bPdf')]);
 const pdfBuf = fs.readFileSync(await dl.path());
 check('PDF download is a real PDF with embedded LiberationSerif', pdfBuf.subarray(0, 5).toString() === '%PDF-' && /LiberationSerif/.test(pdfBuf.toString('latin1')), pdfBuf.length + 'B');
+// Font máy (Local Font Access): giả lập queryLocalFonts trả "Times New Roman" bằng bytes Liberation Sans -> PDF phải nhúng đúng bộ đó thay vì Liberation Serif
+const b64 = (f) => fs.readFileSync(new URL('../public/fonts/' + f, import.meta.url)).toString('base64');
+const fake = [['Regular', 'Regular'], ['Bold', 'Bold'], ['Italic', 'Italic'], ['Bold Italic', 'BoldItalic']].map(([style, file]) => ({ style, b64: b64('LiberationSans-' + file + '.ttf') }));
+await ev((fonts) => { window.queryLocalFonts = async () => fonts.map(f => ({ family: 'Times New Roman', style: f.style, postscriptName: 'TNR-' + f.style.replace(' ', ''), blob: async () => new Blob([Uint8Array.from(atob(f.b64), c => c.charCodeAt(0))]) })); _localFonts = {}; }, fake);
+const [dl2] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#bPdf')]);
+const pdf2 = fs.readFileSync(await dl2.path()).toString('latin1');
+check('PDF embeds the font taken from the user\'s computer (all 4 styles), not the Liberation fallback', /LiberationSans/.test(pdf2) && !/LiberationSerif/.test(pdf2) && (await ev(() => document.getElementById('msg').textContent)) === (await ev(() => tf('msgPdfDoneLocal', { f: 'Times New Roman' }))));
+await ev((fonts) => { window.queryLocalFonts = async () => [{ family: 'Times New Roman', style: 'Regular', postscriptName: 'x', blob: async () => new Blob([Uint8Array.from(atob(fonts[0].b64), c => c.charCodeAt(0))]) }]; _localFonts = {}; }, fake);
+const [dl3] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#bPdf')]);
+const pdf3 = fs.readFileSync(await dl3.path()).toString('latin1');
+check('local family missing a style (or API denied) -> Liberation fallback with a substitution toast', /LiberationSerif/.test(pdf3) && !/LiberationSans/.test(pdf3) && (await ev(() => document.getElementById('msg').textContent)) === (await ev(() => tf('msgPdfDoneSubst', { f: 'Times New Roman' }))));
+await ev((fonts) => { window.queryLocalFonts = async () => fonts.map(f => ({ family: 'Times New Roman', style: f.style, postscriptName: 'bad', blob: async () => new Blob([new Uint8Array(64)]) })); _localFonts = {}; }, fake);
+const [dl4] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#bPdf')]);
+check('local font that is not TrueType (OTF/TTC/garbage) -> Liberation fallback, no jsPDF errors', /LiberationSerif/.test(fs.readFileSync(await dl4.path()).toString('latin1')) && errors.length === 0);
 check('no page/console errors', errors.length === 0, errors.join(' | '));
 await close();
 finish(R);

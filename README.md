@@ -33,7 +33,7 @@ Chuyển động trong app chỉ dùng transform/opacity, 120–450 ms, tôn tr�
 - **Hai kiểu nối** giữ bản vẽ đồng nhất (không kéo đường nối tay): mặc định các con **dàn ngang** nối từ cạnh dưới cha; tick **"Xếp dọc thành nhóm"** cho một số con thì chúng thành **một cột dọc** nối bằng một đường dọc bên trái vào cạnh trái từng box (cột đứng ngoài cùng bên trái nếu còn con dàn ngang, treo ngay dưới cha nếu chỉ có nhóm này).
 - **Zoom mượt** quanh con trỏ (lăn chuột) và **kéo nền để di chuyển trang** (không bôi đen chữ).
 - **Font**: font của app, Arial, Times New Roman. **Bảng màu**: bảng màu gốc của văn bản sơ đồ tổ chức (mặc định, đúng mã màu chuẩn) hoặc pastel của app.
-- **In / Save as PDF** qua hộp thoại in của trình duyệt (vector, đúng khổ giấy), hoặc **⬇ Tải PDF** trực tiếp — PDF vector có nhúng font Liberation (đủ dấu tiếng Việt, cùng metric với Arial / Times New Roman), thư viện jsPDF + svg2pdf chỉ nạp khi bấm.
+- **In / Save as PDF** qua hộp thoại in của trình duyệt (vector, đúng khổ giấy), hoặc **⬇ Tải PDF** trực tiếp — PDF vector **nhúng đúng font đang chọn**: trên Chrome/Edge desktop, app xin quyền đọc font máy (Local Font Access, hỏi một lần) để lấy chính Arial / Times New Roman đang hiện trên màn hình; trình duyệt khác hoặc từ chối thì nhúng Liberation cùng metric (đủ dấu tiếng Việt). Thư viện jsPDF + svg2pdf chỉ nạp khi bấm.
 
 ## 📗 Module Luồng duyệt
 

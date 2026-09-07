@@ -16,7 +16,7 @@ check('Tab reaches "Choose a module" with the blue focus ring (no Chrome white r
 await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Enter');
 await page.waitForSelector('#overlay:not(.open)');
 check('Enter closes it, marks version seen, halves slide in', (await ev(() => localStorage.getItem('ob_seen'))) === String(await ev(() => APP_VER)) && (await ev(() => document.getElementById('landingSplit').classList.contains('entering') && !document.body.classList.contains('intro'))));
-check('version label comes from APP_VER in header and corner', (await ev(() => document.getElementById('ver').textContent + '|' + document.getElementById('verCorner').textContent)) === 'version 11|version 11');
+check('version label comes from APP_VER in header and corner', (await ev(() => document.getElementById('ver').textContent + '|' + document.getElementById('verCorner').textContent)) === 'version ' + (await ev(() => APP_VER)) + '|version ' + (await ev(() => APP_VER)));
 
 // ---- corner: ngôn ngữ, Có gì mới, Về dự án ----
 await page.click('#bLangLanding');

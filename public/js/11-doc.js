@@ -10,10 +10,10 @@ var DOC_M   = 10;                                        // lề trang (mm)
 // badge chữ cái nằm dưới thanh ngang); stub: đường dọc → cạnh trái box; sx: đường dọc lệch trái box cha; logoH: cao logo
 var DBOX    = { w:46, h:23, gx:5, gy:12, stub:4, sx:4, logoH:8 };
 var BADGE   = { s:4.2, up:4.6 };                          // badge chữ cái: cạnh s, đỉnh cách mép trên box "up" (hở ~1.2 mm với thanh ngang)
-var DOC_FONTS = {                                        // css: hiển thị; pdf: tên họ font nhúng khi tải PDF
+var DOC_FONTS = {                                        // css: hiển thị; pdf: bí danh họ font trong PDF; local: font thật lấy từ máy người dùng (không có -> Liberation)
   app:   { css:'system-ui, "Segoe UI", Arial, sans-serif',          pdf:'DocSans'  },
-  arial: { css:'Arial, "Liberation Sans", Helvetica, sans-serif',    pdf:'DocSans'  },
-  times: { css:'"Times New Roman", "Liberation Serif", Times, serif', pdf:'DocSerif' }
+  arial: { css:'Arial, "Liberation Sans", Helvetica, sans-serif',    pdf:'DocSans',  local:'Arial' },
+  times: { css:'"Times New Roman", "Liberation Serif", Times, serif', pdf:'DocSerif', local:'Times New Roman' }
 };
 // Bảng màu "gốc văn bản" (mã màu chuẩn của sơ đồ tổ chức đang dùng); pastel = TCOLOR của app
 var TCOLOR_CLASSIC = { 'ĐB':'#c8c82d', CC:'#5e8cf9', T1:'#ea9651', T2:'#92d050', T3:'#f6d5b9',
@@ -544,6 +544,7 @@ function renderDPage(){
     + '<div class="ck"><input type="checkbox" id="dpAutoH"><label for="dpAutoH" style="margin:0">' + t('ckAutoH') + '</label></div>'
     + '<div class="row2"><div><label>' + t('lblFont') + '</label>' + sel1('dpFont', [['app', t('fontApp')], ['arial', 'Arial'], ['times', 'Times New Roman']], doc.font) + '</div>'
     + '<div><label>' + t('lblScheme') + '</label>' + sel1('dpScheme', [['classic', t('schemeClassic')], ['pastel', t('schemePastel')]], doc.scheme) + '</div></div>'
+    + (doc.font === 'app' ? '' : '<div class="hint" style="margin-top:4px">' + t('fontHint') + '</div>')
     + '<label>' + t('lblHeader') + '</label><input id="dpHeader" autocomplete="off" placeholder="' + t('phHeader') + '">'
     + '<label>' + t('lblLogo') + '</label><textarea id="dpLogo" rows="3" spellcheck="false" placeholder="' + xesc(t('phLogo')) + '"></textarea>'
     + '<div class="hint">' + t('logoHint') + '</div>'
@@ -626,7 +627,7 @@ function docPrint(){
   $('printPage').textContent = '@page{size:' + P.w + 'mm ' + docView.pageH + 'mm;margin:0}';
   window.print();
 }
-var _pdfLibs = null, _pdfFonts = {};
+var _pdfLibs = null, _pdfFonts = {}, _localFonts = {};
 var PDF_FONT_FILES = { DocSans:'LiberationSans', DocSerif:'LiberationSerif' };
 var PDF_STYLES = [['Regular', 'normal'], ['Bold', 'bold'], ['Italic', 'italic'], ['BoldItalic', 'bolditalic']];
 function loadScript(src){
@@ -653,23 +654,49 @@ function loadPdfFont(famName){
   }));
   return _pdfFonts[famName];
 }
+// Font thật đang hiện trên màn hình (Arial / Times New Roman) lấy từ máy người dùng qua Local Font Access API (Chrome/Edge desktop,
+// hỏi quyền một lần; phải gọi ngay trong cú bấm). Không có API / từ chối / thiếu một trong 4 kiểu / hộp xin quyền không được trả lời
+// trong 20 s / file không phải TrueType -> null để dùng Liberation cùng metric. Chỉ cache kết quả có font; null thì lần bấm sau hỏi lại (quyền đã bị từ chối trả lời ngay).
+var LOCAL_STYLES = [['Regular', 'normal'], ['Bold', 'bold'], ['Italic', 'italic'], ['Bold Italic', 'bolditalic']];
+function loadLocalFont(family){
+  if (!family || typeof window.queryLocalFonts !== 'function') return Promise.resolve(null);
+  if (!_localFonts[family]) _localFonts[family] = Promise.race([
+    window.queryLocalFonts().then(function(all){
+      var found = LOCAL_STYLES.map(function(st){ return all.filter(function(f){ return f.family === family && f.style === st[0]; })[0]; });
+      if (found.some(function(f){ return !f; })) return null;
+      return Promise.all(found.map(function(f, i){
+        return f.blob().then(function(bl){ return bl.arrayBuffer(); }).then(function(buf){
+          var tag = new DataView(buf).getUint32(0);             // jsPDF chỉ đọc TrueType (glyf): 0x00010000 hoặc 'true'; OTF/CFF ('OTTO'), TTC ('ttcf') -> Liberation
+          if (tag !== 0x00010000 && tag !== 0x74727565) throw new Error('not TrueType: ' + f.postscriptName);
+          return { file:f.postscriptName + '.ttf', style:LOCAL_STYLES[i][1], b64:bufToB64(buf) };
+        });
+      }));
+    }),
+    new Promise(function(res){ setTimeout(function(){ res(null); }, 20000); })
+  ]).then(function(r){ if (!r) delete _localFonts[family]; return r; }, function(){ delete _localFonts[family]; return null; });
+  return _localFonts[family];
+}
 function docPdf(){
-  var F = docFont(), P = docPageSize(), b = $('bPdf');
+  var F = docFont(), P = docPageSize(), b = $('bPdf'), local = null;
   b.disabled = true; b.classList.add('busy');                     // ba chấm chạy trên nút trong lúc nạp font / dựng PDF
   msg(t('msgPdfLoading'));
-  return loadPdfLibs().then(function(){ return loadPdfFont(F.pdf); }).then(function(fonts){
-    var svg = buildDocSvg(true), PH = docView.pageH;               // dựng trước để biết chiều cao trang thực tế (autoH)
+  var fontsP = loadLocalFont(F.local).then(function(lf){ local = lf; return lf || loadPdfFont(F.pdf); });   // hỏi font máy trước khi chờ thư viện (còn user activation)
+  function render(fonts){                                        // dựng PDF với bộ font đã cho; font đăng ký dưới bí danh F.pdf mà svg xuất đang dùng
+    var svg = buildDocSvg(true), PH = docView.pageH;             // dựng trước để biết chiều cao trang thực tế (autoH)
     var pdf = new window.jspdf.jsPDF({ orientation:P.w > PH ? 'landscape' : 'portrait', unit:'mm', format:[P.w, PH] });
     fonts.forEach(function(f){ pdf.addFileToVFS(f.file, f.b64); pdf.addFont(f.file, F.pdf, f.style); });
     svg.setAttribute('width', P.w + 'mm'); svg.setAttribute('height', PH + 'mm');
     var holder = document.createElement('div');               // svg2pdf cần phần tử nằm trong DOM (đo chữ)
     holder.style.cssText = 'position:absolute;left:-10000px;top:0';
     holder.appendChild(svg); document.body.appendChild(holder);
-    return pdf.svg(svg, { x:0, y:0, width:P.w, height:PH }).then(function(){
-      holder.remove();
+    return pdf.svg(svg, { x:0, y:0, width:P.w, height:PH }).then(function(){ holder.remove(); return pdf; }, function(e){ holder.remove(); throw e; });
+  }
+  return Promise.all([loadPdfLibs(), fontsP]).then(function(r){ return render(r[1]); })
+    .catch(function(e){ if (!local) throw e; local = null; return loadPdfFont(F.pdf).then(render); })   // font máy không đọc được (định dạng lạ) -> Liberation
+    .then(function(pdf){
       pdf.save((doc.header.trim() || 'org-chart') + '.pdf');
-      msg(t('msgPdfDone'));
-    }, function(e){ holder.remove(); throw e; });
-  }).catch(function(e){ console.error(e); msg(t('msgPdfFail')); })
+      msg(local ? tf('msgPdfDoneLocal', { f:F.local }) : F.local ? tf('msgPdfDoneSubst', { f:F.local }) : t('msgPdfDone'));
+    })
+    .catch(function(e){ console.error(e); msg(t('msgPdfFail')); })
     .then(function(){ b.disabled = false; b.classList.remove('busy'); });
 }

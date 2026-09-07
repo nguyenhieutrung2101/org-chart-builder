@@ -14,7 +14,7 @@
 <header>
   <div id="brand">
     <h1>Org Builder</h1>
-    <div id="ver">version 11</div>
+    <div id="ver">version 15</div>
   </div>
   <div class="grp"><button id="bHome" class="ghost" data-i18n="btnHome" data-i18n-title="tipHome" title="Về màn hình chọn module">⌂ Module</button></div>
   <div class="grp seg" id="flowTabs">
@@ -74,7 +74,7 @@
     </button>
   </div>
   <div class="corner" id="landingCorner">
-    <span class="brand">Org Builder<small id="verCorner">version 11</small></span>
+    <span class="brand">Org Builder<small id="verCorner">version 15</small></span>
     <button class="new" id="openLog"><i></i><span data-i18n="whatsNew">What's new</span></button>
     <button id="openAbout" data-i18n="about">About this project</button>
     <button id="bLangLanding" title="Switch language / Chuyển ngôn ngữ">Tiếng Việt</button>
@@ -117,12 +117,38 @@
       <h2><span data-i18n="whatsNew">What's new</span> <button class="close" id="close" aria-label="Close">✕</button></h2>
       <div class="entries">
         <div class="entry new">
+          <div class="ver">v15 <small>09/2026</small></div>
+          <ul>
+            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l15a">PDF download embeds the very font you picked (Arial / Times New Roman) from your computer on Chrome/Edge; falls back to the metric-compatible Liberation.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l15b">Transitions and small animations across the app: module/tab switch, toast, box pop/flash/fade, chips landing, staggered result rows, eased minimap; honours reduced-motion.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v14 <small>09/2026</small></div>
+          <ul>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l14a">New split-screen landing with intro, What's new and About popups; English by default; browser-tab icon.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l14b">Fixed the white ring around the popup button (Chrome's focus ring); custom blue keyboard-focus ring.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v13 <small>09/2026</small></div>
+          <ul>
+            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l13a">Pasted SVG logo renders at once (fixed 8 mm, scripts stripped); the child bus sits right above the child row; badge clearance; the chart avoids the notes / legend blocks only when a box or a connector segment actually touches them; box width setting removed.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
+          <div class="ver">v12 <small>09/2026</small></div>
+          <ul>
+            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l12a">Shelf rows: drag boxes up/down between rows with guide lines; fixed ~5-line box height with auto-shrinking text; stacked groups on a left spine; per-box (Tx) toggle; note key picked from a dropdown.</span></li>
+            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l12b">Exact document palette; A2 paper + auto page height; smooth zoom around the cursor and drag-to-pan without selecting text.</span></li>
+          </ul>
+        </div>
+        <div class="entry">
           <div class="ver">v11 <small>09/2026</small></div>
           <ul>
-            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l11a">New module: printable SVG page in mm (A4/A3/A2, auto height), shelf rows, stacked groups, logo, document code, lettered notes, headcount, PDF with embedded fonts.</span></li>
+            <li><span class="tag doc" data-i18n="tagDoc">Layout</span><span data-i18n="l11a">New Chart layout module: printable SVG page in mm (A4/A3), header, document-code block, level legend, lettered notes, headcount, PDF with embedded fonts.</span></li>
             <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n-html="l11b">Module chooser; new <b>ĐB</b> level above CC; one org tree shared by both modules.</span></li>
-            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l11c">New landing with What's new / About popups; transitions and small animations across the app.</span></li>
-            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n-html="l11d">Source split into one file per section; Playwright test suite ships with the repo.</span></li>
+            <li><span class="tag all" data-i18n="tagAll">All</span><span data-i18n="l11c">Source split into one file per section; Playwright test suite ships with the repo.</span></li>
           </ul>
         </div>
         <div class="entry">

@@ -31,6 +31,8 @@ export async function openApp(opts){
   const { srv, url } = await startServer();
   const browser = await pw.chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
   const page = await browser.newPage({ viewport: { width: opts.width || 1400, height: opts.height || 900 } });
+  // Chromium headless không bao giờ trả lời hộp xin quyền Local Font Access -> gỡ API; test nào cần thì tự mock window.queryLocalFonts
+  await page.addInitScript(() => { window.queryLocalFonts = undefined; });
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
