@@ -63,7 +63,7 @@ Chuyển động trong app chỉ dùng transform/opacity, 120–450 ms, tôn tr�
 - **Nhóm Fund Center** (mã FCG, tên, gán CBQLNS, toggle *1 luồng / Theo CIG*) và **Fund Center** (mã, tên, nhóm) — có lọc nhanh, nút **Copy** (TSV) và **Dán từ Excel** trên cả hai card:
   - FCG: `Mã ⇥ Tên ⇥ Tên người CBQLNS` — khớp người theo tên box ★ **chỉ khi có đúng một box ★ tên đó**; trùng mã thì cập nhật dòng cũ.
   - FC: `Mã ⇥ Tên ⇥ Tên nhóm ⇥ Mã nhóm` — nhóm tìm theo **mã** trước rồi theo tên, chỉ tự gán khi duy nhất; chưa có thì tạo mới.
-  - Dòng không gán được (tên trùng, không có box ★) để trống và **được liệt kê trong toast** thay vì gán nhầm âm thầm. Nút Copy xuất đúng các cột này (FC kèm mã nhóm) nên copy ở app rồi dán lại vẫn khớp nhóm.
+  - Dòng không gán được (tên trùng, không có box ★): dòng mới để trống, dòng cập nhật giữ người cũ, và **danh sách đầy đủ hiện ngay trong hộp dán** để rà từng dòng. Nút Copy xuất đúng các cột này (FC kèm mã nhóm); ô có ngoặc kép, tab, xuống dòng vẫn round-trip.
   - Dòng tiêu đề (đúng nhãn app xuất ra, hoặc "Mã"/"Code"…) tự bỏ qua; mã thật dạng `FCG01` không bao giờ bị nuốt.
 - **Bảng luồng duyệt** sinh tự động: mỗi nhóm × 5 luồng, người duyệt từng bước tính từ ma trận luật của chế độ đang chọn (Luồng: theo nhánh của CBQLNS; Ngành dọc: theo cây Ngành dọc). Nhóm bật "Theo CIG" được tách thành một khối cho mỗi CIG với bộ luật tương ứng.
 - Xem gộp theo nhóm hoặc bung theo từng FC; **ô lọc nhanh** theo tên nhóm/FC; **copy bảng** dán thẳng vào Excel; nút ẩn khu nhập liệu để bảng chiếm trọn màn hình.
@@ -118,7 +118,9 @@ Ba tầng test (chi tiết trong `docs/ARCHITECTURE.md`):
 
 - **Logic + fuzz trong Node** (`tests/logic.test.mjs`): nạp thẳng `js/01…11` vào một `vm` context với DOM giả, thay lớp vẽ bằng hàm rỗng. Kiểm tra mốc Save/undo, `applyState` nghiêm ngặt (ID trùng bị từ chối, tham chiếu hỏng được đếm), dán Excel, layout, engine luồng, và **400 thao tác ngẫu nhiên có seed**: sau mỗi bước bất biến dữ liệu (`checkInvariants`) phải rỗng, undo phải về đúng trạng thái trước, serialize → apply → serialize phải idempotent.
 - **Hành vi UI** (`cleanup`, `review1`, `review2`, `doc`, `landing`): Playwright, những gì cần DOM thật.
-- **Chất lượng** (`tests/quality.test.mjs`): mốc Save qua UI thật, **ngưỡng hiệu năng** với 2.000 FC (thao tác ở sơ đồ không dựng lại bảng đang ẩn, dưới 150 ms), dán mơ hồ qua UI, mở file JSON trùng ID / tham chiếu hỏng qua ô chọn file.
+- **Chất lượng** (`tests/quality.test.mjs`): mốc Save qua UI thật, **ngưỡng hiệu năng** với 2.000 FC (thao tác ở sơ đồ không dựng lại bảng đang ẩn, dưới 150 ms; xem theo FC × CIG chỉ dựng tối đa 2.500 dòng), dán mơ hồ qua UI, mở file JSON trùng ID / tham chiếu hỏng qua ô chọn file.
+
+CI: `.github/workflows/test.yml` chạy toàn bộ trên mỗi PR.
 
 Có sẵn Playwright ở nơi khác thì trỏ vào: `PW_MODULE=<…/playwright-core/index.mjs> PW_CHROMIUM=<…/chromium> npm test`.
 

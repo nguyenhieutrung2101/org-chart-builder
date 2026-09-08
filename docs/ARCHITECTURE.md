@@ -9,10 +9,11 @@ classic script dùng chung một state global, nạp theo thứ tự số. Khôn
 người dùng bấm / gõ
         │
         ▼
-mutate(key, fn, after)          ← CỬA DUY NHẤT cho mọi thay đổi dữ liệu (03-state.js)
-   ├─ snap(key)                 ← dirty = true, mọi tab đánh dấu "cũ", snapshot Undo (gộp khi gõ liên tục cùng một ô)
+mutate(key, fn, after)          ← CỬA DUY NHẤT cho mọi thay đổi dữ liệu — một TRANSACTION (03-state.js)
+   ├─ snap(key)                 ← dirty = true, mọi tab đánh dấu "cũ", snapshot Undo (gộp khi gõ liên tục cùng một ô), giữ JSON "trước"
    ├─ fn()                      ← thay đổi state: nodes / fcGroups / fcs / roleBoxes / ruleGrids / vnodes / cigs / doc
-   └─ after()                   ← vẽ lại: mặc định renderAll(); đang gõ thì refreshView() hoặc hàm vá nhẹ hơn
+   ├─ checkInvariants()         ← cổng commit: fn ném lỗi hoặc để dữ liệu vi phạm bất biến -> rollback(JSON "trước"), toast, ném lỗi tiếp
+   └─ after()                   ← vẽ lại SAU commit: mặc định renderAll(); đang gõ thì refreshView() hoặc hàm vá nhẹ hơn
         │
         ▼
 renderAll()                     ← chỉ vẽ MODULE / TAB ĐANG MỞ (05-org-render.js)
@@ -24,6 +25,10 @@ Quy tắc bất di bất dịch:
 
 1. **Không nơi nào sửa state ngoài `mutate`.** `snap()` chỉ được gọi bên trong `mutate`. Nhờ vậy undo, cờ dirty
    (cảnh báo đóng tab) và vẽ lại luôn đi cùng nhau; lỗi "Save rồi gõ tiếp đúng ô cũ không được cảnh báo" không thể tái diễn.
+   Một batch dán Excel lỗi giữa chừng không để lại nửa dữ liệu: mutate rollback trọn vẹn (document, undo stack, dirty).
+   Ngoại lệ có chủ ý: kéo box đổi hàng gọi mutate ở bước đầu, các bước sau chỉ đổi `rowShift` và vẽ (một lượt kéo = một undo).
+1b. **Getter chỉ đọc, renderer không được đổi document.** `curGrid()` trả grid của CIG đang chọn hoặc grid Chung; muốn sửa phải
+   qua `ownGrid()` (chép Chung ở lần sửa đầu) bên trong mutate. Test "render không đổi document" chạy renderer thật trên DOM giả.
 2. **Tab ẩn không được vẽ.** Thao tác ở sơ đồ với 2.000 FC không dựng lại bảng FC hay bảng luồng duyệt đang ẩn.
    Test hoặc code nào cần DOM của một tab phải `showTab()` trước.
 3. **Chỉ animation một lần** đi qua `animNextBox`/`takeAnim`: render lại vì gõ phím không nháy lại.
@@ -48,9 +53,22 @@ Bất biến dữ liệu được mô tả bằng code trong `checkInvariants()`
 
 ## Dán / copy Excel
 
-`parsePaste` (thuần) → `mergeGroupRows` / `mergeFcRows` (thuần, chỉ đụng state) → vỏ DOM `importGrpPaste` / `importPaste`.
-Tên chỉ dùng để khớp khi **duy nhất**; nhóm khớp theo **mã** trước. Dòng mơ hồ để trống và được liệt kê trong toast.
-`groupsTsv` / `fcsTsv` xuất cùng cột với định dạng dán (FC có thêm cột mã nhóm) nên copy ở app rồi dán lại vẫn đúng nhóm.
+`parsePaste` (thuần, hiểu ô trong ngoặc kép như Excel: `""`, tab và xuống dòng bên trong ngoặc, CRLF; bỏ dấu nháy chống công thức mà `q()` thêm)
+→ `mergeGroupRows` / `mergeFcRows` (thuần, chỉ đụng state, index bằng `Map`) → vỏ DOM `importGrpPaste` / `importPaste` → `finishPaste`.
+Tên chỉ dùng để khớp khi **duy nhất**; nhóm khớp theo **mã** trước. Dòng không khớp: dòng mới để trống, dòng cập nhật giữ người cũ, và
+ghi chú nói đúng điều đã xảy ra; danh sách đầy đủ hiện trong hộp dán (toast chỉ tóm tắt). Header chỉ nhận khi ô đầu khớp trọn nhãn.
+`groupsTsv` / `fcsTsv` xuất cùng cột với định dạng dán (FC có thêm cột mã nhóm) nên copy ở app rồi dán lại ra đúng dữ liệu gốc.
+
+## Bảng luồng duyệt lớn
+
+`renderFlowResult` lọc **dữ liệu** theo ô tìm kiếm trước khi dựng DOM và chỉ dựng tối đa `RES_ROW_CAP` dòng (xem theo FC × tách CIG với
+2.000 FC là 30.000 dòng); vượt thì có dòng nhắc lọc. `flowTsv` (nút Copy) xuất toàn bộ, không phụ thuộc màn hình.
+
+## Logo SVG dán vào
+
+`docLogoSvg` lọc theo **danh sách cho phép**: chỉ phần tử vẽ tĩnh trong namespace SVG; `<a>` bóc vỏ giữ con; `href` chỉ nhận `#id`;
+bỏ `on*`, `javascript:`/`data:`/`url()` ra ngoài. Lý do: URL parser bỏ tab/xuống dòng nên `java<tab>script:` vẫn là `javascript:`,
+`<a>` trong SVG kích hoạt được bằng Enter, `<image href="https://…">` tải tài nguyên ngoài. Test trình duyệt dùng payload vô hại.
 
 ## Module và thứ tự nạp
 
@@ -72,10 +90,13 @@ Tên chỉ dùng để khớp khi **duy nhất**; nhóm khớp theo **mã** trư
 ## Kiểm thử ba tầng
 
 1. **Node, không trình duyệt** (`tests/logic.test.mjs` qua `tests/_node.mjs`): nạp 01…11 vào một `vm` context với DOM giả,
-   thay lớp vẽ bằng hàm rỗng. Test mốc Save/undo, `applyState`, dán Excel, layout, engine luồng và **fuzz 400 thao tác** có seed:
-   sau mỗi bước `checkInvariants()` rỗng, undo về đúng trạng thái trước, serialize → apply → serialize idempotent. Chạy trong vài giây.
+   thay lớp vẽ bằng hàm rỗng theo danh sách tường minh (`loadApp({ realRender:true })` giữ renderer thật cho test "render không đổi
+   document"). Test mốc Save/undo, transaction rollback, `applyState`, dán Excel, layout, engine luồng và **fuzz 5 seed × 2.000 thao tác**:
+   sau mỗi bước `checkInvariants()` rỗng, undo về đúng trạng thái trước (nhận ra snapshot mới qua đỉnh stack, kể cả khi stack đầy 60),
+   serialize → apply → serialize idempotent. Chạy trong vài giây.
 2. **Playwright, hành vi UI** (`cleanup`, `review1`, `review2`, `doc`, `landing`): những gì cần DOM thật.
 3. **Playwright, chất lượng** (`tests/quality.test.mjs`): mốc Save qua UI thật, **ngưỡng hiệu năng** (2.000 FC: thao tác ở sơ đồ
    không dựng lại bảng ẩn, dưới 150 ms), dán mơ hồ qua UI, mở file JSON trùng ID / tham chiếu hỏng qua ô chọn file.
 
-`npm test` chạy tất cả; `node tests/run.mjs logic` chạy riêng tầng Node.
+`npm test` chạy tất cả; `node tests/run.mjs logic` chạy riêng tầng Node. CI (`.github/workflows/test.yml`) chạy `npm run check`,
+tầng Node rồi toàn bộ Playwright trên mỗi PR và mỗi push lên main; `package-lock.json` khoá phiên bản Playwright.

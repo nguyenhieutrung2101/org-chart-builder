@@ -148,6 +148,26 @@ const pg = await ev((c1) => {
 check('paper options include A2', pg.pageOpts === 'A4,A3,A2', pg.pageOpts);
 check('A3 portrait → viewBox 297×420', pg.viewBox === '0 0 297 420', pg.viewBox);
 check('pasted SVG logo: fixed 8 mm high (width by aspect), class fill inlined, script/onclick/style stripped', pg.logo && pg.logo.h === '8' && pg.logo.w === '20' && pg.logo.x === '10' && pg.logo.fill === '#ff0000' && !pg.logo.script && !pg.logo.onclick && !pg.logo.style, JSON.stringify(pg.logo));
+// SVG không tin cậy: allowlist — <a href="java<tab>script:"> (URL parser bỏ tab), xlink:href với xuống dòng, <image> tải ngoài, <animate>, <script>,
+// onclick, fill url() ra ngoài đều bị gỡ; gradient nội bộ, <use href="#id">, rect/path giữ nguyên. Payload vô hại: chỉ đặt window.__pwned.
+const hostile = await ev(() => {
+  window.__prevLogo = doc.logo;
+  doc.logo = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 40 20">'
+    + '<defs><linearGradient id="g"><stop offset="0" stop-color="#f00"/></linearGradient><rect id="sym" width="4" height="4"/></defs>'
+    + '<a href="java&#9;script:window.__pwned=1"><rect x="0" y="0" width="20" height="20" fill="url(#g)" onclick="window.__pwned=2"/></a>'
+    + '<a xlink:href="java&#10;script:window.__pwned=3"><circle cx="30" cy="10" r="5"/></a>'
+    + '<image href="https://example.invalid/track.png" width="1" height="1"/><rect width="5" height="5" fill="url(http://evil/x)"><animate attributeName="href" to="javascript:window.__pwned=4"/></rect>'
+    + '<use href="#sym" x="30"/><script>window.__pwned=5</script><foreignObject><div onload="1"></div></foreignObject></svg>';
+  renderDocAll();
+  const g = document.querySelector('#docPage .dlogo');
+  const q = (s) => g.querySelectorAll(s).length;
+  return { a: q('a'), image: q('image'), animate: q('animate'), script: q('script'), fo: q('foreignObject'), rect: q('rect'), circle: q('circle'), use: q('use'), grad: q('linearGradient'),
+           onclick: !!g.querySelector('[onclick]'), fillGrad: g.querySelector('rect[fill="url(#g)"]') !== null, fillExt: !!g.querySelector('rect[fill^="url(http"]'), useHref: g.querySelector('use') && g.querySelector('use').getAttribute('href') };
+});
+await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
+const pwned = await ev(() => window.__pwned);
+check('REGRESSION F8: hostile SVG logo is reduced to static drawing (no a/image/animate/script/foreignObject/on*/external url()), internal refs kept, nothing executes', hostile.a === 0 && hostile.image === 0 && hostile.animate === 0 && hostile.script === 0 && hostile.fo === 0 && hostile.rect === 3 && hostile.circle === 1 && hostile.use === 1 && hostile.grad === 1 && !hostile.onclick && hostile.fillGrad && !hostile.fillExt && hostile.useHref === '#sym' && pwned === undefined, JSON.stringify(hostile) + ' pwned=' + pwned);
+await ev(() => { doc.logo = window.__prevLogo; renderDocAll(); });   // trả lại logo hợp lệ cho các test sau
 check('annotation dropdown lists defined keys; switch to A', pg.annotOpts === ',A,E' && pg.annotAfter === 'A', pg.annotOpts);
 check('header, code block and note on page', pg.hasHeader && pg.hasCode && pg.hasNote);
 check('chart starts beside the notes block, not below it', pg.chartTop < pg.notesBottom, JSON.stringify([pg.chartTop, pg.notesBottom]));

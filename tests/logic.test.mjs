@@ -138,11 +138,87 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
   check('vertical-line mode: the VLINE box resolves to the BMO\'s superior on the vertical tree', A.resolveCell('Đỏ', 'TĐ2', 'REST', A.nodes.get(cbRest), A.vlineGrids['']) === 'Global head' && A.checkInvariants().length === 0);
 }
 
-// ---------- FUZZ: 400 thao tác ngẫu nhiên qua API công khai, sau mỗi bước: bất biến + undo đúng + serialize/apply idempotent ----------
+// ---------- F1: getter chỉ đọc; đổi mode giữ fallback về Chung; RENDER KHÔNG ĐƯỢC ĐỔI DOCUMENT (renderer thật, DOM giả) ----------
 {
-  const A = loadApp(); const rnd = rng(2026);
+  const A = loadApp({ realRender: true }); A.curTab = 'rules';
+  A.addFreeRole(); A.roleBoxes[0].title = 'Common approver'; const rid = A.roleBoxes[0].id;
+  A.dropRole('Xanh', 'TĐ2', rid);                                            // luật Chung, mode Luồng
+  A.setRuleMode('vline'); A.dropRole('Xanh', 'TĐ2', rid); A.setRuleMode('flow');   // luật Chung, mode Ngành dọc
+  A.setCurCig('c1');                                                         // mở CIG c1 ở mode Luồng -> clone Chung (chủ ý)
+  const own = { flow: !!A.ruleGrids.c1, vline: !!A.vlineGrids.c1 };
+  A.setRuleMode('vline');                                                    // đổi mode khi c1 chưa có luật riêng ở family này
+  const after = A.resolveCell('Xanh', 'TĐ2', 'REST', null, A.gridFor('c1'));
+  check('REGRESSION F1: switching mode with a CIG selected keeps the Common fallback (renderer creates no empty override)', after === 'Common approver' && A.vlineGrids.c1 === undefined && own.flow && !own.vline, JSON.stringify({ after, own, vlineC1: A.vlineGrids.c1 }));
+  A.dropRole('Đỏ', 'TĐ3', rid);                                              // sửa luật của c1 ở mode Ngành dọc -> lúc này mới clone Chung rồi áp thay đổi
+  check('first edit of an inherited CIG clones Common then applies the change (Common untouched)', !!A.vlineGrids.c1 && A.vlineGrids.c1.Xanh['TĐ2'].ALL === rid && A.vlineGrids.c1['Đỏ']['TĐ3'].ALL === rid && !A.vlineGrids['']['Đỏ']);
+  A.addRoot(); A.addGroup(); A.addFc(); A.vAddRoot(); A.curCig = 'c2';       // c2 tồn tại nhưng chưa có luật riêng ở cả 2 mode (đúng tình huống F1)
+  const snapshot = () => stable(A.serializeAll()) + '|' + A.undoStack.length + '|' + A.dirty + '|' + A.lastSnapKey;
+  const impure = ['org', 'vline', 'rules', 'flow'].map(tab => { A.curTab = tab; const b = snapshot(); A.renderAll(); A.renderTab(tab); A.refreshView(); return b === snapshot() ? '' : tab; }).filter(Boolean);
+  A.MOD = 'doc'; const b2 = snapshot(); A.renderDocAll(); A.refreshView(); const docPure = b2 === snapshot(); A.MOD = 'flow';
+  check('PROPERTY: rendering any tab or the print page (real renderers) never changes document, history or dirty', impure.length === 0 && docPure, impure.join(',') + (docPure ? '' : ' doc'));
+}
+
+// ---------- F2: dòng cập nhật với CBQLNS không khớp giữ người cũ và NÓI RÕ; dòng mới để trống và nói rõ ----------
+{
+  const A = loadApp(); A.addRoot(); Object.assign(A.nodes.get(A.rootIds[0]), { person: 'Existing BMO', star: true });
+  A.mergeGroupRows([['G01', 'Group', 'Existing BMO']]);
+  const st = A.mergeGroupRows([['G01', 'Group', 'Unknown BMO'], ['G02', 'New', 'Unknown BMO'], ['G01', 'Group', '']]);
+  check('REGRESSION F2: unresolved BMO on an update keeps the existing BMO and the note says so; on a new row it is blank and says so; blank column = no change',
+    A.nodes.get(A.fcGroups[0].cbqlns).person === 'Existing BMO' && A.fcGroups[1].cbqlns === null && st.notes.length === 2 && st.notes[0].endsWith(A.tf('impKept', { cur: 'Existing BMO' })) && st.notes[1].endsWith(A.t('impBlank')) && st.updated === 2, JSON.stringify(st));
+}
+
+// ---------- F3: TSV round-trip với ký tự đặc biệt; header chỉ khi khớp trọn nhãn ----------
+{
+  const A = loadApp();
+  const cases = ['Finance "HQ"', 'Finance\nHQ', 'Finance\tHQ', '=HQ', '+1', '-abc', '@x', "'quoted'", ' spaced ', 'a""b'];
+  const bad = cases.filter(v => { const rows = A.parsePaste(['G01', v, 'x'].map(A.q).join('\t') + '\r\n'); return !(rows.length === 1 && rows[0][1] === v.trim() && rows[0][2] === 'x'); });
+  check('REGRESSION F3: copy -> paste round-trips quotes, newlines, tabs and the formula guard', bad.length === 0, JSON.stringify(bad));
+  check('a first row whose code contains a space ("FC 001") is data, not a header', JSON.stringify(A.parsePaste('FC 001\tFund 1\tGroup 1\nFC002\tFund 2\tGroup 2').map(r => r[0])) === '["FC 001","FC002"]');
+  check('exact header labels (both languages, generic words) are still dropped', A.parsePaste('Mã FCG\tTên\tCBQLNS\nG1\tOne\t').length === 1 && A.parsePaste('FCG code\tGroup name\tBMO (★)\nG1\tOne\t').length === 1 && A.parsePaste('Code\tName\nG1\tOne').length === 1);
+  check('trailing empty cells and CRLF are preserved as columns', JSON.stringify(A.parsePaste('F1\tFund\t\t\r\nF2\tFund 2\tG\tCODE')) === '[["F1","Fund","",""],["F2","Fund 2","G","CODE"]]');
+}
+
+// ---------- F4: tên trùng thuộc tính kế thừa; mutate là transaction (rollback khi lỗi / vi phạm bất biến) ----------
+{
+  const A = loadApp();
+  const st = A.mergeGroupRows(A.parsePaste('G01\tFirst\t\nconstructor\tSecond\t\n__proto__\tThird\t\nG03\tFourth\t'));
+  check('REGRESSION F4: names colliding with inherited object keys import completely', st.added === 4 && A.fcGroups.map(g => g.code).join(',') === 'G01,constructor,__proto__,G03' && A.checkInvariants().length === 0, JSON.stringify(st));
+  A.saveJSON(); const before = stable(A.serializeAll()), hist = A.undoStack.length;
+  let threw = false; try { A.mutate(null, () => { A.fcGroups.push({ id: 'g99', code: 'X', name: 'X', cbqlns: null, byCig: false }); throw new Error('boom'); }); } catch (e) { threw = /boom/.test(e.message); }
+  check('TRANSACTION: a callback that throws is rolled back completely (document, undo stack, dirty) and reported', threw && stable(A.serializeAll()) === before && A.undoStack.length === hist && A.dirty === false && A.toasts.includes(A.t('msgMutateFail')), JSON.stringify({ threw, hist, len: A.undoStack.length, dirty: A.dirty }));
+  let threw2 = false; try { A.mutate(null, () => { A.fcs.push({ id: 'f1', code: 'F', name: '', groupId: 'g-missing' }); }); } catch (e) { threw2 = /invariants/.test(e.message); }
+  check('TRANSACTION: a callback that leaves the document inconsistent is rolled back before commit', threw2 && stable(A.serializeAll()) === before && A.dirty === false && A.fcs.length === 0);
+  A.mutate('e:x', () => {});
+  check('after a rollback, normal mutations work again', A.dirty === true && A.undoStack.length === hist + 1);
+}
+
+// ---------- F5: một box ★ chỉ đứng một chỗ trên cây Ngành dọc ----------
+{
+  const A = loadApp();
+  const st = A.applyState({ roots: [{ id: 'n1', t: 'CC', star: true, person: 'BMO' }], roleBoxes: [], cigs: [],
+    vroots: [{ id: 'v1', title: 'Superior A', children: [{ id: 'v2', orgId: 'n1' }] }, { id: 'v3', title: 'Superior B', children: [{ id: 'v4', orgId: 'n1' }] }] });
+  const first = A.vlineSuperiorOf(A.nodes.get('n1')).title;
+  const d = clone(A.serializeAll()); d.vroots.reverse(); A.applyState(d);
+  check('REGRESSION F5: a second import of the same box is dropped and reported; the superior no longer depends on root order', st.dropped.length === 1 && /imported twice/.test(st.dropped[0]) && A.vnodes.size === 3 && first === 'Superior A' && A.vlineSuperiorOf(A.nodes.get('n1')).title === 'Superior A' && A.checkInvariants().length === 0, JSON.stringify(st.dropped));
+  A.vnodes.get('v3').orgId = 'n1';
+  check('checkInvariants reports a box imported twice', A.checkInvariants().some(x => /imported twice/.test(x)));
+}
+
+// ---------- F6: ID quá 15 chữ số bị coi là không hợp lệ -> cấp mới, không ghi đè ----------
+{
+  const A = loadApp();
+  A.applyState({ roots: [{ id: 'n9007199254740992', t: 'CC', title: 'Original' }, { id: 'n12', t: 'CC' }], roleBoxes: [], cigs: [] });
+  A.addRoot();
+  check('REGRESSION F6: an unsafe-integer id is regenerated; adding a node never overwrites an existing one', A.nodes.size === 3 && new Set(A.rootIds).size === 3 && A.checkInvariants().length === 0 && [...A.nodes.values()].some(n => n.title === 'Original'), JSON.stringify(A.rootIds));
+}
+
+// ---------- FUZZ: 5 seed × 2.000 thao tác ngẫu nhiên qua API công khai. Sau mỗi bước: bất biến rỗng; thao tác có snapshot thì undo
+// phải về đúng trạng thái trước (kể cả khi stack đã đầy 60: nhận ra snapshot mới qua việc đỉnh stack đổi); rồi khôi phục đúng history;
+// mỗi 25 bước: serialize -> applyState -> serialize idempotent ----------
+function fuzz(seed, steps){
+  const A = loadApp(); const rnd = rng(seed);
   const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-  const word = () => pick(['ALPHA', 'BETA', 'GAMMA', 'ĐỘI 1', 'PHÒNG KẾ TOÁN', 'X Y Z', '=cmd', '']);
+  const word = () => pick(['ALPHA', 'BETA', 'GAMMA', 'ĐỘI 1', 'PHÒNG KẾ TOÁN', 'X Y Z', '=cmd', 'constructor', 'Tên "kép"', '']);
   const ops = [
     () => A.addRoot(),
     () => { const ids = [...A.nodes.keys()]; if (ids.length) A.addChild(pick(ids)); },
@@ -155,8 +231,8 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
     () => { const ids = [...A.nodes.keys()]; if (ids.length) A.toggleCollapse(pick(ids)); },
     () => { const ids = [...A.nodes.keys()]; if (ids.length) (rnd() < 0.7 ? A.setFocus(pick(ids)) : A.clearFocus()); },
     () => { const ids = [...A.nodes.keys()]; if (ids.length) A.setHc(pick(ids), pick(['', '3', '12', 'x'])); },
-    () => { const ids = [...A.nodes.keys()]; if (!ids.length) return; const id = pick(ids); A.mutate('e:' + id + ':d', () => { A.nodes.get(id).dept = word(); }); },
-    () => { const ids = [...A.nodes.keys()]; if (!ids.length) return; const id = pick(ids); A.mutate(null, () => { const n = A.nodes.get(id); n.stack = !!n.parent && rnd() < 0.5; n.annot = pick(['', 'A', 'B']); n.rowShift = pick([0, 1, 2]); }); },
+    () => { const ids = [...A.nodes.keys()]; if (!ids.length) return; const id = pick(ids); A.mutate('e:' + id + ':d', () => { A.nodes.get(id).dept = word().toUpperCase(); }); },
+    () => { const ids = [...A.nodes.keys()]; if (!ids.length) return; const id = pick(ids); A.mutate(null, () => { const n = A.nodes.get(id); n.stack = !!n.parent && rnd() < 0.5; n.annot = pick(['', 'A', 'B']); n.rowShift = pick([0, 1, 2]); n.person = word(); }); },
     () => A.addGroup(),
     () => { if (A.fcGroups.length) A.delGroup(pick(A.fcGroups), null); },
     () => { const stars = A.starredNodes(); if (A.fcGroups.length) A.mutate(null, () => { pick(A.fcGroups).cbqlns = stars.length && rnd() < 0.8 ? pick(stars).id : null; }); },
@@ -179,27 +255,41 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
     () => { const ids = [...A.vnodes.keys()]; if (ids.length) A.vMove(pick(ids), pick([-1, 1])); },
     () => { const ids = [...A.vnodes.keys()]; if (ids.length) A.vDel(pick(ids)); },
     () => { const ids = [...A.vnodes.keys()], stars = A.starredNodes().filter(n => ![...A.vnodes.values()].some(v => v.orgId === n.id)); if (!ids.length || !stars.length) return; A.vsel = pick(ids); A.$ = (id) => id === 'vImportPick' ? { value: pick(stars).id } : A.stubEl(); A.vImport(); A.$ = A.stubEl; },
-    () => A.importGrpPaste('FCG' + Math.floor(rnd() * 5) + '\t' + word() + '\t' + (A.starredNodes().length ? pick(A.starredNodes()).person : 'Nobody')),
-    () => A.importPaste('F' + Math.floor(rnd() * 50) + '\t' + word() + '\t' + (A.fcGroups.length ? pick(A.fcGroups).name : 'Fresh')),
+    () => A.importGrpPaste(A.q('FCG' + Math.floor(rnd() * 5)) + '\t' + A.q(word()) + '\t' + A.q(A.starredNodes().length ? pick(A.starredNodes()).person : 'Nobody')),
+    () => A.importPaste(A.q('F' + Math.floor(rnd() * 50)) + '\t' + A.q(word()) + '\t' + A.q(A.fcGroups.length ? pick(A.fcGroups).name : 'Fresh')),
     () => A.docSet('header', () => { A.doc.header = word(); }),
     () => A.mutate(null, () => { A.doc.notes.push({ key: pick(['A', 'B']), text: word() }); }),
     () => A.undo()
   ];
-  let steps = 0, firstBad = '';
-  for (let i = 0; i < 400 && !firstBad; i++){
-    const opIdx = Math.floor(rnd() * ops.length), before = stable(A.serializeAll()), depth = A.undoStack.length;
-    try { ops[opIdx](); } catch (e) { firstBad = 'step ' + i + ' op ' + opIdx + ' threw: ' + e.message; break; }
+  const undoIdx = ops.length - 1;
+  let bad = '', i = 0;
+  for (; i < steps && !bad; i++){
+    const opIdx = Math.floor(rnd() * ops.length), before = stable(A.serializeAll()), topBefore = A.undoStack[A.undoStack.length - 1];
+    try { ops[opIdx](); } catch (e) { bad = 'step ' + i + ' op ' + opIdx + ' threw: ' + e.message; break; }
     const inv = A.checkInvariants();
-    if (inv.length){ firstBad = 'step ' + i + ' op ' + opIdx + ' broke invariants: ' + inv.join(', '); break; }
-    if (opIdx !== ops.length - 1 && A.undoStack.length > depth){        // thao tác có chụp snapshot -> undo phải về đúng trạng thái trước
-      const after = stable(A.serializeAll()); A.undo();
-      if (stable(A.serializeAll()) !== before){ firstBad = 'step ' + i + ' op ' + opIdx + ' undo did not restore the previous state'; break; }
-      A.applyState(JSON.parse(after)); A.undoStack.push(JSON.stringify(A.serializeAll()));   // quay lại trạng thái sau thao tác để fuzz đi tiếp
+    if (inv.length){ bad = 'step ' + i + ' op ' + opIdx + ' broke invariants: ' + inv.join(', '); break; }
+    const pushed = A.undoStack[A.undoStack.length - 1] !== topBefore;
+    if (opIdx !== undoIdx && pushed){
+      const afterRaw = JSON.stringify(A.serializeAll()), afterStable = stable(A.serializeAll()), keyAfter = A.lastSnapKey, view = { curCig: A.curCig, vsel: A.vsel, sel: A.sel };
+      const popped = A.undoStack[A.undoStack.length - 1];
+      A.undo();
+      if (stable(A.serializeAll()) !== before){ bad = 'step ' + i + ' op ' + opIdx + ' undo did not restore the previous state'; break; }
+      A.applyState(JSON.parse(afterRaw)); A.undoStack.push(popped); A.lastSnapKey = keyAfter; A.dirty = true;
+      A.curCig = view.curCig; A.vsel = view.vsel; A.sel = view.sel;
+      if (stable(A.serializeAll()) !== afterStable){ bad = 'step ' + i + ' could not restore the post-op state'; break; }
     }
-    if (i % 25 === 0){ const s1 = stable(A.serializeAll()); A.applyState(clone(A.serializeAll())); if (stable(A.serializeAll()) !== s1){ firstBad = 'step ' + i + ' serialize/apply not idempotent'; break; } }
-    steps++;
+    if (i % 25 === 0){
+      const s1 = stable(A.serializeAll()), view = { curCig: A.curCig, vsel: A.vsel, sel: A.sel };
+      A.applyState(clone(A.serializeAll())); A.curCig = view.curCig; A.vsel = view.vsel; A.sel = view.sel;
+      if (stable(A.serializeAll()) !== s1){ bad = 'step ' + i + ' serialize/apply not idempotent'; break; }
+    }
   }
-  check('FUZZ 400 random operations (seed 2026): invariants hold, undo restores exactly, serialize/apply idempotent', !firstBad && steps === 400, firstBad || (steps + ' steps, ' + A.nodes.size + ' nodes, ' + A.fcs.length + ' FCs, ' + A.roleBoxes.length + ' roles'));
-  check('no operation showed an unexpected toast (only informational ones)', A.toasts.every(s => !/undefined|NaN|\[object/.test(s)), A.toasts.filter(s => /undefined|NaN|\[object/.test(s)).slice(0, 3).join(' | '));
+  const noisy = A.toasts.filter(s => /undefined|NaN|\[object/.test(s));
+  return { seed, bad, steps: i, noisy, size: A.nodes.size + 'n/' + A.fcs.length + 'fc/' + A.roleBoxes.length + 'r/' + A.vnodes.size + 'v/' + A.undoStack.length + 'undo' };
 }
+const t0 = Date.now();
+const runs = [2026, 7, 42, 99, 123].map(seed => fuzz(seed, 2000));
+const failed = runs.filter(r => r.bad || r.noisy.length);
+check('FUZZ 5 seeds × 2,000 random operations: invariants hold, undo restores exactly (also with a full undo stack), serialize/apply idempotent, no malformed toast',
+  failed.length === 0, failed.map(r => r.seed + ': ' + (r.bad || r.noisy.slice(0, 2).join(' | '))).join(' || ') || (runs.map(r => r.seed + ' ' + r.size).join('; ') + ' in ' + (Date.now() - t0) + ' ms'));
 finish(R);

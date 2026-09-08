@@ -269,34 +269,53 @@ function applyFcFilter(){
     tr.style.display = (!qy || hay.indexOf(qy) >= 0) ? '' : 'none';
   });
 }
-// Dòng tiêu đề khi dán từ Excel: ô đầu khớp đúng nhãn header mà nút Copy của app xuất ra (cả 2 ngôn ngữ),
-// hoặc là từ chung "Mã"/"Ma"/"Code"/"FC"/"FCG" đứng riêng. KHÔNG được bắt nhầm mã thật dạng FCG01.
-// Lưu ý: không dùng \b sau chữ có dấu — \b của JS chỉ hiểu ASCII nên "mã\b" không bao giờ khớp "Mã FCG".
-function isHeaderRow(line){
-  var first = (String(line||'').split('\t')[0]||'').trim().toLowerCase();
+// Dòng tiêu đề khi dán từ Excel: ô đầu phải KHỚP TRỌN một nhãn (nhãn nút Copy của app xuất ra, cả 2 ngôn ngữ, hoặc từ chung
+// "Mã"/"Code"/"FC"/"FCG"/"ID"). Không bắt theo tiền tố: "FC 001" là mã hợp lệ, không phải header.
+function isHeaderRow(row){                                 // row: mảng ô (parsePaste) hoặc một dòng text
+  var cells = Array.isArray(row) ? row : String(row || '').split('\t');
+  var first = String(cells[0] || '').trim().toLowerCase();
   if (!first) return false;
-  var labels = [];
+  var labels = ['mã', 'ma', 'code', 'fc', 'fcg', 'mã fc', 'ma fc', 'mã fcg', 'ma fcg', 'fc code', 'fcg code', 'id'];
   ['thFcgCode','thFcCode'].forEach(function(k){ labels.push(STR.vi[k].toLowerCase(), STR.en[k].toLowerCase()); });
-  if (labels.indexOf(first) >= 0) return true;
-  return /^(mã|ma|code|fcg?)(\s|$)/.test(first);
+  return labels.indexOf(first) >= 0;
 }
 /* ---------- dán từ Excel: tách dòng (thuần) -> gộp vào state (thuần) -> vỏ DOM ---------- */
-// Tách text dán thành mảng dòng × ô đã trim, bỏ dòng tiêu đề nếu có. Thuần — test Node gọi trực tiếp.
+// Tách text dán (TSV của Excel hoặc của nút Copy) thành mảng dòng × ô. Hiểu ô trong ngoặc kép như Excel/q(): "" là một dấu ngoặc,
+// tab và xuống dòng bên trong ngoặc thuộc về ô; CRLF; ô cuối rỗng. Bỏ dấu nháy đơn chống công thức mà q() thêm (chỉ khi đứng trước = + - @),
+// nên copy ở app rồi dán lại ra đúng dữ liệu gốc. Bỏ dòng tiêu đề. Thuần — test Node gọi trực tiếp.
 function parsePaste(txt){
-  var lines = String(txt||'').split(/\r?\n/).filter(function(l){ return l.trim(); });
-  if (lines.length && isHeaderRow(lines[0])) lines.shift();
-  return lines.map(function(l){ return l.split('\t').map(function(c){ return c.trim(); }); });
+  var s = String(txt || ''), rows = [], row = [], cell = '', inQ = false, atStart = true;
+  function endCell(){ row.push(unguard(cell.trim())); cell = ''; atStart = true; }
+  function endRow(){ endCell(); if (row.some(function(c){ return c; })) rows.push(row); row = []; }
+  for (var i = 0; i < s.length; i++){
+    var ch = s[i];
+    if (inQ){
+      if (ch !== '"') cell += ch;
+      else if (s[i + 1] === '"'){ cell += '"'; i++; }
+      else inQ = false;
+    }
+    else if (ch === '"' && atStart){ inQ = true; atStart = false; }
+    else if (ch === '\t') endCell();
+    else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && s[i + 1] === '\n') i++; endRow(); }
+    else { cell += ch; atStart = false; }
+  }
+  endRow();
+  if (rows.length && isHeaderRow(rows[0])) rows.shift();
+  return rows;
 }
+function unguard(c){ return /^'[=+\-@]/.test(c) ? c.slice(1) : c; }   // nghịch đảo của q(): ' + ký tự công thức -> bỏ dấu nháy
 function normKey(v){ return String(v || '').trim().toLowerCase(); }
 // key chuẩn hoá -> MẢNG mục trùng key. Chỉ tự gán khi đúng một mục; trùng thì để trống và báo — không còn "mục sau đè mục trước"
 // (cùng một người kiêm nhiệm hai box ★, hai nhóm cùng tên: gán nhầm người duyệt mà không ai biết nguy hiểm hơn để trống).
+// Map chứ không phải object: tên "constructor" / "__proto__" từ Excel không được đụng thuộc tính kế thừa.
 function multiIndex(list, keyFn){
-  var m = {};
-  list.forEach(function(x){ var k = normKey(keyFn(x)); if (k) (m[k] = m[k] || []).push(x); });
+  var m = new Map();
+  list.forEach(function(x){ var k = normKey(keyFn(x)); if (k){ if (!m.has(k)) m.set(k, []); m.get(k).push(x); } });
   return m;
 }
 // Gộp dòng FCG (Mã ⇥ Tên ⇥ Tên người CBQLNS) vào fcGroups. Trùng mã -> cập nhật dòng cũ; CBQLNS khớp tên người của box ★,
-// chỉ gán khi duy nhất. Trả về { added, updated, notes[] } — notes = dòng cần người xem lại.
+// chỉ gán khi duy nhất. Tên không khớp: dòng mới -> để trống, dòng cập nhật -> giữ người cũ; ghi chú nói đúng điều đã xảy ra.
+// Trả về { added, updated, notes[] } — notes = dòng cần người xem lại.
 function mergeGroupRows(rows){
   var st = { added:0, updated:0, notes:[] };
   var starByPerson = multiIndex(starredNodes(), function(n){ return n.person; });
@@ -304,19 +323,23 @@ function mergeGroupRows(rows){
   rows.forEach(function(c){
     var code = c[0] || '', name = c[1] || '', person = c[2] || '';
     if (!code && !name) return;
-    var cb = null;
-    if (person){
-      var hits = starByPerson[normKey(person)] || [];
-      if (hits.length === 1) cb = hits[0].id;
-      else st.notes.push(hits.length ? tf('impAmbCb', { name:person, n:hits.length }) : tf('impNoCb', { name:person }));
-    }
-    var ex = code ? (byCode[normKey(code)] || []) : [];
+    var ex = code ? (byCode.get(normKey(code)) || []) : [];
     if (ex.length > 1){ st.notes.push(tf('impAmbCode', { code:code, n:ex.length })); return; }
-    if (ex.length === 1){ ex[0].name = name || ex[0].name; if (cb) ex[0].cbqlns = cb; st.updated++; }
+    var g = ex[0] || null, cb = null, why = '';
+    if (person){
+      var hits = starByPerson.get(normKey(person)) || [];
+      if (hits.length === 1) cb = hits[0].id;
+      else why = hits.length ? tf('impAmbCb', { name:person, n:hits.length }) : tf('impNoCb', { name:person });
+    }
+    if (why){
+      var cur = g && g.cbqlns && nodes.has(g.cbqlns) ? nodes.get(g.cbqlns) : null;
+      st.notes.push(why + (cur ? tf('impKept', { cur: cur.person || dispName(cur) }) : t('impBlank')));
+    }
+    if (g){ g.name = name || g.name; if (cb) g.cbqlns = cb; st.updated++; }
     else {
-      var g = { id:'g'+(gseq++), code:code, name:name, cbqlns:cb, byCig:false };
+      g = { id:'g'+(gseq++), code:code, name:name, cbqlns:cb, byCig:false };
       fcGroups.push(g);
-      if (code) byCode[normKey(code)] = [g];
+      if (code) byCode.set(normKey(code), [g]);
       st.added++;
     }
   });
@@ -327,7 +350,7 @@ function mergeGroupRows(rows){
 function mergeFcRows(rows){
   var st = { added:0, groups:0, notes:[] };
   var byCode = multiIndex(fcGroups, function(g){ return g.code; }), byName = multiIndex(fcGroups, function(g){ return g.name; });
-  function hits(ref){ var k = normKey(ref); if (!k) return []; var h = byCode[k] || []; return h.length ? h : (byName[k] || []); }
+  function hits(ref){ var k = normKey(ref); if (!k) return []; var h = byCode.get(k) || []; return h.length ? h : (byName.get(k) || []); }
   rows.forEach(function(c){
     var code = c[0] || '', name = c[1] || '', gName = c[2] || '', gCode = c[3] || '';
     if (!code && !name) return;
@@ -339,32 +362,33 @@ function mergeFcRows(rows){
     else if (gName || gCode){
       g = { id:'g'+(gseq++), code:gCode, name:gName || gCode, cbqlns:null, byCig:false };
       fcGroups.push(g); st.groups++;
-      if (gCode) byCode[normKey(gCode)] = [g];
-      if (gName) byName[normKey(gName)] = [g];
+      if (gCode) byCode.set(normKey(gCode), [g]);
+      if (gName) byName.set(normKey(gName), [g]);
     }
     fcs.push({ id:'f'+(fseq++), code:code, name:name, groupId: g ? g.id : null });
     st.added++;
   });
   return st;
 }
-// Đuôi thông báo sau khi dán: số dòng cần xem lại + tối đa 3 lý do đầu
-function importNotes(st){
-  if (!st.notes.length) return '';
-  return ' · ' + tf('msgImportNotes', { n: st.notes.length }) + st.notes.slice(0, 3).join('; ') + (st.notes.length > 3 ? '; …' : '');
+// Sau khi dán: toast tóm tắt; có dòng cần xem lại thì hộp dán giữ mở và liệt kê ĐỦ (một batch lớn không rà được bằng toast)
+function finishPaste(taId, boxId, notesId, st, summary){
+  $(taId).value = '';
+  var box = $(boxId), nt = $(notesId);
+  if (st.notes.length){ nt.textContent = tf('impReviewH', { n: st.notes.length }) + '\n' + st.notes.join('\n'); nt.hidden = false; box.style.display = 'block'; }
+  else { nt.textContent = ''; nt.hidden = true; box.style.display = 'none'; }
+  msg(summary + (st.notes.length ? ' · ' + tf('msgImportNotes', { n: st.notes.length }) : ''));
 }
 function importGrpPaste(txt){
   var rows = parsePaste(txt);
   if (!rows.length){ msg(t('msgNothingImport')); return; }
-  var st = mutate(null, function(){ return mergeGroupRows(rows); });
-  $('pasteTaGrp').value = ''; $('pasteBoxGrp').style.display = 'none';
-  msg(tf('msgGrpImported', { n: st.added, u: st.updated }) + importNotes(st));
+  var st = mutate(null, function(){ return mergeGroupRows(rows); });     // lỗi giữa batch -> mutate rollback, không còn nửa dữ liệu
+  finishPaste('pasteTaGrp', 'pasteBoxGrp', 'pasteNotesGrp', st, tf('msgGrpImported', { n: st.added, u: st.updated }));
 }
 function importPaste(txt){
   var rows = parsePaste(txt);
   if (!rows.length){ msg(t('msgNothingImport')); return; }
   var st = mutate(null, function(){ return mergeFcRows(rows); });
-  $('pasteTa').value = ''; $('pasteBox').style.display = 'none';
-  msg(tf('msgImported', { n: st.added }) + (st.groups ? tf('msgImportedGroups', { g: st.groups }) : '') + importNotes(st));
+  finishPaste('pasteTa', 'pasteBox', 'pasteNotes', st, tf('msgImported', { n: st.added }) + (st.groups ? tf('msgImportedGroups', { g: st.groups }) : ''));
 }
 // TSV của hai bảng nhập liệu cho nút Copy — cùng cột với định dạng dán, nên copy ở app này rồi dán lại vẫn khớp đúng nhóm (theo mã)
 function groupsTsv(){
@@ -435,7 +459,10 @@ function flowBlocks(){
   return blocks;
 }
 // animate=true: 30 dòng đầu nổi lên so le — khi tab vừa mở lại với dữ liệu mới (renderTab) hoặc đổi cách xem;
-// render lại trong lúc đang xem (gõ, đổi CBQLNS) thì không.
+// render lại trong lúc đang xem (gõ, đổi CBQLNS, lọc) thì không.
+// Bộ lọc (#resFilter) chọn DỮ LIỆU trước khi dựng DOM, và chỉ dựng tối đa RES_ROW_CAP dòng (xem theo FC × tách CIG với 2.000 FC
+// có thể tới 30.000 dòng / 216.000 ô); vượt thì có dòng nhắc lọc. Copy bảng luồng (flowTsv) vẫn xuất toàn bộ, không phụ thuộc màn hình.
+var RES_ROW_CAP = 2500;
 function renderFlowResult(animate){
   var host = $('flowResult'); host.innerHTML = '';
   var stagger = !!animate, ri = 0;
@@ -444,6 +471,9 @@ function renderFlowResult(animate){
     return;
   }
   var cols = COLS, order = RESULT_ORDER, colors = FLOW_COLORS;
+  var qy = String(($('resFilter') || {}).value || '').trim().toLowerCase();
+  var blocks = flowBlocks().filter(function(b){ return !qy || b.head.toLowerCase().indexOf(qy) >= 0; });
+  var capBlocks = Math.max(1, Math.floor(RES_ROW_CAP / order.length)), shown = blocks.slice(0, capBlocks);
 
   var sc = document.createElement('div'); sc.className = 'scrollTbl resScroll';   // header freeze khi cuộn
   var tb = document.createElement('table');
@@ -463,13 +493,12 @@ function renderFlowResult(animate){
     });
   tb.appendChild(tr);
 
-  flowBlocks().forEach(function(b, bi){
+  shown.forEach(function(b, bi){
     order.forEach(function(flow, idx){
       var trr = document.createElement('tr');
       if (stagger && ri < 30){ trr.className = 'rise'; trr.style.animationDelay = (ri * 20) + 'ms'; }
       ri++;
-      trr.dataset.blk = bi;                       // đánh dấu block để lọc theo tên nhóm/FC
-      trr.dataset.hay = b.head.toLowerCase();
+      trr.dataset.blk = bi;
       if (idx === 0){
         var tdf = document.createElement('td');
         tdf.rowSpan = order.length;
@@ -492,6 +521,12 @@ function renderFlowResult(animate){
     });
   });
 
+  if (blocks.length > shown.length){
+    var trC = document.createElement('tr'), tdC = document.createElement('td');
+    tdC.colSpan = cols.length + 2; tdC.className = 'dash'; tdC.id = 'resCap';
+    tdC.textContent = tf('resCapNote', { n: shown.length * order.length, total: blocks.length * order.length });
+    trC.appendChild(tdC); tb.appendChild(trC);
+  }
   // Ở chế độ gộp nhóm: FC chưa gán nhóm được liệt kê 1 dòng nhắc (không tính được luồng)
   if (!flowViewByFc){
     var un = fcs.filter(function(f){ return !f.groupId; });
@@ -506,15 +541,6 @@ function renderFlowResult(animate){
     }
   }
   sc.appendChild(tb); host.appendChild(sc);
-  applyResFilter();                                // giữ nguyên từ khoá đang lọc sau khi render lại
-}
-// Lọc bảng kết quả theo tên nhóm / mã / tên Fund Center — ẩn nguyên block, không chỉ 1 dòng
-function applyResFilter(){
-  var inp = $('resFilter'); if (!inp) return;
-  var qy = (inp.value || '').trim().toLowerCase();
-  document.querySelectorAll('#flowResult tr[data-blk]').forEach(function(tr){
-    tr.classList.toggle('hideRow', !!qy && tr.dataset.hay.indexOf(qy) < 0);
-  });
 }
 function flowTsv(){
   var lines = [ [ flowViewByFc ? t('colFundCenter') : t('colGroupFc'), t('colFlow') ]

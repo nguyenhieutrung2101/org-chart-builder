@@ -21,7 +21,7 @@ function dropRole(flow, col, rid){
   if (FIXED_CBQLNS[flow] === col){ msg(t('msgCellFixed')); return; }
   if (!roleById(rid)) return;
   mutate(null, function(){
-    var g = curGrid();
+    var g = ownGrid();
     var row = g[flow] || (g[flow] = {});
     var a = row[col], placed = 'ALL';
     // ô đã có phạm vi riêng -> điền vào phạm vi còn trống đầu tiên; đầy hết (hoặc ô trống / "Tất cả" / mode Ngành dọc) thì thay bằng "Tất cả"
@@ -38,7 +38,7 @@ function cycleScope(flow, col, scope){   // Tất cả -> Vận hành -> Kinh do
   var cur = (curGrid()[flow] || {})[col];
   if (!cur || !cur[scope]) return;         // chip không tồn tại (gọi ngoài UI) -> không đụng ô
   mutate(null, function(){
-    var a = curGrid()[flow][col];
+    var a = ownGrid()[flow][col];
     var rid = a[scope];
     var next = SCOPES[(SCOPES.indexOf(scope) + 1) % SCOPES.length];
     // bỏ qua phạm vi đang bị box khác chiếm, tránh ghi đè
@@ -53,10 +53,13 @@ function cycleScope(flow, col, scope){   // Tất cả -> Vận hành -> Kinh do
   });
 }
 function removeAssign(flow, col, scope){
+  var cur = (curGrid()[flow] || {})[col];
+  if (!cur || !cur[scope]) return;
   mutate(null, function(){
-    var row = curGrid()[flow], a = row[col];
+    var g = ownGrid(), row = g[flow], a = row[col];
     delete a[scope];
     if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
+    if (!Object.keys(row).length) delete g[flow];       // hàng rỗng bỏ luôn — cùng dạng chuẩn với applyState
   });
 }
 function addFreeRole(){
@@ -93,6 +96,7 @@ function scrubRole(rid){
           SCOPES.forEach(function(s){ if (a[s] === rid){ delete a[s]; n++; } });
           if (!SCOPES.some(function(s){ return a[s]; })) delete row[col];
         });
+        if (!Object.keys(row).length) delete grid[fl];   // hàng rỗng bỏ luôn — cùng dạng chuẩn với applyState (serialize/nạp lại ra y hệt)
       });
     });
   });
@@ -151,7 +155,7 @@ function setCurCig(id){
   if (id && !cigById(id)) id = '';
   curCig = id;                                    // view-state, không vào snapshot
   var fam = gridFamily();
-  if (id && !fam[id]) mutate(null, function(){ fam[id] = JSON.parse(JSON.stringify(fam[''] || {})); });   // lần đầu mở CIG chưa có luật riêng -> chép từ "Chung"
+  if (id && !fam[id]) mutate(null, ownGrid);      // mở CIG chưa có luật riêng -> chép từ "Chung" (chủ ý người dùng, có snapshot)
   else renderRules();
 }
 function setRuleMode(m){

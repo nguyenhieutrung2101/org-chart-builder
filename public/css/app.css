@@ -312,7 +312,6 @@ body.rdrag #ruleTbl td.slot > *{pointer-events:none}   /* đang kéo box: con c�
            border-radius:5px;background:#fff;color:var(--ink);width:210px;
            text-transform:none;letter-spacing:0;font-weight:400}
 #resFilter:focus{border-color:var(--ink);outline:none}
-tr.hideRow{display:none}
 #flowResult tr.rise{animation-duration:.25s}      /* 30 dòng đầu bảng luồng: nổi lên so le (delay đặt inline) khi bảng vừa hiện */
 .cardH{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 10px;
        text-transform:uppercase;letter-spacing:.06em;font-weight:800}
@@ -344,6 +343,9 @@ tr.hideRow{display:none}
       border-color:var(--ink);outline:none}
 #fcTbl td,#grpTbl td{white-space:normal}
 #pasteBox{display:none;margin-top:9px}
+/* Danh sách dòng cần xem lại sau khi dán: giữ trong hộp dán để rà từng dòng (toast chỉ tóm tắt) */
+.pasteNotes{white-space:pre-line;max-height:160px;overflow:auto;margin-top:8px;padding:6px 9px;font-size:12.5px;line-height:1.5;
+            border:2px dashed var(--coral);border-radius:var(--r);background:var(--paper)}
 #pasteBox textarea,#pasteBoxGrp textarea{width:100%;height:110px;font:12.5px/1.45 Consolas,monospace;
                    border:var(--bd);border-radius:var(--r);padding:8px;background:#fff;color:var(--ink)}
 .fdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;

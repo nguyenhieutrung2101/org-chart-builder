@@ -69,7 +69,7 @@ function applyState(d){
   if (!d || typeof d !== 'object' || !Array.isArray(d.roots)) throw new Error(t('errBadRoot'));
   var dropped = [];
   function idIn(o, prefix, seen){                // ID hợp lệ + chưa gặp -> dùng; sai định dạng -> null (cấp mới); trùng -> lỗi
-    if (!(typeof o.id === 'string' && new RegExp('^' + prefix + '\\d+$').test(o.id))) return null;
+    if (!(typeof o.id === 'string' && new RegExp('^' + prefix + '\\d{1,15}$').test(o.id))) return null;   // ≤ 15 chữ số: bộ đếm kế tiếp vẫn là số nguyên chính xác
     if (seen.has(o.id)) throw new Error(tf('errDupId', { id:o.id }));
     seen.add(o.id); return o.id;
   }
@@ -78,7 +78,7 @@ function applyState(d){
   var used = new Set(), maxN = 0;
   (function scan(list){
     list.forEach(function(o){
-      if (o && typeof o.id === 'string' && /^n\d+$/.test(o.id)){
+      if (o && typeof o.id === 'string' && /^n\d{1,15}$/.test(o.id)){
         used.add(o.id);
         var v = parseInt(o.id.slice(1), 10); if (v > maxN) maxN = v;
       }
@@ -196,16 +196,18 @@ function applyState(d){
   var usedV = new Set(), maxV = 0;
   (function scanV(list){
     list.forEach(function(o){
-      if (o && typeof o.id === 'string' && /^v\d+$/.test(o.id)){ usedV.add(o.id); var v = parseInt(o.id.slice(1), 10); if (v > maxV) maxV = v; }
+      if (o && typeof o.id === 'string' && /^v\d{1,15}$/.test(o.id)){ usedV.add(o.id); var v = parseInt(o.id.slice(1), 10); if (v > maxV) maxV = v; }
       if (o && Array.isArray(o.children)) scanV(o.children);
     });
   })(Array.isArray(d.vroots) ? d.vroots : []);
   function genV(){ do { maxV++; } while (usedV.has('v'+maxV)); return 'v'+maxV; }
-  var tVN = new Map(), tVRoots = [], seenV = new Set();
+  var tVN = new Map(), tVRoots = [], seenV = new Set(), usedOrg = new Set();
   function vmk(o, parentId){
     if (!o || typeof o !== 'object') return null;
     var orgId = (typeof o.orgId === 'string' && tN.has(o.orgId)) ? o.orgId : null;
     if (o.orgId && !orgId){ dropped.push('vnode ' + (o.id || '?') + ' org ' + o.orgId); return null; }
+    if (orgId && usedOrg.has(orgId)){ dropped.push('vnode ' + (o.id || '?') + ' org ' + orgId + ' imported twice'); return null; }   // một box ★ chỉ đứng một chỗ (UI cũng chặn)
+    if (orgId) usedOrg.add(orgId);
     var id = idIn(o, 'v', seenV) || genV();
     tVN.set(id, { id:id, dept:String(o.dept||'').toUpperCase(), title:String(o.title||''),
                   person:String(o.person||''), orgId:orgId, parent:parentId, children:[] });

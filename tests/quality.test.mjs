@@ -6,6 +6,7 @@ const { page, errors, close } = await openApp();                  // #flow, tab 
 const R = []; const check = (n, ok, x) => R.push((ok ? 'PASS' : 'FAIL') + '  ' + n + (x ? '  → ' + x : ''));
 const ev = (fn, ...a) => page.evaluate(fn, ...a);
 const toast = () => ev(() => document.getElementById('msg').textContent);
+const tf_ = (n) => String(n);
 
 // ---- mốc Save qua UI: gõ vào ô chức danh, Save, gõ tiếp cùng ô -> phải dirty + cảnh báo đóng tab ----
 await page.click('#bRoot');
@@ -48,6 +49,20 @@ await page.waitForTimeout(300);
 const typed = await ev(() => ({ ...__cnt, code: fcs[1999].code, dirty }));
 check('typing in an FC row patches in place: result recomputed once after the debounce, FC table not rebuilt', typed.fcs === 1 && typed.res === 2 && typed.code === 'FC1999X' && typed.dirty, JSON.stringify(typed));
 
+// ---- bảng luồng duyệt lớn: xem theo FC × tách CIG với 2.000 FC = 30.000 dòng dữ liệu -> chỉ dựng tối đa RES_ROW_CAP, lọc chọn dữ liệu trước khi vẽ, Copy vẫn đủ ----
+const big = await ev(() => {
+  fcGroups.forEach(g => { g.byCig = true; }); flowViewByFc = true;
+  const t0 = performance.now(); renderFlowResult(); const ms = Math.round(performance.now() - t0);
+  const rows = document.querySelectorAll('#flowResult tr[data-blk]').length, cap = document.getElementById('resCap');
+  document.getElementById('resFilter').value = 'FC1999'; renderFlowResult();
+  const filtered = document.querySelectorAll('#flowResult tr[data-blk]').length, capAfter = !!document.getElementById('resCap');
+  const t1 = performance.now(); const lines = parsePaste(flowTsv()).filter(r => /^FC\d/.test(r[0])).length; const tsvMs = Math.round(performance.now() - t1);   // ô đầu chứa xuống dòng -> đếm bằng parser, không split
+  document.getElementById('resFilter').value = ''; fcGroups.forEach(g => { g.byCig = false; }); flowViewByFc = false; renderFlowResult();
+  return { rows, capNote: cap ? cap.textContent : '', ms, filtered, capAfter, lines, tsvMs, capConst: RES_ROW_CAP };
+});
+check('FC view × CIG split with 2,000 FCs renders at most RES_ROW_CAP rows plus a "showing n of total" note, in well under a second', big.rows <= big.capConst && big.capNote.includes(String(big.rows)) && big.capNote.includes('30000') && big.ms < 1000, JSON.stringify(big));
+check('the result filter selects data before rendering (one FC = 15 rows across 3 CIGs, no cap note) and Copy still exports all 30,000 rows', big.filtered === 15 && !big.capAfter && big.lines === 30000, JSON.stringify(big));
+
 // ---- dán Excel mơ hồ qua UI: hai box ★ cùng tên -> không gán, toast liệt kê dòng ----
 await ev(() => { fcs = []; fcGroups = []; const r = rootIds[0]; addChild(r); addChild(r); const [a, b] = nodes.get(r).children.slice(-2);
   Object.assign(nodes.get(a), { title: 'GĐ 1', person: 'Nguyễn Văn A', star: true }); Object.assign(nodes.get(b), { title: 'GĐ 2', person: 'Nguyễn Văn A', star: true }); renderAll(); showTab('flow'); });
@@ -55,7 +70,11 @@ await page.click('#bPasteGrp');
 await page.fill('#pasteTaGrp', 'FCG01\tMarketing\tNguyễn Văn A\nFCG02\tSales\tKhông Ai');
 await page.click('#bPasteGrpGo');
 const amb = await ev(() => ({ toast: document.getElementById('msg').textContent, cb: fcGroups.map(g => g.cbqlns), rows: document.querySelectorAll('#grpTbody tr[data-gid]').length, exp1: tf('impAmbCb', { name: 'Nguyễn Văn A', n: 2 }), exp2: tf('impNoCb', { name: 'Không Ai' }) }));
-check('UI paste: ambiguous / unknown BMO names are left blank and the toast lists both rows', amb.cb.join(',') === ',' && amb.rows === 2 && amb.toast.includes(amb.exp1) && amb.toast.includes(amb.exp2), amb.toast);
+check('UI paste: ambiguous / unknown BMO names are left blank; the toast summarises', amb.cb.join(',') === ',' && amb.rows === 2 && amb.toast.includes(tf_(2)), amb.toast);
+const notesBox = await ev(() => ({ visible: !document.getElementById('pasteNotesGrp').hidden && getComputedStyle(document.getElementById('pasteBoxGrp')).display !== 'none', text: document.getElementById('pasteNotesGrp').textContent, ta: document.getElementById('pasteTaGrp').value }));
+check('the paste box stays open with the full review list (both rows, exact reasons) and an emptied textarea', notesBox.visible && notesBox.text.includes(amb.exp1) && notesBox.text.includes(amb.exp2) && notesBox.text.split('\n').length === 3 && notesBox.ta === '', notesBox.text);
+await page.click('#bPasteGrpCancel');
+check('Cancel closes the box and the list', await ev(() => getComputedStyle(document.getElementById('pasteBoxGrp')).display === 'none'));
 await page.click('#bPaste');
 await page.fill('#pasteTa', 'F1\tFund 1\tMarketing\nF2\tFund 2\tSales\tFCG02\nF3\tFund 3\tNope');
 await page.click('#bPasteGo');
