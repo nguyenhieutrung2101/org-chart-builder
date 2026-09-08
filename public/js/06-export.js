@@ -201,13 +201,15 @@ function applyState(d){
     });
   })(Array.isArray(d.vroots) ? d.vroots : []);
   function genV(){ do { maxV++; } while (usedV.has('v'+maxV)); return 'v'+maxV; }
-  var tVN = new Map(), tVRoots = [], seenV = new Set(), usedOrg = new Set();
+  var tVN = new Map(), tVRoots = [], seenV = new Set(), usedOrg = new Map();   // orgId -> nhãn cấp trên đã nhận nó
+  function vlabel(pid){ var p = pid ? tVN.get(pid) : null; return p ? (p.title || p.dept || p.person || p.id) : t('vRootLabel'); }
   function vmk(o, parentId){
     if (!o || typeof o !== 'object') return null;
     var orgId = (typeof o.orgId === 'string' && tN.has(o.orgId)) ? o.orgId : null;
     if (o.orgId && !orgId){ dropped.push('vnode ' + (o.id || '?') + ' org ' + o.orgId); return null; }
-    if (orgId && usedOrg.has(orgId)){ dropped.push('vnode ' + (o.id || '?') + ' org ' + orgId + ' imported twice'); return null; }   // một box ★ chỉ đứng một chỗ (UI cũng chặn)
-    if (orgId) usedOrg.add(orgId);
+    // Một box ★ chỉ có một cấp trên ngành dọc (UI cũng chặn). Hai tuyến -> không chọn thay người dùng: từ chối file, nêu rõ cả hai.
+    if (orgId && usedOrg.has(orgId)) throw new Error(tf('errOrgTwice', { id: orgId, a: usedOrg.get(orgId), b: vlabel(parentId) }));
+    if (orgId) usedOrg.set(orgId, vlabel(parentId));
     var id = idIn(o, 'v', seenV) || genV();
     tVN.set(id, { id:id, dept:String(o.dept||'').toUpperCase(), title:String(o.title||''),
                   person:String(o.person||''), orgId:orgId, parent:parentId, children:[] });

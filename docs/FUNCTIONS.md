@@ -10,16 +10,16 @@
 | `public/index.html` | 450 | Markup only: header, landing, flow module (4 tabs), chart-layout module; loads `css/app.css` and the `js/` files below in order. |
 | `public/css/app.css` | 525 | All styles (design tokens, both modules, print rules). |
 | `public/js/01-consts.js` | 14 | Constants: box geometry, zoom limits, minimap budget, `SCHEMA_V` |
-| `public/js/02-i18n.js` | 441 | i18n dictionary `STR{vi,en}`, `t/tf`, level list `LEVELS` (ĐB, CC, T1–T8) + colours, tiny utilities |
-| `public/js/03-state.js` | 223 | Global state, rule/CIG seeding, presentation layer `doc`, undo, serialization |
+| `public/js/02-i18n.js` | 445 | i18n dictionary `STR{vi,en}`, `t/tf`, level list `LEVELS` (ĐB, CC, T1–T8) + colours, tiny utilities |
+| `public/js/03-state.js` | 212 | Global state, rule/CIG seeding, presentation layer `doc`, undo, serialization |
 | `public/js/04-model.js` | 254 | Org-tree model, visibility, pure layout, headcount roll-up |
 | `public/js/05-org-render.js` | 230 | Flow module — org tab rendering (canvas, panel, hierarchy table), `renderAll` |
-| `public/js/06-export.js` | 287 | TSV/clipboard, JSON save/load (`applyState`), draw.io export |
+| `public/js/06-export.js` | 289 | TSV/clipboard, JSON save/load (`applyState`), draw.io export |
 | `public/js/07-vline.js` | 215 | Flow module — vertical-line tab |
-| `public/js/08-flow.js` | 561 | Flow engine, FC groups, Fund Centers, result table |
+| `public/js/08-flow.js` | 566 | Flow engine, FC groups, Fund Centers, result table |
 | `public/js/09-rules.js` | 372 | Flow module — Flow-Rules tab (palette, matrix, CIG scenarios, modes) |
 | `public/js/10-zoom.js` | 115 | Org-tab zoom + minimap |
-| `public/js/11-doc.js` | 718 | **Chart-layout module**: printable SVG page in mm, drag/bend interactions, print, PDF |
+| `public/js/11-doc.js` | 720 | **Chart-layout module**: printable SVG page in mm, drag/bend interactions, print, PDF |
 | `public/js/12-wiring.js` | 345 | Pan handlers, shortcuts, event wiring, landing + module switching, init |
 | `public/js/vendor/*` | — | jsPDF 2.5.2 + svg2pdf 2.2.4 (MIT), loaded lazily by "Download PDF". Not inventoried. |
 | `public/fonts/*.ttf` | — | Liberation Sans/Serif (SIL OFL) embedded into downloaded PDFs. |
@@ -27,7 +27,7 @@
 
 Every `js/` file is a classic script sharing one global scope (no module system) — every top-level `function` is a global; files must load in numeric order. **[PUBLIC]** marks UI entry points (wired to a DOM event / called from generated DOM) or cross-section APIs.
 
-Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `n1`; `Node`/`VNode` = plain objects in `nodes`/`vnodes` Maps; `Layout` = return value of `layout()`; `Doc` = the presentation layer object. Side-effect legend: **DOM**, **state** (globals), **undo** (pushes snapshot via `snap`), **LS** (localStorage), **DL** (download), **CB** (clipboard).
+Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `n1`; `Node`/`VNode` = plain objects in `nodes`/`vnodes` Maps; `Layout` = return value of `layout()`; `Doc` = the presentation layer object. Side-effect legend: **DOM**, **state** (globals), **undo** (history written by `mutate` on commit), **LS** (localStorage), **DL** (download), **CB** (clipboard).
 
 ---
 
@@ -41,21 +41,21 @@ Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
 | `LANG` | 6 | `(IIFE) → 'vi'|'en'` | Read saved UI language from localStorage, default `vi` | — / module init | reads **LS** |
-| `t` | 389 | `(k: string) → string` | Translate key against `STR[LANG]`, fall back to `vi`, then key itself | — / **~200 call sites** (every label in the app) | pure |
-| `tf` | 390 | `(k: string, p: object) → string` | Translate + interpolate `{name}` placeholders | `t` / all parametrised messages | pure |
-| `flowLabel` | 394 | `(f: FlowKey) → string` | Display label for a flow key (`Xanh`→`Green` in EN); data key unchanged | — / `renderRules`, `renderFlowResult`, `flowTsv` | pure |
-| `colLabel` | 395 | `(c: ColKey) → string` | Display label for a matrix column (`TĐ1`→`R1` in EN) | — / `applyStatic`, `renderFlowResult`, `flowTsv` | pure |
-| `segLabel` | 396 | `(s: ScopeKey) → string` | Display label for scope/branch (`VH`→`Vận hành`/`Operations`) | `t` / panel, chips, result heads, badges | pure |
-| `applyStatic` [PUBLIC] | 398 | `() → void` | Apply `data-i18n*` attributes, `data-col` headers, document title/lang, both language buttons (header + landing corner), state labels | `t`, `colLabel`, `refreshStateLabels` / `setLang`, init | **DOM** |
-| `setLang` [PUBLIC] | 409 | `(l: 'vi'\|'en') → void` | Switch UI language, persist, re-render everything | `applyStatic`, `renderAll` / `#bLang` click | **state** (`LANG`), **LS**, **DOM** |
-| `$` | 422 | `(id: string) → Element\|null` | `getElementById` shorthand | — / **~100 call sites** | pure (read DOM) |
-| `rnum` | 423 | `(lv: LevelKey) → number` | Level string → rank index (`CC`=0 … `T8`=8; −1 unknown) | — / layout, model, panel | pure |
-| `msg` | 424 | `(s: string) → void` | Toast: set text on `#msg` (fixed ink pill at the bottom), slide it up with `.show`, slide down after 3.5 s | `$` / ~25 call sites | **DOM**, timer |
-| `replay` | 429 | `(el, cls) → void` | Restart a CSS animation class on an element (remove class, force reflow, add again) for elements that never pass through display:none | — / `applySelDom`, `landingEnter`, `closeModal` | **DOM** |
-| `debounce` | 430 | `(fn: Function, ms: number) → Function` | Standard trailing debounce | — / builds `refreshFlowResultSoon` | pure (returns closure w/ timer) |
-| `dispName` | 433 | `(n: Node) → string` | Best display name: dept → title → person → "(empty)" | `t` / many | pure |
-| `cellText` | 434 | `(n: Node) → string` | Multi-line box text incl. ★ marker, for table cells & tooltips | `t` / `buildGrid`, `renderCanvas` | pure |
-| `roleText` | 439 | `(n: Node\|pseudo) → string` | "title/dept ⏎ person" — approver cell text | `t` / `resolveCell`, `roleBoxText` | pure |
+| `t` | 393 | `(k: string) → string` | Translate key against `STR[LANG]`, fall back to `vi`, then key itself | — / **~200 call sites** (every label in the app) | pure |
+| `tf` | 394 | `(k: string, p: object) → string` | Translate + interpolate `{name}` placeholders | `t` / all parametrised messages | pure |
+| `flowLabel` | 398 | `(f: FlowKey) → string` | Display label for a flow key (`Xanh`→`Green` in EN); data key unchanged | — / `renderRules`, `renderFlowResult`, `flowTsv` | pure |
+| `colLabel` | 399 | `(c: ColKey) → string` | Display label for a matrix column (`TĐ1`→`R1` in EN) | — / `applyStatic`, `renderFlowResult`, `flowTsv` | pure |
+| `segLabel` | 400 | `(s: ScopeKey) → string` | Display label for scope/branch (`VH`→`Vận hành`/`Operations`) | `t` / panel, chips, result heads, badges | pure |
+| `applyStatic` [PUBLIC] | 402 | `() → void` | Apply `data-i18n*` attributes, `data-col` headers, document title/lang, both language buttons (header + landing corner), state labels | `t`, `colLabel`, `refreshStateLabels` / `setLang`, init | **DOM** |
+| `setLang` [PUBLIC] | 413 | `(l: 'vi'\|'en') → void` | Switch UI language, persist, re-render everything | `applyStatic`, `renderAll` / `#bLang` click | **state** (`LANG`), **LS**, **DOM** |
+| `$` | 426 | `(id: string) → Element\|null` | `getElementById` shorthand | — / **~100 call sites** | pure (read DOM) |
+| `rnum` | 427 | `(lv: LevelKey) → number` | Level string → rank index (`CC`=0 … `T8`=8; −1 unknown) | — / layout, model, panel | pure |
+| `msg` | 428 | `(s: string) → void` | Toast: set text on `#msg` (fixed ink pill at the bottom), slide it up with `.show`, slide down after 3.5 s | `$` / ~25 call sites | **DOM**, timer |
+| `replay` | 433 | `(el, cls) → void` | Restart a CSS animation class on an element (remove class, force reflow, add again) for elements that never pass through display:none | — / `applySelDom`, `landingEnter`, `closeModal` | **DOM** |
+| `debounce` | 434 | `(fn: Function, ms: number) → Function` | Standard trailing debounce | — / builds `refreshFlowResultSoon` | pure (returns closure w/ timer) |
+| `dispName` | 437 | `(n: Node) → string` | Best display name: dept → title → person → "(empty)" | `t` / many | pure |
+| `cellText` | 438 | `(n: Node) → string` | Multi-line box text incl. ★ marker, for table cells & tooltips | `t` / `buildGrid`, `renderCanvas` | pure |
+| `roleText` | 443 | `(n: Node\|pseudo) → string` | "title/dept ⏎ person" — approver cell text | `t` / `resolveCell`, `roleBoxText` | pure |
 
 ## `03-state.js`
 
@@ -74,34 +74,33 @@ Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `
 | `seedRules` | 85 | `() → void` | Reset rules state for a fresh document: empty palette/grids, default CIGs, `flow` mode | `defaultCigs` / `applyState` (legacy files), init | **state** |
 | `defaultDoc` | 99 | `() → Doc` | Default presentation layer (`page`, `orient`, `font`, `scheme`, `header`, `code{}`, `notes[]`, `show{}`) | — / `cleanDoc`, module init | pure |
 | `cleanDoc` | 106 | `(src: any) → Doc` | Validate a `doc` object from a file field by field; anything missing or of the wrong type falls back to the default (old files load unchanged) | `defaultDoc` / `applyState` | pure |
-| `markStale` | 129 | `() → void` | Mark all four flow-module tabs as stale (data changed since they were last drawn) | — / `snap`, `renderAll`, `refreshView` | **state** (`staleTabs`) |
-| `serializeAll` | 131 | `() → object` | Whole document → plain JSON (schema `v: SCHEMA_V` = 11, incl. `doc`) | `ser`, `vser` / `snap`, `saveJSON` | pure (reads state) |
-| `snap` | 141 | `(key: string\|null) → void` | Undo snapshot before a change. Sets `dirty` and marks tabs stale FIRST, then coalesces consecutive edits of the same field (`key`) into one snapshot — a change is a change even when no new snapshot is taken (review #1: Save → edit same field → not dirty) | `serializeAll` / **~35 call sites** (every mutation) | **state** (undo stack) |
-| `mutate` [PUBLIC] | 156 | `(key: string\|null, fn: () → T, after?: () → void) → T` | **The single door for every data change — a transaction**: `snap(key)` (undo snapshot coalesced while typing the same field, dirty, stale tabs) → `fn` → `checkInvariants` → redraw with `after` (default `renderAll`). An exception or an invariant violation rolls the document, undo stack and `dirty` back and shows a toast. Returns what `fn` returns | `snap`, `renderAll` / every model/flow/rules/vline/doc mutation | **state**, **DOM** (via `after`) |
-| `rollback` | 164 | `(before: string, wasDirty: boolean) → void` | Restore the pre-mutation document from its JSON, drop the snapshot this change pushed, reset the coalescing key and `dirty`, redraw | `applyState`, `renderAll` / `mutate` | **state**, **DOM** |
-| `undo` [PUBLIC] | 170 | `() → void` | Pop snapshot and restore | `applyState`, `renderAll`, `msg` / `#bUndo`, Ctrl+Z | **state**, **DOM** |
-| `checkInvariants` [PUBLIC] | 180 | `() → string[]` | Data invariants for tests, fuzzing and the `mutate` commit gate: tree reachability/parent links/level order/stack-only-with-parent, focus, unique ids per entity, every BMO / FC-group / role-box / rule-cell / grid-CIG / vertical-line reference resolves, a box imported at most once on the vertical tree | `rnum` / tests | pure (reads state) |
+| `markStale` | 129 | `() → void` | Mark all four flow-module tabs as stale (data changed since they were last drawn) | — / `mutate`, `renderAll`, `refreshView` | **state** (`staleTabs`) |
+| `serializeAll` | 131 | `() → object` | Whole document → plain JSON (schema `v: SCHEMA_V` = 11, incl. `doc`) | `ser`, `vser` / `mutate`, `saveJSON` | pure (reads state) |
+| `mutate` [PUBLIC] | 146 | `(key: string\|null, fn: () → T, after?: () → void) → T` | **The single door for every data change — a transaction**: snapshot the document → `fn` → `checkInvariants` → COMMIT (undo history, coalesced while typing the same field; dirty; stale tabs) → redraw with `after` (default `renderAll`). History is written only after success, so a failure at a full stack loses nothing; an exception or an invariant violation restores the document and shows a toast; a no-op change (same JSON) writes nothing. Returns what `fn` returns | `serializeAll`, `checkInvariants`, `rollback`, `markStale`, `renderAll` / every model/flow/rules/vline/doc mutation | **state**, **DOM** (via `after`) |
+| `rollback` | 158 | `(before: string) → void` | Restore the pre-mutation document from its JSON and redraw (history and dirty were not touched yet) | `applyState`, `renderAll` / `mutate` | **state**, **DOM** |
+| `undo` [PUBLIC] | 159 | `() → void` | Pop snapshot and restore | `applyState`, `renderAll`, `msg` / `#bUndo`, Ctrl+Z | **state**, **DOM** |
+| `checkInvariants` [PUBLIC] | 169 | `() → string[]` | Data invariants for tests, fuzzing and the `mutate` commit gate: tree reachability/parent links/level order/stack-only-with-parent, focus, unique ids per entity, every BMO / FC-group / role-box / rule-cell / grid-CIG / vertical-line reference resolves, a box imported at most once on the vertical tree | `rnum` / tests | pure (reads state) |
 
 ## `04-model.js`
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
 | `nn` | 7 | `(dept,title,person: string, lv: LevelKey, parent: NodeId\|null, id?) → NodeId` | Create a node in `nodes` (not attached to any child list); presentation fields start blank (`hc:null, annot:'', desc:'', dx:0, wp:null`) | — / `addRoot/Child/Sib`; `applyState` uses its own `mk` | **state** |
-| `addRoot` [PUBLIC] | 15 | `() → void` | New CC root (clears focus first) | `snap`, `nn`, `select`, `msg` / `#bRoot` | **state**, **undo**, **DOM** |
-| `addChild` [PUBLIC] | 22 | `(pid: NodeId) → void` | New child one level below parent; un-collapses parent | `snap`, `nn`, `select` / panel `#bChild` | **state**, **undo**, **DOM** |
-| `addSib` [PUBLIC] | 31 | `(id: NodeId) → void` | New sibling right after `id`, same level | `snap`, `nn`, `select` / panel `#bSib` | **state**, **undo**, **DOM** |
+| `addRoot` [PUBLIC] | 15 | `() → void` | New CC root (clears focus first) | `mutate`, `nn`, `select`, `msg` / `#bRoot` | **state**, **undo**, **DOM** |
+| `addChild` [PUBLIC] | 22 | `(pid: NodeId) → void` | New child one level below parent; un-collapses parent | `mutate`, `nn`, `select` / panel `#bChild` | **state**, **undo**, **DOM** |
+| `addSib` [PUBLIC] | 31 | `(id: NodeId) → void` | New sibling right after `id`, same level | `mutate`, `nn`, `select` / panel `#bSib` | **state**, **undo**, **DOM** |
 | `subCount` | 40 | `(id: NodeId) → number` | Subtree size incl. self | rec. / `delNode`, `renderCanvas` (+N badge) | pure |
 | `wipe` | 45 | `(id: NodeId) → void` | Recursively delete subtree from `nodes` | rec. / `delNode` | **state** |
-| `delNode` [PUBLIC] | 50 | `(id: NodeId) → void` | Delete box + subtree (confirm when it has children); clears focus/CBQLNS refs, prunes vline imports and role boxes; leaves a fading `.gone` copy of the box on the canvas (removed after 250 ms) before the re-render | `confirm`, `snap`, `wipe`, `pruneVlineOrphans`, `pruneNodeRoles`, `renderAll`, `msg` / panel `#bDel` | **state**, **undo**, **DOM** |
-| `moveSib` [PUBLIC] | 68 | `(id: NodeId, dir: ±1) → void` | Reorder among siblings | `snap`, `renderAll` / panel `◀▶` | **state**, **undo**, **DOM** |
-| `setT` [PUBLIC] | 75 | `(id: NodeId, t: LevelKey) → void` | Change level; raises descendants below new level (invariant child ≥ parent) | `snap`, `msg`, `renderAll` / panel `#fT` change | **state**, **undo**, **DOM** |
-| `toggleStar` [PUBLIC] | 89 | `(id: NodeId) → void` | Toggle ★ BMO flag | `snap`, `renderAll` / panel `#fStar` | **state**, **undo**, **DOM** |
-| `setBranch` [PUBLIC] | 91 | `(id: NodeId, kind: ''\|'VH'\|'SM'\|'BO'\|'IT'\|'AC') → void` | Set branch mark (many boxes may share one kind) | `snap`, `renderAll` / panel `#fBr` change | **state**, **undo**, **DOM** |
+| `delNode` [PUBLIC] | 50 | `(id: NodeId) → void` | Delete box + subtree (confirm when it has children); clears focus/CBQLNS refs, prunes vline imports and role boxes; leaves a fading `.gone` copy of the box on the canvas (removed after 250 ms) before the re-render | `confirm`, `mutate`, `wipe`, `pruneVlineOrphans`, `pruneNodeRoles`, `renderAll`, `msg` / panel `#bDel` | **state**, **undo**, **DOM** |
+| `moveSib` [PUBLIC] | 68 | `(id: NodeId, dir: ±1) → void` | Reorder among siblings | `mutate`, `renderAll` / panel `◀▶` | **state**, **undo**, **DOM** |
+| `setT` [PUBLIC] | 75 | `(id: NodeId, t: LevelKey) → void` | Change level; raises descendants below new level (invariant child ≥ parent) | `mutate`, `msg`, `renderAll` / panel `#fT` change | **state**, **undo**, **DOM** |
+| `toggleStar` [PUBLIC] | 89 | `(id: NodeId) → void` | Toggle ★ BMO flag | `mutate`, `renderAll` / panel `#fStar` | **state**, **undo**, **DOM** |
+| `setBranch` [PUBLIC] | 91 | `(id: NodeId, kind: ''\|'VH'\|'SM'\|'BO'\|'IT'\|'AC') → void` | Set branch mark (many boxes may share one kind) | `mutate`, `renderAll` / panel `#fBr` change | **state**, **undo**, **DOM** |
 | `hasStarBelow` | 93 | `(id: NodeId) → boolean` | Any ★ box strictly below `id`? (gates the "BMO below approves" checkbox) | rec. walk / `renderRolePalette` | pure |
 | `isAncestor` | 106 | `(a: NodeId, b: NodeId) → boolean` | Is `a` an ancestor of `b`? | — / `toggleCollapse`, `pdDelegated` | pure |
-| `toggleCollapse` [PUBLIC] | 111 | `(id: NodeId) → void` | Collapse/expand children; clears focus if it would hide it | `isAncestor`, `snap`, `renderAll`, `msg` / panel `#bClps`, node `+N` badge | **state**, **undo**, **DOM** |
-| `setFocus` [PUBLIC] | 119 | `(id: NodeId) → void` | Focus a branch (auto-expands ancestors), scroll it into view | `snap`, `renderAll`, `scrollNodeIntoView` / panel `#bFocus` | **state**, **undo**, **DOM** |
-| `clearFocus` [PUBLIC] | 127 | `() → void` | Unfocus, keep former focus box in view | `snap`, `renderAll`, `scrollNodeIntoView` / panel, `#bUnfocus` | **state**, **undo**, **DOM** |
+| `toggleCollapse` [PUBLIC] | 111 | `(id: NodeId) → void` | Collapse/expand children; clears focus if it would hide it | `isAncestor`, `mutate`, `renderAll`, `msg` / panel `#bClps`, node `+N` badge | **state**, **undo**, **DOM** |
+| `setFocus` [PUBLIC] | 119 | `(id: NodeId) → void` | Focus a branch (auto-expands ancestors), scroll it into view | `mutate`, `renderAll`, `scrollNodeIntoView` / panel `#bFocus` | **state**, **undo**, **DOM** |
+| `clearFocus` [PUBLIC] | 127 | `() → void` | Unfocus, keep former focus box in view | `mutate`, `renderAll`, `scrollNodeIntoView` / panel, `#bUnfocus` | **state**, **undo**, **DOM** |
 | `scrollNodeIntoView` | 133 | `(id: NodeId) → void` | Center a box in the viewport (zoom-aware) | `layout`, `syncMiniView` / `setFocus`, `clearFocus` | **DOM** (scroll) |
 | `select` [PUBLIC] | 145 | `(id: NodeId\|null, focusInput?: boolean) → void` | Select box. Delegates to `dSelect` in the doc module. Otherwise surgical path (patch classes + flash) if box already on canvas — avoids hover "bounce"; brand-new boxes queue a `pop` and get a full render | `applySelDom`, `renderPanel` **or** `renderAll` / node click, add*, canvas bg click | **state** (`sel`), **DOM** |
 | `applySelDom` | 153 | `() → void` | Patch `.sel` on canvas nodes and minimap rects in place, then replay `.flash` on the selected node | — / `select` | **DOM** |
@@ -109,14 +108,14 @@ Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `
 | `layout` | 191 | `(dim?: {bw,bh,gx,gy,pad,all}) → {vis:Set, row:Map, pos:Map, keys:[]}` | Pure layout: rows = (level, layer-k); pass1 assigns rank/layer, pass2 packs X by subtree, converts to units. `dim` overrides box size/gaps (doc module passes mm) and `all` ignores focus/collapse | inner `pass1` (1217), `pass2` (1234); `visibleSet`, `rnum` / `renderAll`, `refreshView`, `scrollNodeIntoView`, `tsv`, `copyTable`, `exportDrawio` | pure |
 | `keyLabel` | 239 | `(kk: {r,k}) → string` | Row header label `T1` / `T1 (2)` | — / `buildGrid` | pure |
 | `hcOf` | 245 | `(id: NodeId) → number` | Headcount roll-up: a leaf box is its own entered number (blank = 1); a box with children is 1 + Σ children | rec. / org panel, doc panel, `buildDocSvg` | pure |
-| `setHc` [PUBLIC] | 250 | `(id: NodeId, v: string\|number) → void` | Set a leaf box's own headcount (blank clears) | `snap`, `refreshView` / panel `#fHc`, `#dfHc` | **state**, **undo**, **DOM** |
+| `setHc` [PUBLIC] | 250 | `(id: NodeId, v: string\|number) → void` | Set a leaf box's own headcount (blank clears) | `mutate`, `refreshView` / panel `#fHc`, `#dfHc` | **state**, **undo**, **DOM** |
 
 ## `05-org-render.js`
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
 | `renderCanvas` | 4 | `(L: Layout) → void` | Rebuild canvas: connectors (SVG paths) + absolutely positioned `.node` divs (level colour, ★, branch badge, +N collapsed pill, one-shot `takeAnim` class); keeps `.node.gone` ghosts; sets world size + zoom + minimap | `applyZoomView`, `subCount`, `cellText`, `segLabel`, `renderMinimap`; wires node click/dblclick → `select`, badge → `toggleCollapse` / `renderAll`, `refreshView` | **DOM**, **state** (`worldW/H`) |
-| `renderPanel` | 83 | `() → void` | Right panel: empty hint or full edit form (3 fields, level incl. ĐB, headcount, ★, branch, actions); wires all input/button handlers | `t`, `tf`, `rnum`, `segLabel`; handlers call `snap`, `setT`, `toggleStar`, `setBranch`, `toggleCollapse`, `setFocus`/`clearFocus`, `addChild`, `addSib`, `moveSib`, `delNode`, `refreshView` / `renderAll`, `select` | **DOM** |
+| `renderPanel` | 83 | `() → void` | Right panel: empty hint or full edit form (3 fields, level incl. ĐB, headcount, ★, branch, actions); wires all input/button handlers | `t`, `tf`, `rnum`, `segLabel`; handlers call `mutate`, `setT`, `toggleStar`, `setBranch`, `toggleCollapse`, `setFocus`/`clearFocus`, `addChild`, `addSib`, `moveSib`, `delNode`, `refreshView` / `renderAll`, `select` | **DOM** |
 | `paths` | 147 | `(vis: Set) → Node[][]` | All root→leaf visible paths (one table row each); inner `dfs` | rec. / `buildGrid` | pure |
 | `buildGrid` | 159 | `(L: Layout) → {header:[], rows:[][]}` | Hierarchy table as a grid; `—` marks pass-through levels | `paths`, `keyLabel`, `cellText` / `renderTable`, `tsv` | pure |
 | `renderTable` | 173 | `(L: Layout) → void` | Render hierarchy table with fixed-width colgroup | `buildGrid` / `renderAll`, `refreshView` | **DOM** |
@@ -136,9 +135,9 @@ Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `
 | `ser` | 43 | `(id: NodeId) → object` | Recursively serialize an org subtree (presentation fields only when set) | rec. / `serializeAll` | pure |
 | `saveJSON` [PUBLIC] | 58 | `() → void` | Download the document as JSON; clears `dirty` and resets `lastSnapKey` so the first edit after Save snapshots the saved state | `serializeAll`, `dl`, `msg` / `#bSave` | **DL**, **state** |
 | `applyState` | 68 | `(d: object) → void  (throws)` | Validate + load a whole document; migrates legacy shapes (`vh`→`br`, `ruleGrid`→`ruleGrids['']`, missing `cigs` → `defaultCigs()`, missing `doc` → defaults), regenerates broken ids, prunes orphan refs, validates presentation fields (`cleanWp`). Inner: `scan`, `genId`, `cleanWp`, `mk`, `cleanGrid`, `cleanFamily`, `vmk` | `rnum`, `seedRules` (legacy), `defaultCigs` / `undo`, `loadJSON` | **state** (replaces all) |
-| `loadJSON` [PUBLIC] | 235 | `(file: File) → void` | Read file → parse → `applyState` → reset undo → render; a rejected file shows the reason (`msgBadStructWhy`) and keeps current data; dropped references are counted in the "opened" toast; warns when the file's `v` is newer than `SCHEMA_V` | `applyState`, `renderAll`, `msg`, `tf` / `#fileIn` change | file **I/O** (read), **state**, **DOM** |
-| `xesc` | 250 | `(s: any) → string` | XML-escape | — / `exportDrawio` | pure |
-| `exportDrawio` [PUBLIC] | 254 | `() → void` | Build draw.io mxGraph XML of current view (positions, colors, custom attrs) and download | `layout`, `xesc`, `dl`, `msg` / `#bDrawio` | **DL** |
+| `loadJSON` [PUBLIC] | 237 | `(file: File) → void` | Read file → parse → `applyState` → reset undo → render; a rejected file shows the reason (`msgBadStructWhy`) and keeps current data; dropped references are counted in the "opened" toast; warns when the file's `v` is newer than `SCHEMA_V` | `applyState`, `renderAll`, `msg`, `tf` / `#fileIn` change | file **I/O** (read), **state**, **DOM** |
+| `xesc` | 252 | `(s: any) → string` | XML-escape | — / `exportDrawio` | pure |
+| `exportDrawio` [PUBLIC] | 256 | `() → void` | Build draw.io mxGraph XML of current view (positions, colors, custom attrs) and download | `layout`, `xesc`, `dl`, `msg` / `#bDrawio` | **DL** |
 
 ## `07-vline.js`
 
@@ -147,17 +146,17 @@ Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `
 | `vlayout` | 5 | `() → Map<VNodeId,{x,y}>` | Depth-based tidy tree layout (leaves packed L→R, parents centered); inner `walk` | rec. / `renderVline` | pure |
 | `renderVline` | 22 | `() → void` | Full rebuild of vline canvas: connectors, node divs (cyan = manual global, paper = imported w/ ★ tag), refresh import picker | `vlayout`, `vdisp`, `fillVImportPick`; wires click → `vselect` / `renderAll`, `showTab`, v* mutations | **DOM** |
 | `vselect` [PUBLIC] | 67 | `(id: VNodeId\|null) → void` | Surgical selection on vline canvas (patch classes only) + panel | `renderVPanel` / node click, bg click, v* mutations | **state** (`vsel`), **DOM** |
-| `renderVPanel` | 74 | `() → void` | Vline right panel: empty hint or 3 fields (disabled when imported) + actions; wires handlers | `vdisp`; handlers → `snap`, `patchVNodeText`, `vAdd`, `vAddSib`, `vMove`, `vDel` / `vselect`, `renderAll`, `showTab` | **DOM** |
+| `renderVPanel` | 74 | `() → void` | Vline right panel: empty hint or 3 fields (disabled when imported) + actions; wires handlers | `vdisp`; handlers → `mutate`, `patchVNodeText`, `vAdd`, `vAddSib`, `vMove`, `vDel` / `vselect`, `renderAll`, `showTab` | **DOM** |
 | `patchVNodeText` | 112 | `(n: VNode) → void` | Patch one vline box's text in place while typing (keeps input focus) | `vdisp` / `renderVPanel` field handlers | **DOM** |
 | `vnn` | 122 | `(dept,title,person, orgId, parent) → VNodeId` | Create vnode in `vnodes` | — / `vAddRoot`, `vAdd`, `vAddSib`, `vImport` | **state** |
-| `vAddRoot` [PUBLIC] | 129 | `() → void` | New manual global-person root | `snap`, `vnn`, `renderVline`, `vselect` / `#bVRoot` | **state**, **undo**, **DOM** |
+| `vAddRoot` [PUBLIC] | 129 | `() → void` | New manual global-person root | `mutate`, `vnn`, `renderVline`, `vselect` / `#bVRoot` | **state**, **undo**, **DOM** |
 | `vAdd` [PUBLIC] | 133 | `(pid) → void` | New manual child | same / vpanel `#vbChild` | **state**, **undo**, **DOM** |
 | `vAddSib` [PUBLIC] | 137 | `(id) → void` | New manual sibling after `id` | same / vpanel `#vbSib` | **state**, **undo**, **DOM** |
-| `vMove` [PUBLIC] | 147 | `(id, dir: ±1) → void` | Reorder among siblings | `snap`, `renderVline`, `vselect` / vpanel `◀▶` | **state**, **undo**, **DOM** |
+| `vMove` [PUBLIC] | 147 | `(id, dir: ±1) → void` | Reorder among siblings | `mutate`, `renderVline`, `vselect` / vpanel `◀▶` | **state**, **undo**, **DOM** |
 | `vSubCount` | 154 | `(id) → number` | Subtree size | rec. / `vDel` confirm | pure |
-| `vDel` [PUBLIC] | 158 | `(id) → void` | Delete vnode subtree (confirm if children); inner `rm` | `vdisp`, `snap`, `refreshFlowResultSoon` / vpanel `#vbDel` | **state**, **undo**, **DOM** |
+| `vDel` [PUBLIC] | 158 | `(id) → void` | Delete vnode subtree (confirm if children); inner `rm` | `vdisp`, `mutate`, `refreshFlowResultSoon` / vpanel `#vbDel` | **state**, **undo**, **DOM** |
 | `fillVImportPick` | 175 | `() → void` | Import dropdown = ★ boxes not yet on the tree | `starredNodes`, `dispName` / `renderVline` | **DOM** |
-| `vImport` [PUBLIC] | 191 | `() → void` | Import selected ★ box as child of `vsel` (guards: valid pick + parent selected) | `msg`, `snap`, `vnn`, `renderVline`, `vselect`, `refreshFlowResultSoon` / `#bVImport` | **state**, **undo**, **DOM** |
+| `vImport` [PUBLIC] | 191 | `() → void` | Import selected ★ box as child of `vsel` (guards: valid pick + parent selected) | `msg`, `mutate`, `vnn`, `renderVline`, `vselect`, `refreshFlowResultSoon` / `#bVImport` | **state**, **undo**, **DOM** |
 | `pruneVlineOrphans` | 202 | `() → void` | Remove imported vnodes whose org box was deleted; reattach their children to the grandparent | — / `delNode` | **state** |
 
 ## `08-flow.js`
@@ -178,59 +177,59 @@ Conventions: types are inferred (untyped ES5-style JS). `NodeId` = string like `
 | `groupOption` | 84 | `(g) → <option>` | Build an option element for a group | `groupLabel` / `fcRow`, `addGroup` | pure (creates el) |
 | `fillGroupSelect` | 92 | `(sel: HTMLSelectElement, groupId: string\|null, full: boolean) → void` | Populate one FC row's group dropdown: compact (no-group + the chosen group only) by default, full list while focused — keeps the DOM at F + G options instead of F × G | `groupOption`, `t` / `fcRow` (+ its focus/mousedown/blur handlers), `delGroup` | **DOM** |
 | `patchGroupOptionLabels` | 100 | `(g) → void` | Patch this group's label in every FC dropdown that currently holds it | `groupLabel` / group row inputs | **DOM** |
-| `groupRow` | 106 | `(g) → <tr>` | One group row: code/name inputs, BMO select (★ boxes), FC count, per-CIG toggle, delete; wires all handlers | `starredNodes`, `dispName`; handlers → `snap`, `patchGroupOptionLabels`, `refreshFlowResultSoon`, `renderFlowResult`, `delGroup` / `renderGroups`, `addGroup` | pure (creates el; handlers mutate) |
+| `groupRow` | 106 | `(g) → <tr>` | One group row: code/name inputs, BMO select (★ boxes), FC count, per-CIG toggle, delete; wires all handlers | `starredNodes`, `dispName`; handlers → `mutate`, `patchGroupOptionLabels`, `refreshFlowResultSoon`, `renderFlowResult`, `delGroup` / `renderGroups`, `addGroup` | pure (creates el; handlers mutate) |
 | `renderGroups` | 164 | `() → void` | Rebuild groups table (or empty hint) | `groupRow`, `applyGrpFilter` / `renderFlow`, pastes, `delGroup` (empty) | **DOM** |
-| `addGroup` [PUBLIC] | 173 | `() → void` | Append one group row (FC dropdowns pick it up lazily on focus — no per-row injection) | `snap`, `groupRow`, `updateGroupCounts`, `renderFlowResult` / `#bAddGrp` | **state**, **undo**, **DOM** |
-| `delGroup` | 182 | `(g, rowEl) → void` | Delete group; detach its FCs and reset their dropdowns to "no group" | `snap`, `fillGroupSelect`, `renderGroups`, `updateGroupCounts`, `renderFlowResult` / row ✕ | **state**, **undo**, **DOM** |
+| `addGroup` [PUBLIC] | 173 | `() → void` | Append one group row (FC dropdowns pick it up lazily on focus — no per-row injection) | `mutate`, `groupRow`, `updateGroupCounts`, `renderFlowResult` / `#bAddGrp` | **state**, **undo**, **DOM** |
+| `delGroup` | 182 | `(g, rowEl) → void` | Delete group; detach its FCs and reset their dropdowns to "no group" | `mutate`, `fillGroupSelect`, `renderGroups`, `updateGroupCounts`, `renderFlowResult` / row ✕ | **state**, **undo**, **DOM** |
 | `applyGrpFilter` [PUBLIC] | 196 | `() → void` | Show/hide group rows by filter text (id → group `Map` built once) | — / `#grpFilter` input, `renderGroups` | **DOM** |
 | `updateGroupCounts` | 206 | `() → void` | Refresh per-group FC counts + card counters | — / many mutation paths | **DOM** |
-| `fcRow` | 218 | `(f) → <tr>` | One FC row (code/name inputs, compact group select that expands on focus/mousedown and compacts on blur, delete) with handlers | `fillGroupSelect`; handlers → `snap`, `refreshFlowResultSoon`, `updateGroupCounts`, `renderFlowResult` / `renderFcs`, `addFc` | pure (creates el) |
+| `fcRow` | 218 | `(f) → <tr>` | One FC row (code/name inputs, compact group select that expands on focus/mousedown and compacts on blur, delete) with handlers | `fillGroupSelect`; handlers → `mutate`, `refreshFlowResultSoon`, `updateGroupCounts`, `renderFlowResult` / `renderFcs`, `addFc` | pure (creates el) |
 | `renderFcs` | 243 | `() → void` | Rebuild FC table | `fcRow`, `applyFcFilter` / `renderFlow`, pastes | **DOM** |
 | `delFc` | 248 | `(f, rowEl?) → void` | Remove a Fund Center (in-place row removal, counts, result) | `mutate` / FC row ✕, tests | **state**, **DOM** |
-| `addFc` [PUBLIC] | 251 | `() → void` | Append one FC row | `snap`, `fcRow`, `updateGroupCounts`, `applyFcFilter`, `renderFlowResult` / `#bAddFc` | **state**, **undo**, **DOM** |
+| `addFc` [PUBLIC] | 251 | `() → void` | Append one FC row | `mutate`, `fcRow`, `updateGroupCounts`, `applyFcFilter`, `renderFlowResult` / `#bAddFc` | **state**, **undo**, **DOM** |
 | `applyFcFilter` [PUBLIC] | 260 | `() → void` | Show/hide FC rows by filter (matches code/name/group name); id → FC `Map` built once, so filtering is linear | — / `#fcFilter` input, `renderFcs` | **DOM** |
-| `isHeaderRow` | 274 | `(row: string[]\|string) → boolean` | Header only when the first cell EXACTLY matches a known label (app export labels in both languages or generic words); "FC 001" is data | `STR` / `importGrpPaste`, `importPaste` | pure |
-| `parsePaste` | 286 | `(txt: string) → string[][]` | Pure quote-aware TSV parser (Excel / app export): `""` escapes, tabs and newlines inside quotes belong to the cell, CRLF, trailing empty cells; strips the export formula guard; drops a header row | `isHeaderRow` / `importGrpPaste`, `importPaste`, tests | pure |
-| `unguard` | 306 | `(cell: string) → string` | Inverse of the export formula guard: drop one leading apostrophe before = + - @ | — / `parsePaste` | pure |
-| `normKey` | 307 | `(v) → string` | Trimmed lower-case matching key | — / `multiIndex`, `mergeGroupRows`, `mergeFcRows` | pure |
-| `multiIndex` | 311 | `(list, keyFn) → Map<string, item[]>` | Key → ARRAY of matching items (auto-assign only when exactly one). A Map, so names like "constructor" cannot hit inherited properties | `normKey` / `mergeGroupRows`, `mergeFcRows` | pure |
-| `mergeGroupRows` | 319 | `(rows: string[][]) → {added, updated, notes[]}` | Pure state merge for pasted FCG rows: same code updates in place; BMO matched by ★ person name only when unique; an unresolved name keeps the existing BMO on an update (note says so) and leaves a new row blank (note says so); duplicate codes reported | `multiIndex`, `starredNodes`, `tf` / `importGrpPaste`, tests | **state** (`fcGroups`, `gseq`) |
-| `mergeFcRows` | 350 | `(rows: string[][]) → {added, groups, notes[]}` | Pure state merge for pasted FC rows (code, name, group name, optional group code): group by code first, then unique name; unknown groups created; ambiguous ones leave the FC ungrouped and are reported | `multiIndex`, `tf` / `importPaste`, tests | **state** (`fcs`, `fcGroups`, `gseq`, `fseq`) |
-| `finishPaste` | 374 | `(taId, boxId, notesId, st, summary) → void` | After a paste: clear the textarea; with rows to review keep the box open and list them all; toast the summary | `msg`, `tf` / `importGrpPaste`, `importPaste` | **DOM** |
-| `importGrpPaste` [PUBLIC] | 381 | `(txt: string) → void` | DOM shell for pasting FCG rows: `parsePaste` → `mutate(mergeGroupRows)` → hide paste box → toast with counts and rows to review | `isHeaderRow`, `msg`, `snap`, `starredNodes`, `renderGroups`, `renderFcs`, `updateGroupCounts`, `renderFlowResult`, `tf` / `#bPasteGrpGo` | **state**, **undo**, **DOM** |
-| `importPaste` [PUBLIC] | 387 | `(txt: string) → void` | DOM shell for pasting FC rows: `parsePaste` → `mutate(mergeFcRows)` → hide paste box → toast with counts, new groups and rows to review | `isHeaderRow`, same pattern as above / `#bPasteGo` | **state**, **undo**, **DOM** |
-| `groupsTsv` | 394 | `() → string` | TSV of the FC-group table (code, name, BMO person) for the Copy button | `q`, `cbqlnsOf`, `dispName` / `#bCopyGrp`, tests | pure (reads state) |
-| `fcsTsv` | 402 | `() → string` | TSV of the FC table incl. a 4th FCG-code column, so copy → paste round-trips by code | `q` / `#bCopyFc`, tests | pure (reads state) |
-| `cbqlnsOf` | 414 | `(g) → Node\|null` | The group's BMO node (must exist in `nodes`) | — / `flowBlocks`, copy-group | pure |
-| `flowBlocks` | 419 | `() → Block[]` | Result blocks: per group (default) or per FC; per-CIG splitting duplicates a block per CIG with that CIG's grid. Builds one index per view (FC codes by group / group by id) instead of rescanning arrays per row. Inner `segLine`, `pushSplit` | `cbqlnsOf`, `segmentOf`, `segLabel`, `groupLabel`, `gridFor`, `dispName`, `t` / `renderFlowResult`, `flowTsv` | pure |
-| `renderFlowResult` | 466 | `(animate?: boolean) → void` | Result table (group or FC view): `flowBlocks` × `RESULT_ORDER`, cells via `resolveCell`, unassigned-FC row; first 30 rows get a staggered `.rise` when `animate` or when the flow tab is hidden (plays on reveal), never on a plain re-render while visible | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `applyResFilter` / **~18 callers** | **DOM** |
-| `flowTsv` | 545 | `() → string` | Result table as TSV (same labels as UI) | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `q` / `copyFlowTable` | pure |
-| `copyFlowTable` [PUBLIC] | 558 | `() → void` | Copy result TSV | `flowTsv`, `copyText`, `tf` / `#bCopyFlow` | **CB** |
+| `isHeaderRow` | 274 | `(row: string[]\|string) → boolean` | Header only when the first cell EXACTLY matches a real label (app export labels in both languages, "Mã"/"Code"/"Mã FC"/"FC code"); "FC 001", "ID", "FC", "FCG" are data | `STR` / `importGrpPaste`, `importPaste` | pure |
+| `parsePaste` | 287 | `(txt: string) → string[][]` | Pure quote-aware TSV parser (Excel / app export): `""` escapes, tabs and newlines inside quotes belong to the cell, CRLF, trailing empty cells; strips the export formula guard (also after whitespace); an unclosed quote throws with its line number; drops a header row | `isHeaderRow` / `importGrpPaste`, `importPaste`, tests | pure |
+| `unguard` | 309 | `(cell: string) → string` | Inverse of the export formula guard: drop one leading apostrophe before = + - @ | — / `parsePaste` | pure |
+| `normKey` | 310 | `(v) → string` | Trimmed lower-case matching key | — / `multiIndex`, `mergeGroupRows`, `mergeFcRows` | pure |
+| `multiIndex` | 314 | `(list, keyFn) → Map<string, item[]>` | Key → ARRAY of matching items (auto-assign only when exactly one). A Map, so names like "constructor" cannot hit inherited properties | `normKey` / `mergeGroupRows`, `mergeFcRows` | pure |
+| `mergeGroupRows` | 322 | `(rows: string[][]) → {added, updated, notes[]}` | Pure state merge for pasted FCG rows: same code updates in place; BMO matched by ★ person name only when unique; an unresolved name keeps the existing BMO on an update (note says so) and leaves a new row blank (note says so); duplicate codes reported | `multiIndex`, `starredNodes`, `tf` / `importGrpPaste`, tests | **state** (`fcGroups`, `gseq`) |
+| `mergeFcRows` | 353 | `(rows: string[][]) → {added, groups, notes[]}` | Pure state merge for pasted FC rows (code, name, group name, optional group code): group by code first, then unique name; unknown groups created; ambiguous ones leave the FC ungrouped and are reported | `multiIndex`, `tf` / `importPaste`, tests | **state** (`fcs`, `fcGroups`, `gseq`, `fseq`) |
+| `finishPaste` | 377 | `(taId, boxId, notesId, st, summary) → void` | After a paste: clear the textarea; with rows to review keep the box open and list them all; toast the summary | `msg`, `tf` / `importGrpPaste`, `importPaste` | **DOM** |
+| `importGrpPaste` [PUBLIC] | 384 | `(txt: string) → void` | DOM shell for pasting FCG rows: `parsePaste` → `mutate(mergeGroupRows)` → hide paste box → toast with counts and rows to review | `isHeaderRow`, `msg`, `mutate`, `starredNodes`, `renderGroups`, `renderFcs`, `updateGroupCounts`, `renderFlowResult`, `tf` / `#bPasteGrpGo` | **state**, **undo**, **DOM** |
+| `importPaste` [PUBLIC] | 391 | `(txt: string) → void` | DOM shell for pasting FC rows: `parsePaste` → `mutate(mergeFcRows)` → hide paste box → toast with counts, new groups and rows to review | `isHeaderRow`, same pattern as above / `#bPasteGo` | **state**, **undo**, **DOM** |
+| `groupsTsv` | 399 | `() → string` | TSV of the FC-group table (code, name, BMO person) for the Copy button | `q`, `cbqlnsOf`, `dispName` / `#bCopyGrp`, tests | pure (reads state) |
+| `fcsTsv` | 407 | `() → string` | TSV of the FC table incl. a 4th FCG-code column, so copy → paste round-trips by code | `q` / `#bCopyFc`, tests | pure (reads state) |
+| `cbqlnsOf` | 419 | `(g) → Node\|null` | The group's BMO node (must exist in `nodes`) | — / `flowBlocks`, copy-group | pure |
+| `flowBlocks` | 424 | `() → Block[]` | Result blocks: per group (default) or per FC; per-CIG splitting duplicates a block per CIG with that CIG's grid. Builds one index per view (FC codes by group / group by id) instead of rescanning arrays per row. Inner `segLine`, `pushSplit` | `cbqlnsOf`, `segmentOf`, `segLabel`, `groupLabel`, `gridFor`, `dispName`, `t` / `renderFlowResult`, `flowTsv` | pure |
+| `renderFlowResult` | 471 | `(animate?: boolean) → void` | Result table (group or FC view): `flowBlocks` × `RESULT_ORDER`, cells via `resolveCell`, unassigned-FC row; first 30 rows get a staggered `.rise` when `animate` or when the flow tab is hidden (plays on reveal), never on a plain re-render while visible | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `applyResFilter` / **~18 callers** | **DOM** |
+| `flowTsv` | 550 | `() → string` | Result table as TSV (same labels as UI) | `flowBlocks`, `resolveCell`, `flowLabel`, `colLabel`, `q` / `copyFlowTable` | pure |
+| `copyFlowTable` [PUBLIC] | 563 | `() → void` | Copy result TSV | `flowTsv`, `copyText`, `tf` / `#bCopyFlow` | **CB** |
 
 ## `09-rules.js`
 
 | Function | Line | Signature | Purpose | Calls / Called by | Side effects |
 |---|---|---|---|---|---|
 | `usageCount` | 4 | `(rid) → number` | Count assignments of a role box across **both** grid families and all scenarios | — / palette tags, `deleteRole` | pure |
-| `dropRole` [PUBLIC] | 20 | `(flow, col, rid) → void` | Drop a role box into a cell: empty / "all" cell or vertical-line mode → replace with `{ALL: rid}`; cell with branch scopes → fill first free scope, or replace with "all" when full; queues the `land` animation on the placed chip | `roleById`, `snap`, `curGrid`, `renderRules`, `renderFlowResult`, `msg` / cell `ondrop` | **state**, **undo**, **DOM** |
+| `dropRole` [PUBLIC] | 20 | `(flow, col, rid) → void` | Drop a role box into a cell: empty / "all" cell or vertical-line mode → replace with `{ALL: rid}`; cell with branch scopes → fill first free scope, or replace with "all" when full; queues the `land` animation on the placed chip | `roleById`, `mutate`, `curGrid`, `renderRules`, `renderFlowResult`, `msg` / cell `ondrop` | **state**, **undo**, **DOM** |
 | `chipKey` | 36 | `(flow, col, scope) → string` | Animation id of the chip in a matrix cell (`chip:<flow>:<col>:<scope>`) for `animNextBox` / `takeAnim` | — / `dropRole`, `cycleScope`, `chipEl` | pure |
-| `cycleScope` [PUBLIC] | 37 | `(flow, col, scope) → void` | Rotate a chip's scope ALL → VH → SM → BO → IT → AC → REST, skipping scopes already taken by other boxes; queues the `flip` animation on the label | `snap`, `curGrid`, `renderRules`, `renderFlowResult` / chip scope tag click | **state**, **undo**, **DOM** |
-| `removeAssign` [PUBLIC] | 55 | `(flow, col, scope) → void` | Remove one scope assignment from a cell (ignored when it does not exist); drops emptied cells and rows | `snap`, `curGrid`, renders / chip ✕ | **state**, **undo**, **DOM** |
-| `addFreeRole` [PUBLIC] | 65 | `() → void` | New empty custom role box, focus its input | `snap`, `renderRules` / `#bAddFreeRole` | **state**, **undo**, **DOM** |
-| `addNodeRole` [PUBLIC] | 70 | `() → void` | Add chart-linked role box from picker (dupe-guarded) | `msg`, `snap`, `renderRules` / `#bAddNodeRole` | **state**, **undo**, **DOM** |
-| `deleteRole` [PUBLIC] | 78 | `(rb) → void` | Delete role box (+confirm if used) and scrub it from every grid in both families | `usageCount`, `roleBoxName`, `snap`, `scrubRole`, renders / palette ✕ | **state**, **undo**, **DOM** |
+| `cycleScope` [PUBLIC] | 37 | `(flow, col, scope) → void` | Rotate a chip's scope ALL → VH → SM → BO → IT → AC → REST, skipping scopes already taken by other boxes; queues the `flip` animation on the label | `mutate`, `curGrid`, `renderRules`, `renderFlowResult` / chip scope tag click | **state**, **undo**, **DOM** |
+| `removeAssign` [PUBLIC] | 55 | `(flow, col, scope) → void` | Remove one scope assignment from a cell (ignored when it does not exist); drops emptied cells and rows | `mutate`, `curGrid`, renders / chip ✕ | **state**, **undo**, **DOM** |
+| `addFreeRole` [PUBLIC] | 65 | `() → void` | New empty custom role box, focus its input | `mutate`, `renderRules` / `#bAddFreeRole` | **state**, **undo**, **DOM** |
+| `addNodeRole` [PUBLIC] | 70 | `() → void` | Add chart-linked role box from picker (dupe-guarded) | `msg`, `mutate`, `renderRules` / `#bAddNodeRole` | **state**, **undo**, **DOM** |
+| `deleteRole` [PUBLIC] | 78 | `(rb) → void` | Delete role box (+confirm if used) and scrub it from every grid in both families | `usageCount`, `roleBoxName`, `mutate`, `scrubRole`, renders / palette ✕ | **state**, **undo**, **DOM** |
 | `scrubRole` | 87 | `(rid: string) → number` | Remove a role box from every rule cell in both modes / all scenarios; drops emptied cells and rows (same canonical shape as `applyState`); returns the count | — / `deleteRole`, `pruneNodeRoles` | **state** |
 | `pruneNodeRoles` | 107 | `() → {boxes:number, cells:number}` | Drop node-linked role boxes whose chart box no longer exists, plus their cells — keeps in-session state identical to what `applyState` would load back | `scrubRole` / `delNode` | **state** |
 | `patchRoleChips` | 117 | `(rb) → void` | Patch all matrix chips for a box while typing (keeps input focus) | `rolePair`, `roleBoxText` / palette input handlers | **DOM** |
 | `chipEl` | 129 | `(flow, col, scope, rid) → <div>` | Chip DOM for a cell assignment (scope label that cycles, ✕ remove, title/person lines, one-shot `takeAnim` class) | `roleById`, `rolePair`, `segLabel`, `roleBoxText`; wires `cycleScope`, `removeAssign` / `renderRules` | pure (creates el) |
 | `cigById` | 153 | `(id) → Cig\|null` | Lookup CIG | — / toggle, `setCurCig` | pure |
-| `setCurCig` [PUBLIC] | 154 | `(id: string) → void` | Switch editing scenario; clone Common into a CIG on first open (per current mode's family) | `cigById`, `gridFamily`, `snap`, `renderRules` / toggle buttons | **state**, **undo**, **DOM** |
-| `setRuleMode` [PUBLIC] | 161 | `(m: 'flow'\|'vline') → void` | Switch resolve-by mode | `snap`, `renderRules`, `renderFlowResult` / `#modeFlow`, `#modeVline` | **state**, **undo**, **DOM** |
+| `setCurCig` [PUBLIC] | 154 | `(id: string) → void` | Switch editing scenario; clone Common into a CIG on first open (per current mode's family) | `cigById`, `gridFamily`, `mutate`, `renderRules` / toggle buttons | **state**, **undo**, **DOM** |
+| `setRuleMode` [PUBLIC] | 161 | `(m: 'flow'\|'vline') → void` | Switch resolve-by mode | `mutate`, `renderRules`, `renderFlowResult` / `#modeFlow`, `#modeVline` | **state**, **undo**, **DOM** |
 | `renderModeToggle` | 165 | `() → void` | Patch mode buttons' active state + note | `t` / `renderRules` | **DOM** |
 | `renderCigToggle` | 175 | `(rebuild?: boolean) → void` | Scenario buttons; rebuilds only when CIG list changed, otherwise patches labels/active in place (prevents pressed-button "bounce"); "own rules" note reads the current mode's family | `cigById`, `gridFamily`, `setCurCig` (wire), `tf` / `renderRules`, `renderCigs` input, `addCig` | **DOM** |
-| `renderCigs` | 202 | `() → void` | CIG table (code/name inputs + delete) with handlers; delete drops the CIG's grid from **both** families | handlers → `snap`, `renderCigToggle`, `refreshFlowResultSoon`, delete → renders / `renderRules` | **DOM** |
+| `renderCigs` | 202 | `() → void` | CIG table (code/name inputs + delete) with handlers; delete drops the CIG's grid from **both** families | handlers → `mutate`, `renderCigToggle`, `refreshFlowResultSoon`, delete → renders / `renderRules` | **DOM** |
 | `delCig` | 224 | `(c) → void` | Remove a CIG and its private rule grids in both modes; resets `curCig` if needed | `mutate` / CIG row ✕, tests | **state**, **DOM** |
-| `addCig` [PUBLIC] | 231 | `() → void` | Append CIG, focus its code input | `snap`, `renderCigs`, `renderCigToggle(true)` / `#bAddCig` | **state**, **undo**, **DOM** |
+| `addCig` [PUBLIC] | 231 | `() → void` | Append CIG, focus its code input | `mutate`, `renderCigs`, `renderCigToggle(true)` / `#bAddCig` | **state**, **undo**, **DOM** |
 | `renderRules` | 237 | `() → void` | Rebuild rules matrix for current mode+scenario: mode/CIG toggles, 5 flow rows × 6 cols (locked BMO cells, chips, drop targets), palette, picker | `renderModeToggle`, `renderCigToggle`, `renderCigs`, `flowLabel`, `chipEl`, `curGrid`, `dropRole` (wire), `renderRolePalette`, `fillRolePick` / **~14 callers** | **DOM** |
 | `renderRolePalette` | 278 | `() → void` | Palette: fixed VLINE card (vline mode only, undeletable, draggable), then user boxes (drag, usage tag, delete, editable fields, pd-below checkbox when ★ below) | `usageCount`, `roleBoxName`, `rolePair`, `hasStarBelow`, `tf`; wires drag + `deleteRole` + `patchRoleChips` | **DOM** |
 | `fillRolePick` | 358 | `() → void` | "From chart" picker: all org boxes sorted by name | `dispName` / `renderRules` | **DOM** |
@@ -269,30 +268,30 @@ Also: an IIFE wiring pointer-capture drag on the minimap (click/drag → centre 
 | `buildDocSvg` | 202 | `(forExport: boolean) → SVGSVGElement` | **Core of the module**: build the page in mm — header, document-code block, notes, legend, optional fixed-size SVG logo top-left, chart placed right under the header and pushed down only when a box (with badge) or any connector segment would touch those blocks, fit-to-page (width only when `autoH`), page height grown to the content when `autoH`, row guides while dragging (fade in on the first frame of a drag, dragged box lifted), connectors with arrowheads, boxes (centred text, badge, headcount, one-shot `takeAnim` class on screen only), description blocks | `docPageSize`, `docFont`, `docColors`, `docLayout`, `docEdges`, `hcOf`, `sv`, `svText`, `wrapText` / `renderDoc`, `docPdf` | pure (creates DOM), **state** (`docView`) |
 | `svgAttrOk` | 394 | `(name, value) → boolean` | Attribute allow rule for pasted SVG: no `on*`; `href`/`xlink:href` only internal `#id`; no javascript:/vbscript:/data:/external url()/expression() after stripping whitespace and control chars (as the URL parser does) | — / `docLogoSvg` | pure |
 | `docLogoSvg` | 400 | `(code: string) → {el,ratio}|null` | Parse + sanitise a pasted SVG logo by ALLOWLIST: only static drawing elements in the SVG namespace survive (a, image, animate/set, script, foreignObject, filter… removed with their subtrees), attributes pass `svgAttrOk`, class fills from `<style>` inlined as attributes; returns the element and its aspect ratio | `DOMParser` / `buildDocSvg`, `renderDPage` | pure (creates DOM) |
-| `renderDoc` | 437 | `() → void` | Render the page SVG into `#docPage` at the current screen zoom; update zoom label | `buildDocSvg` / `renderDocAll`, `dSelect`, `dZoomTo`, panel inputs, drags | **DOM** |
-| `renderDocAll` [PUBLIC] | 443 | `() → void` | Full module render: page + Box panel + Page panel (what `renderAll` calls when the doc module is active) | `renderDoc`, `renderDPanel`, `renderDPage` / `renderAll`, `showModule` | **DOM** |
-| `dSelect` | 445 | `(id, focusInput?) → void` | Selection inside the doc module (`select()` delegates here when `MOD === 'doc'`): queues `flash` for a box already on the page or `pop` for a new one, then re-renders page + Box panel | `renderDoc`, `renderDPanel` / `select` | **state** (`sel`), **DOM** |
-| `applyDZoom` | 452 | `() → void` | Apply screen zoom by resizing the page SVG to the real page size (may exceed the paper when `autoH`); update the % label | — / `renderDoc`, `dZoomTo`, `dZoomStep` | **DOM** |
-| `clampDZoom` | 457 | `(z) → number` | Clamp page zoom to [0.15, 4] | — / zoom fns | pure |
-| `dZoomTo` [PUBLIC] | 458 | `(z) → void` | Instant page zoom (cancels a running animation) | `clampDZoom`, `applyDZoom` / `dZoomFit`, tests | **state** (`dzoom`), **DOM** |
-| `dZoomFit` [PUBLIC] | 459 | `() → void` | Fit the whole page (real height) into the viewport | `dZoomTo` / `#bDZoomFit`, first open | **state**, **DOM** |
-| `dAnimateZoomTo` [PUBLIC] | 465 | `(nz, ax?, ay?) → void` | Smooth page zoom around a viewport point (same eased, target-accumulating scheme as the org tab) | `clampDZoom` / wheel on `#docWrap`, zoom buttons | **state** (`dzoomAnim`) |
-| `dZoomStep` | 473 | `() → void` | One animation frame: ease 30 % toward the target, keep the anchor point fixed, loop until done | `applyDZoom`, rAF / `dAnimateZoomTo` | **state**, **DOM** |
-| `setRowShift` [PUBLIC] | 485 | `(id, v) → void` | Set how many extra rows a box is pushed down (≥ 0); boxes below follow | `snap`, `renderDoc`, `renderDPanel` / ▲▼ buttons, tests | **state**, **undo**, **DOM** |
-| `renderDPanel` | 490 | `() → void` | Box panel: dept/title (+ show-level toggle), multi-line person, level, headcount, annotation-key dropdown, stack toggle, ▲▼ row buttons, description, add/reorder/delete | `hcOf`, `xesc`; handlers → `snap`, `setT`, `setHc`, `setRowShift`, `addChild`, `addSib`, `moveSib`, `delNode`, `renderDoc` / `renderDocAll`, `dSelect`, `endRowDrag`, notes editor | **DOM** |
-| `docSet` | 549 | `(key, fn) → void` | Apply a page-setting change: undo snapshot (coalesced per key) + mutate + re-render page | `snap`, `renderDoc` / Page panel inputs | **state**, **undo**, **DOM** |
-| `renderDPage` | 550 | `() → void` | Page panel: paper (A4/A3/A2), orientation, auto page height, font, scheme, header, SVG logo (pasted code), document-code fields, notes editor, show/hide toggles | `docSet`, `docLogoSvg`, `renderDNotes`, `msg` / `renderDocAll` | **DOM** |
-| `renderDNotes` | 606 | `() → void` | Notes list rows (key + text + delete) inside the Page panel | `docSet`, `snap`, `renderDoc` / `renderDPage`, add/delete note | **DOM** |
-| `startRowDrag` | 621 | `(id, e) → Drag` | Begin a vertical drag of a box between rows | — / doc pointerdown | pure |
-| `moveRowDrag` | 625 | `(d, e) → void` | Drag step: pointer y → target row (never above the natural row) → `rowShift`; first real move takes the undo snapshot and turns on the row guides | `rowPitch`, `snap`, `renderDoc` / doc pointermove | **state**, **undo**, **DOM** |
-| `endRowDrag` | 634 | `(d) → void` | Finish a row drag: hide guides, refresh page + panel | `renderDoc`, `renderDPanel` / doc pointerup | **state**, **DOM** |
-| `docPrint` [PUBLIC] | 641 | `() → void` | Write `@page{size}` for the paper width × real page height into `#printPage` and open the print dialog | `docPageSize` / `#bPrint` | **DOM**, print dialog |
-| `loadScript` | 649 | `(src) → Promise` | Inject a `<script>` and resolve on load | — / `loadPdfLibs` | **DOM** |
-| `loadPdfLibs` | 655 | `() → Promise` | Lazy-load vendored jsPDF + svg2pdf once | `loadScript` / `docPdf` | **DOM** |
-| `bufToB64` | 659 | `(buf: ArrayBuffer) → string` | Base64-encode a font file for jsPDF's virtual FS | — / `loadPdfFont` | pure |
-| `loadPdfFont` | 665 | `(famName) → Promise<{file,style,b64}[]>` | Fetch the 4 Liberation TTF styles for a family once (Vietnamese glyphs; metric-compatible with Arial / Times New Roman) | `fetch`, `bufToB64` / `docPdf` | network |
-| `loadLocalFont` | 677 | `(family?: string) → Promise<font[]|null>` | Fetch the 4 styles of the selected screen font (Arial / Times New Roman) from the user's computer via the Local Font Access API (Chrome/Edge, one permission prompt, must start inside the click); null when unsupported / denied / a style is missing / the permission prompt is not answered within 20 s / a file is not TrueType (OTF/CFF, TTC). Only a hit is cached per family | `bufToB64` / `docPdf` | **I/O** (local fonts) |
-| `docPdf` [PUBLIC] | 695 | `() → Promise` | Download the page as a vector PDF at the real page size: disable `#bPdf` with running dots; fonts = the real local font when `loadLocalFont` delivers it, else Liberation, registered under the same alias the export SVG uses; unreadable local bytes → retried with Liberation; toast says which font was embedded; button restored afterwards | `loadPdfLibs`, `loadPdfFont`, `buildDocSvg`, `msg` / `#bPdf` | **DOM**, **DL** |
+| `renderDoc` | 439 | `() → void` | Render the page SVG into `#docPage` at the current screen zoom; update zoom label | `buildDocSvg` / `renderDocAll`, `dSelect`, `dZoomTo`, panel inputs, drags | **DOM** |
+| `renderDocAll` [PUBLIC] | 445 | `() → void` | Full module render: page + Box panel + Page panel (what `renderAll` calls when the doc module is active) | `renderDoc`, `renderDPanel`, `renderDPage` / `renderAll`, `showModule` | **DOM** |
+| `dSelect` | 447 | `(id, focusInput?) → void` | Selection inside the doc module (`select()` delegates here when `MOD === 'doc'`): queues `flash` for a box already on the page or `pop` for a new one, then re-renders page + Box panel | `renderDoc`, `renderDPanel` / `select` | **state** (`sel`), **DOM** |
+| `applyDZoom` | 454 | `() → void` | Apply screen zoom by resizing the page SVG to the real page size (may exceed the paper when `autoH`); update the % label | — / `renderDoc`, `dZoomTo`, `dZoomStep` | **DOM** |
+| `clampDZoom` | 459 | `(z) → number` | Clamp page zoom to [0.15, 4] | — / zoom fns | pure |
+| `dZoomTo` [PUBLIC] | 460 | `(z) → void` | Instant page zoom (cancels a running animation) | `clampDZoom`, `applyDZoom` / `dZoomFit`, tests | **state** (`dzoom`), **DOM** |
+| `dZoomFit` [PUBLIC] | 461 | `() → void` | Fit the whole page (real height) into the viewport | `dZoomTo` / `#bDZoomFit`, first open | **state**, **DOM** |
+| `dAnimateZoomTo` [PUBLIC] | 467 | `(nz, ax?, ay?) → void` | Smooth page zoom around a viewport point (same eased, target-accumulating scheme as the org tab) | `clampDZoom` / wheel on `#docWrap`, zoom buttons | **state** (`dzoomAnim`) |
+| `dZoomStep` | 475 | `() → void` | One animation frame: ease 30 % toward the target, keep the anchor point fixed, loop until done | `applyDZoom`, rAF / `dAnimateZoomTo` | **state**, **DOM** |
+| `setRowShift` [PUBLIC] | 487 | `(id, v) → void` | Set how many extra rows a box is pushed down (≥ 0); boxes below follow | `mutate`, `renderDoc`, `renderDPanel` / ▲▼ buttons, tests | **state**, **undo**, **DOM** |
+| `renderDPanel` | 492 | `() → void` | Box panel: dept/title (+ show-level toggle), multi-line person, level, headcount, annotation-key dropdown, stack toggle, ▲▼ row buttons, description, add/reorder/delete | `hcOf`, `xesc`; handlers → `mutate`, `setT`, `setHc`, `setRowShift`, `addChild`, `addSib`, `moveSib`, `delNode`, `renderDoc` / `renderDocAll`, `dSelect`, `endRowDrag`, notes editor | **DOM** |
+| `docSet` | 551 | `(key, fn) → void` | Apply a page-setting change: undo snapshot (coalesced per key) + mutate + re-render page | `mutate`, `renderDoc` / Page panel inputs | **state**, **undo**, **DOM** |
+| `renderDPage` | 552 | `() → void` | Page panel: paper (A4/A3/A2), orientation, auto page height, font, scheme, header, SVG logo (pasted code), document-code fields, notes editor, show/hide toggles | `docSet`, `docLogoSvg`, `renderDNotes`, `msg` / `renderDocAll` | **DOM** |
+| `renderDNotes` | 608 | `() → void` | Notes list rows (key + text + delete) inside the Page panel | `docSet`, `mutate`, `renderDoc` / `renderDPage`, add/delete note | **DOM** |
+| `startRowDrag` | 623 | `(id, e) → Drag` | Begin a vertical drag of a box between rows | — / doc pointerdown | pure |
+| `moveRowDrag` | 627 | `(d, e) → void` | Drag step: pointer y → target row (never above the natural row) → `rowShift`; first real move takes the undo snapshot and turns on the row guides | `rowPitch`, `mutate`, `renderDoc` / doc pointermove | **state**, **undo**, **DOM** |
+| `endRowDrag` | 636 | `(d) → void` | Finish a row drag: hide guides, refresh page + panel | `renderDoc`, `renderDPanel` / doc pointerup | **state**, **DOM** |
+| `docPrint` [PUBLIC] | 643 | `() → void` | Write `@page{size}` for the paper width × real page height into `#printPage` and open the print dialog | `docPageSize` / `#bPrint` | **DOM**, print dialog |
+| `loadScript` | 651 | `(src) → Promise` | Inject a `<script>` and resolve on load | — / `loadPdfLibs` | **DOM** |
+| `loadPdfLibs` | 657 | `() → Promise` | Lazy-load vendored jsPDF + svg2pdf once | `loadScript` / `docPdf` | **DOM** |
+| `bufToB64` | 661 | `(buf: ArrayBuffer) → string` | Base64-encode a font file for jsPDF's virtual FS | — / `loadPdfFont` | pure |
+| `loadPdfFont` | 667 | `(famName) → Promise<{file,style,b64}[]>` | Fetch the 4 Liberation TTF styles for a family once (Vietnamese glyphs; metric-compatible with Arial / Times New Roman) | `fetch`, `bufToB64` / `docPdf` | network |
+| `loadLocalFont` | 679 | `(family?: string) → Promise<font[]|null>` | Fetch the 4 styles of the selected screen font (Arial / Times New Roman) from the user's computer via the Local Font Access API (Chrome/Edge, one permission prompt, must start inside the click); null when unsupported / denied / a style is missing / the permission prompt is not answered within 20 s / a file is not TrueType (OTF/CFF, TTC). Only a hit is cached per family | `bufToB64` / `docPdf` | **I/O** (local fonts) |
+| `docPdf` [PUBLIC] | 697 | `() → Promise` | Download the page as a vector PDF at the real page size: disable `#bPdf` with running dots; fonts = the real local font when `loadLocalFont` delivers it, else Liberation, registered under the same alias the export SVG uses; unreadable local bytes → retried with Liberation; toast says which font was embedded; button restored afterwards | `loadPdfLibs`, `loadPdfFont`, `buildDocSvg`, `msg` / `#bPdf` | **DOM**, **DL** |
 
 ## `12-wiring.js`
 
@@ -404,6 +403,20 @@ Remaining observation (not a defect): `debounce` has exactly one consumer (`refr
 | Schema v11: node presentation fields (`hc`, `annot`, `desc`, `dx`, `wp`) + `doc` layer | Validated on load; absent → blank/defaults, so the flow module never depends on them. |
 | Landing page + `MOD` dispatch in `renderAll` / `select` / `refreshView` | One tree, two modules; the org-tree mutators are shared unchanged. |
 | Chart-layout module (`11-doc.js`) | SVG page in mm; header / document-code block / notes / legend / badges / headcount / descriptions; shelf rows with drag-to-reorder + guides; fixed box height with shrinking text; two connector styles (spread / stacked group); universal box width; auto page height; smooth zoom + pan; print via `@page`; vector PDF via jsPDF + svg2pdf with embedded Liberation fonts. |
+
+*Every table above is generated from the current source; each row's line number is verified to start the named function.*
+
+### Restructure + chart-layout module (v11)
+
+| Change | Notes |
+|---|---|
+| Single file → `css/app.css` + 12 `js/` section files | Pure slicing of the old sections in load order; state stays global, no behaviour change (56 existing checks pass over HTTP). |
+| Playwright suites moved into `tests/` | `npm test` runs a static server + Chromium; `PW_MODULE`/`PW_CHROMIUM` point at a pre-installed Playwright. |
+| Level `ĐB` above `CC`; `LMAX` replaces hard-coded `8` | Root default stays CC; old files load unchanged. |
+| Headcount (`hc`) with roll-up (`hcOf`) | Editable in both modules; parents show the computed sum. |
+| Schema v11: node presentation fields (`hc`, `annot`, `desc`, `dx`, `wp`) + `doc` layer | Validated on load; absent → blank/defaults, so the flow module never depends on them. |
+| Landing page + `MOD` dispatch in `renderAll` / `select` / `refreshView` | One tree, two modules; the org-tree mutators are shared unchanged. |
+| Chart-layout module (`11-doc.js`) | SVG page in mm; header / document-code block / notes / legend / badges / headcount / descriptions; shelf rows with drag-to-reorder + guides; fixed box height with shrinking text; two connector styles (spread / stacked group); SVG logo; auto page height; smooth zoom + pan; print via `@page`; vector PDF via jsPDF + svg2pdf with embedded Liberation fonts. |
 
 *Every table above is generated from the current source; each row's line number is verified to start the named function.*
 

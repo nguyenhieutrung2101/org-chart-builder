@@ -34,7 +34,7 @@ check('#1 vi header "Mã FCG" skipped, FCG01 updated, FCG03 kept', JSON.stringif
 check('#1 FCG01 BMO updated to John via paste', h1.g1 && h1.g1.cbqlns === h1.john && h1.g1.name === 'Nhóm một', JSON.stringify(h1.g1));
 check('#1 en header "FCG code" skipped', JSON.stringify(h1.afterEn) === JSON.stringify(['FCG01', 'FCG03', 'FCG04']), JSON.stringify(h1.afterEn));
 check('#1 FC headers vi+en skipped', JSON.stringify(h1.fcCodes) === JSON.stringify(['FC001', 'FC002']), JSON.stringify(h1.fcCodes));
-check('#1 isHeaderRow probes', h1.probes.join(' ') === 'Mã FCG=true FCG code=true Mã=true Code=true FCG=true FC=true ma=true FCG03=false FC001=false MAX01=false code01=false', h1.probes.join(' '));
+check('#1 isHeaderRow probes (only real labels; bare FCG / FC / ma could be codes)', h1.probes.join(' ') === 'Mã FCG=true FCG code=true Mã=true Code=true FCG=false FC=false ma=false FCG03=false FC001=false MAX01=false code01=false', h1.probes.join(' '));
 
 // ---------- #2 empty cigs survives save/reload; legacy file w/o cigs gets defaults ----------
 const c2 = await ev(() => {

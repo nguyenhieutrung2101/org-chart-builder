@@ -10,9 +10,11 @@ người dùng bấm / gõ
         │
         ▼
 mutate(key, fn, after)          ← CỬA DUY NHẤT cho mọi thay đổi dữ liệu — một TRANSACTION (03-state.js)
-   ├─ snap(key)                 ← dirty = true, mọi tab đánh dấu "cũ", snapshot Undo (gộp khi gõ liên tục cùng một ô), giữ JSON "trước"
+   ├─ JSON "trước"              ← chụp document trước khi đụng
    ├─ fn()                      ← thay đổi state: nodes / fcGroups / fcs / roleBoxes / ruleGrids / vnodes / cigs / doc
-   ├─ checkInvariants()         ← cổng commit: fn ném lỗi hoặc để dữ liệu vi phạm bất biến -> rollback(JSON "trước"), toast, ném lỗi tiếp
+   ├─ checkInvariants()         ← cổng commit: fn ném lỗi hoặc để dữ liệu vi phạm bất biến -> khôi phục JSON "trước", toast, ném lỗi tiếp
+   ├─ COMMIT                    ← chỉ khi thành công và có thay đổi thật: đẩy snapshot vào history (gộp khi gõ liên tục cùng một ô),
+   │                              dirty = true, mọi tab đánh dấu "cũ". Không đổi gì -> không ghi gì (một cú bấm vô tác dụng không thành bước Undo)
    └─ after()                   ← vẽ lại SAU commit: mặc định renderAll(); đang gõ thì refreshView() hoặc hàm vá nhẹ hơn
         │
         ▼
@@ -23,9 +25,9 @@ renderAll()                     ← chỉ vẽ MODULE / TAB ĐANG MỞ (05-org-r
 
 Quy tắc bất di bất dịch:
 
-1. **Không nơi nào sửa state ngoài `mutate`.** `snap()` chỉ được gọi bên trong `mutate`. Nhờ vậy undo, cờ dirty
-   (cảnh báo đóng tab) và vẽ lại luôn đi cùng nhau; lỗi "Save rồi gõ tiếp đúng ô cũ không được cảnh báo" không thể tái diễn.
-   Một batch dán Excel lỗi giữa chừng không để lại nửa dữ liệu: mutate rollback trọn vẹn (document, undo stack, dirty).
+1. **Không nơi nào sửa state ngoài `mutate`.** Nhờ vậy undo, cờ dirty (cảnh báo đóng tab) và vẽ lại luôn đi cùng nhau;
+   lỗi "Save rồi gõ tiếp đúng ô cũ không được cảnh báo" không thể tái diễn. Một batch dán Excel lỗi giữa chừng không để lại nửa
+   dữ liệu: document được khôi phục, còn history/dirty chưa hề bị đụng vì chỉ ghi sau khi thành công (stack đầy 60 cũng không mất mốc cũ nhất).
    Ngoại lệ có chủ ý: kéo box đổi hàng gọi mutate ở bước đầu, các bước sau chỉ đổi `rowShift` và vẽ (một lượt kéo = một undo).
 1b. **Getter chỉ đọc, renderer không được đổi document.** `curGrid()` trả grid của CIG đang chọn hoặc grid Chung; muốn sửa phải
    qua `ownGrid()` (chép Chung ở lần sửa đầu) bên trong mutate. Test "render không đổi document" chạy renderer thật trên DOM giả.
@@ -48,15 +50,18 @@ Quy tắc bất di bất dịch:
 
 `serializeAll()` → JSON schema `v: SCHEMA_V`. `applyState(d)` là bộ validate duy nhất: cấu trúc, ID hợp lệ và **duy nhất theo từng loại**
 (trùng → ném lỗi, file bị từ chối, dữ liệu hiện tại giữ nguyên), ID thiếu được cấp mới không đụng ID có sẵn, cấp con ≥ cấp cha,
-tham chiếu hỏng bị bỏ và **đếm** để `loadJSON` báo. Undo dùng chính `applyState` với snapshot của `serializeAll()`.
+tham chiếu hỏng bị bỏ và **đếm** để `loadJSON` báo; một box ★ đứng ở hai tuyến ngành dọc thì file bị từ chối kèm tên hai cấp trên
+(không chọn thay người dùng). Undo dùng chính `applyState` với snapshot của `serializeAll()`.
 Bất biến dữ liệu được mô tả bằng code trong `checkInvariants()`; test gọi nó sau mỗi thao tác.
 
 ## Dán / copy Excel
 
-`parsePaste` (thuần, hiểu ô trong ngoặc kép như Excel: `""`, tab và xuống dòng bên trong ngoặc, CRLF; bỏ dấu nháy chống công thức mà `q()` thêm)
+`parsePaste` (thuần, hiểu ô trong ngoặc kép như Excel: `""`, tab và xuống dòng bên trong ngoặc, CRLF; ngoặc chưa đóng -> báo dòng, không nhập;
+bỏ dấu nháy chống công thức mà `q()` thêm, kể cả sau khoảng trắng)
 → `mergeGroupRows` / `mergeFcRows` (thuần, chỉ đụng state, index bằng `Map`) → vỏ DOM `importGrpPaste` / `importPaste` → `finishPaste`.
 Tên chỉ dùng để khớp khi **duy nhất**; nhóm khớp theo **mã** trước. Dòng không khớp: dòng mới để trống, dòng cập nhật giữ người cũ, và
-ghi chú nói đúng điều đã xảy ra; danh sách đầy đủ hiện trong hộp dán (toast chỉ tóm tắt). Header chỉ nhận khi ô đầu khớp trọn nhãn.
+ghi chú nói đúng điều đã xảy ra; danh sách đầy đủ hiện trong hộp dán (toast chỉ tóm tắt). Header chỉ nhận khi ô đầu khớp trọn một nhãn
+thật ("Mã FCG", "FCG code", "Mã", "Code"…); "ID", "FC", "FCG" là mã hợp lệ nên là dữ liệu.
 `groupsTsv` / `fcsTsv` xuất cùng cột với định dạng dán (FC có thêm cột mã nhóm) nên copy ở app rồi dán lại ra đúng dữ liệu gốc.
 
 ## Bảng luồng duyệt lớn
@@ -67,7 +72,7 @@ ghi chú nói đúng điều đã xảy ra; danh sách đầy đủ hiện trong
 ## Logo SVG dán vào
 
 `docLogoSvg` lọc theo **danh sách cho phép**: chỉ phần tử vẽ tĩnh trong namespace SVG; `<a>` bóc vỏ giữ con; `href` chỉ nhận `#id`;
-bỏ `on*`, `javascript:`/`data:`/`url()` ra ngoài. Lý do: URL parser bỏ tab/xuống dòng nên `java<tab>script:` vẫn là `javascript:`,
+bỏ `on*`, `javascript:`/`data:`/`url()` ra ngoài — kể cả giá trị fill/stroke lấy từ `<style>` class (đi qua cùng `svgAttrOk`). Lý do: URL parser bỏ tab/xuống dòng nên `java<tab>script:` vẫn là `javascript:`,
 `<a>` trong SVG kích hoạt được bằng Enter, `<image href="https://…">` tải tài nguyên ngoài. Test trình duyệt dùng payload vô hại.
 
 ## Module và thứ tự nạp
@@ -76,7 +81,7 @@ bỏ `on*`, `javascript:`/`data:`/`url()` ra ngoài. Lý do: URL parser bỏ tab
 |---|---|
 | 01-consts | hằng số hình học, `SCHEMA_V`, `APP_VER` |
 | 02-i18n | từ điển vi/en, `t/tf`, `$`, `msg` (toast), `replay`, `debounce` |
-| 03-state | state global, `serializeAll`, `snap`, **`mutate`**, `staleTabs`, `undo`, `checkInvariants`, lớp `doc` |
+| 03-state | state global, `serializeAll`, **`mutate`** (transaction: snapshot → fn → bất biến → commit history/dirty), `staleTabs`, `undo`, `checkInvariants`, lớp `doc` |
 | 04-model | thao tác cây, `select`, `visibleSet`, `layout` (thuần) |
 | 05-org-render | canvas, panel, bảng phân cấp, **`renderTab` / `renderAll` / `refreshView`** |
 | 06-export | TSV (`q` chặn formula injection), `saveJSON`, **`applyState`**, `loadJSON`, .drawio |
@@ -91,7 +96,7 @@ bỏ `on*`, `javascript:`/`data:`/`url()` ra ngoài. Lý do: URL parser bỏ tab
 
 1. **Node, không trình duyệt** (`tests/logic.test.mjs` qua `tests/_node.mjs`): nạp 01…11 vào một `vm` context với DOM giả,
    thay lớp vẽ bằng hàm rỗng theo danh sách tường minh (`loadApp({ realRender:true })` giữ renderer thật cho test "render không đổi
-   document"). Test mốc Save/undo, transaction rollback, `applyState`, dán Excel, layout, engine luồng và **fuzz 5 seed × 2.000 thao tác**:
+   document"). Test mốc Save/undo, transaction rollback ở history 0/59/60 (so nội dung stack), `applyState`, dán Excel, layout, engine luồng và **fuzz 5 seed × 2.000 thao tác**:
    sau mỗi bước `checkInvariants()` rỗng, undo về đúng trạng thái trước (nhận ra snapshot mới qua đỉnh stack, kể cả khi stack đầy 60),
    serialize → apply → serialize idempotent. Chạy trong vài giây.
 2. **Playwright, hành vi UI** (`cleanup`, `review1`, `review2`, `doc`, `landing`): những gì cần DOM thật.

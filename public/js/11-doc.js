@@ -422,7 +422,9 @@ function docLogoSvg(code){
     }
     if (el.namespaceURI !== SVGNS || !SVG_ALLOW[el.localName]){ el.remove(); return; }
     Array.prototype.slice.call(el.attributes).forEach(function(at){ if (!svgAttrOk(at.name, at.value)) el.removeAttribute(at.name); });
-    (el.getAttribute('class') || '').split(/\s+/).forEach(function(c){ var p = css[c]; if (p) Object.keys(p).forEach(function(k){ if (!el.hasAttribute(k)) el.setAttribute(k, p[k]); }); });
+    (el.getAttribute('class') || '').split(/\s+/).forEach(function(c){                 // fill/stroke từ <style> đi qua cùng bộ kiểm tra thuộc tính
+      var p = css[c]; if (p) Object.keys(p).forEach(function(k){ if (!el.hasAttribute(k) && svgAttrOk(k, p[k])) el.setAttribute(k, p[k]); });
+    });
   });
   var vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
   var w = parseFloat(root.getAttribute('width')), h = parseFloat(root.getAttribute('height'));

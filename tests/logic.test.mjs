@@ -21,8 +21,8 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
   check('and the first edit after Save snapshots the saved state (undo boundary)', A.undoStack.length === snapsBefore + 1 && JSON.parse(A.undoStack[A.undoStack.length - 1]).roots[0].title === 'Before save 2');
   A.undo();
   check('undo returns to the saved state and leaves the document dirty', A.nodes.get(id).title === 'Before save 2' && A.dirty === true);
-  const st = { ...A.staleTabs }; A.mutate(null, () => {});
-  check('every mutation marks all flow tabs stale (hidden tabs re-render on entry)', Object.values(A.staleTabs).every(Boolean), JSON.stringify(st));
+  Object.keys(A.staleTabs).forEach(k => { A.staleTabs[k] = false; }); A.mutate(null, () => { A.nodes.get(id).person = 'p'; });
+  check('every committed change marks all flow tabs stale (hidden tabs re-render on entry)', Object.values(A.staleTabs).every(Boolean), JSON.stringify(A.staleTabs));
   check('mutate returns the callback result', A.mutate(null, () => 42) === 42);
 }
 
@@ -170,12 +170,17 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 // ---------- F3: TSV round-trip với ký tự đặc biệt; header chỉ khi khớp trọn nhãn ----------
 {
   const A = loadApp();
-  const cases = ['Finance "HQ"', 'Finance\nHQ', 'Finance\tHQ', '=HQ', '+1', '-abc', '@x', "'quoted'", ' spaced ', 'a""b'];
+  const cases = ['Finance "HQ"', 'Finance\nHQ', 'Finance\tHQ', '=HQ', '+1', '-abc', '@x', "'quoted'", ' spaced ', 'a""b', ' =HQ', '\t=x'];
   const bad = cases.filter(v => { const rows = A.parsePaste(['G01', v, 'x'].map(A.q).join('\t') + '\r\n'); return !(rows.length === 1 && rows[0][1] === v.trim() && rows[0][2] === 'x'); });
   check('REGRESSION F3: copy -> paste round-trips quotes, newlines, tabs and the formula guard', bad.length === 0, JSON.stringify(bad));
   check('a first row whose code contains a space ("FC 001") is data, not a header', JSON.stringify(A.parsePaste('FC 001\tFund 1\tGroup 1\nFC002\tFund 2\tGroup 2').map(r => r[0])) === '["FC 001","FC002"]');
   check('exact header labels (both languages, generic words) are still dropped', A.parsePaste('Mã FCG\tTên\tCBQLNS\nG1\tOne\t').length === 1 && A.parsePaste('FCG code\tGroup name\tBMO (★)\nG1\tOne\t').length === 1 && A.parsePaste('Code\tName\nG1\tOne').length === 1);
   check('trailing empty cells and CRLF are preserved as columns', JSON.stringify(A.parsePaste('F1\tFund\t\t\r\nF2\tFund 2\tG\tCODE')) === '[["F1","Fund","",""],["F2","Fund 2","G","CODE"]]');
+  check('codes that happen to be words ("ID", "FC", "FCG") on the first row are data, not a header', JSON.stringify(A.parsePaste('ID\tIndonesia Fund\tSEA\nVN\tVietnam Fund\tSEA').map(r => r[0])) === '["ID","VN"]' && A.parsePaste('FC\tx').length === 1 && A.parsePaste('FCG\tx').length === 1);
+  let quoteErr = ''; try { A.parsePaste('F1\tok\nF2\t"Missing quote\nF3\tFund 3\tGroup 3'); } catch (e) { quoteErr = e.message; }
+  check('an unclosed quote is reported with its line instead of silently merging rows', quoteErr === A.tf('errTsvQuote', { line: 2 }), quoteErr);
+  const B = loadApp(); B.importGrpPaste('G1\t"open\nG2\tx');
+  check('importing such a paste changes nothing and shows the error', B.fcGroups.length === 0 && B.dirty === false && B.toasts.includes(B.tf('errTsvQuote', { line: 1 })), JSON.stringify(B.toasts));
 }
 
 // ---------- F4: tên trùng thuộc tính kế thừa; mutate là transaction (rollback khi lỗi / vi phạm bất biến) ----------
@@ -188,20 +193,50 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
   check('TRANSACTION: a callback that throws is rolled back completely (document, undo stack, dirty) and reported', threw && stable(A.serializeAll()) === before && A.undoStack.length === hist && A.dirty === false && A.toasts.includes(A.t('msgMutateFail')), JSON.stringify({ threw, hist, len: A.undoStack.length, dirty: A.dirty }));
   let threw2 = false; try { A.mutate(null, () => { A.fcs.push({ id: 'f1', code: 'F', name: '', groupId: 'g-missing' }); }); } catch (e) { threw2 = /invariants/.test(e.message); }
   check('TRANSACTION: a callback that leaves the document inconsistent is rolled back before commit', threw2 && stable(A.serializeAll()) === before && A.dirty === false && A.fcs.length === 0);
-  A.mutate('e:x', () => {});
+  A.mutate('e:x', () => { A.fcGroups[0].name = 'renamed'; });
   check('after a rollback, normal mutations work again', A.dirty === true && A.undoStack.length === hist + 1);
 }
 
-// ---------- F5: một box ★ chỉ đứng một chỗ trên cây Ngành dọc ----------
+// ---------- F5: một box ★ chỉ đứng một chỗ trên cây Ngành dọc — file xung đột bị TỪ CHỐI (không chọn thay người dùng), nêu cả hai tuyến ----------
 {
   const A = loadApp();
-  const st = A.applyState({ roots: [{ id: 'n1', t: 'CC', star: true, person: 'BMO' }], roleBoxes: [], cigs: [],
-    vroots: [{ id: 'v1', title: 'Superior A', children: [{ id: 'v2', orgId: 'n1' }] }, { id: 'v3', title: 'Superior B', children: [{ id: 'v4', orgId: 'n1' }] }] });
-  const first = A.vlineSuperiorOf(A.nodes.get('n1')).title;
-  const d = clone(A.serializeAll()); d.vroots.reverse(); A.applyState(d);
-  check('REGRESSION F5: a second import of the same box is dropped and reported; the superior no longer depends on root order', st.dropped.length === 1 && /imported twice/.test(st.dropped[0]) && A.vnodes.size === 3 && first === 'Superior A' && A.vlineSuperiorOf(A.nodes.get('n1')).title === 'Superior A' && A.checkInvariants().length === 0, JSON.stringify(st.dropped));
+  const file = (order) => ({ roots: [{ id: 'n1', t: 'CC', star: true, person: 'BMO' }], roleBoxes: [], cigs: [],
+    vroots: order === 'AB'
+      ? [{ id: 'v1', title: 'Superior A', children: [{ id: 'v2', orgId: 'n1' }] }, { id: 'v3', title: 'Superior B', children: [{ id: 'v4', orgId: 'n1' }] }]
+      : [{ id: 'v3', title: 'Superior B', children: [{ id: 'v4', orgId: 'n1' }] }, { id: 'v1', title: 'Superior A', children: [{ id: 'v2', orgId: 'n1' }] }] });
+  A.addRoot(); const before = stable(A.serializeAll());
+  const errs = ['AB', 'BA'].map(o => { try { A.applyState(file(o)); return 'loaded'; } catch (e) { return e.message; } });
+  check('REGRESSION F5: a file with the same box on two vertical lines is rejected in BOTH raw orders, naming the box and both superiors; state untouched',
+    errs[0] === A.tf('errOrgTwice', { id: 'n1', a: 'Superior A', b: 'Superior B' }) && errs[1] === A.tf('errOrgTwice', { id: 'n1', a: 'Superior B', b: 'Superior A' }) && stable(A.serializeAll()) === before, errs.join(' | '));
+  A.applyState({ roots: [{ id: 'n1', t: 'CC', star: true }], roleBoxes: [], cigs: [], vroots: [{ id: 'v1', title: 'Superior A', children: [{ id: 'v2', orgId: 'n1' }] }, { id: 'v3', title: 'B' }] });
   A.vnodes.get('v3').orgId = 'n1';
   check('checkInvariants reports a box imported twice', A.checkInvariants().some(x => /imported twice/.test(x)));
+}
+
+// ---------- Transaction + history: lỗi ở mức history 0 / 59 / 60, gộp phím, no-op — so NỘI DUNG stack, không chỉ độ dài ----------
+{
+  const A = loadApp(); A.addRoot(); const id = A.rootIds[0];
+  const hist = () => A.undoStack.join('\u0001') + '|' + A.undoStack.length;
+  const failing = (key) => { try { A.mutate(key, () => { A.nodes.get(id).title = 'broken'; throw new Error('boom'); }); } catch (e) {} };
+  const badInv = () => { try { A.mutate(null, () => { A.fcs.push({ id: 'fX', code: 'X', name: '', groupId: 'nope' }); }); } catch (e) {} };
+  const results = [];
+  [0, 59, 60].forEach(level => {
+    A.undoStack.length = 0; A.lastSnapKey = null;
+    for (let i = 0; i < level; i++) A.mutate(null, () => { A.nodes.get(id).person = 'p' + i; });
+    const docBefore = stable(A.serializeAll()), h = hist(), d = A.dirty;
+    failing(null); const afterThrow = hist() === h && stable(A.serializeAll()) === docBefore && A.dirty === d;
+    badInv();      const afterInv = hist() === h && stable(A.serializeAll()) === docBefore && A.dirty === d;
+    A.mutate('e:t', () => { A.nodes.get(id).title = 'a'; }); const h2 = hist();
+    failing('e:t'); const coalescedFail = hist() === h2 && A.nodes.get(id).title === 'a';
+    A.mutate('e:t', () => { A.nodes.get(id).title = 'ab'; }); const coalesced = hist() === h2;
+    results.push({ level, len: A.undoStack.length, afterThrow, afterInv, coalescedFail, coalesced });
+  });
+  check('TRANSACTION: at history 0 / 59 / 60 a throw or an invariant failure leaves the undo stack byte-identical (no lost oldest entry), document and dirty unchanged; coalesced keys still coalesce',
+    results.every(r => r.afterThrow && r.afterInv && r.coalescedFail && r.coalesced) && results[2].len === 60 && results[1].len === 60, JSON.stringify(results));
+  A.saveJSON(); const h3 = hist(), k3 = A.lastSnapKey;
+  A.mutate(null, () => {});                                               // không đổi gì
+  A.mutate('e:t', () => { A.nodes.get(id).title = 'ab'; });               // gán lại đúng giá trị cũ = cũng không đổi gì
+  check('a no-op mutation leaves history, dirty and the coalescing key untouched', hist() === h3 && A.dirty === false && A.lastSnapKey === k3);
 }
 
 // ---------- F6: ID quá 15 chữ số bị coi là không hợp lệ -> cấp mới, không ghi đè ----------

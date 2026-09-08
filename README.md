@@ -64,7 +64,7 @@ Chuyển động trong app chỉ dùng transform/opacity, 120–450 ms, tôn tr�
   - FCG: `Mã ⇥ Tên ⇥ Tên người CBQLNS` — khớp người theo tên box ★ **chỉ khi có đúng một box ★ tên đó**; trùng mã thì cập nhật dòng cũ.
   - FC: `Mã ⇥ Tên ⇥ Tên nhóm ⇥ Mã nhóm` — nhóm tìm theo **mã** trước rồi theo tên, chỉ tự gán khi duy nhất; chưa có thì tạo mới.
   - Dòng không gán được (tên trùng, không có box ★): dòng mới để trống, dòng cập nhật giữ người cũ, và **danh sách đầy đủ hiện ngay trong hộp dán** để rà từng dòng. Nút Copy xuất đúng các cột này (FC kèm mã nhóm); ô có ngoặc kép, tab, xuống dòng vẫn round-trip.
-  - Dòng tiêu đề (đúng nhãn app xuất ra, hoặc "Mã"/"Code"…) tự bỏ qua; mã thật dạng `FCG01` không bao giờ bị nuốt.
+  - Dòng tiêu đề tự bỏ qua chỉ khi ô đầu **đúng** nhãn app xuất ra hoặc "Mã"/"Code"; mã thật như `FCG01`, `FC 001`, `ID` không bao giờ bị nuốt. Ngoặc kép chưa đóng thì báo dòng và không nhập gì.
 - **Bảng luồng duyệt** sinh tự động: mỗi nhóm × 5 luồng, người duyệt từng bước tính từ ma trận luật của chế độ đang chọn (Luồng: theo nhánh của CBQLNS; Ngành dọc: theo cây Ngành dọc). Nhóm bật "Theo CIG" được tách thành một khối cho mỗi CIG với bộ luật tương ứng.
 - Xem gộp theo nhóm hoặc bung theo từng FC; **ô lọc nhanh** theo tên nhóm/FC; **copy bảng** dán thẳng vào Excel; nút ẩn khu nhập liệu để bảng chiếm trọn màn hình.
 
