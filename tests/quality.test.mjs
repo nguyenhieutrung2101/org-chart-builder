@@ -80,6 +80,19 @@ await page.fill('#pasteTa', 'F1\tFund 1\tMarketing\nF2\tFund 2\tSales\tFCG02\nF3
 await page.click('#bPasteGo');
 const fcp = await ev(() => ({ toast: document.getElementById('msg').textContent, groups: fcs.map(f => { const g = fcGroups.find(x => x.id === f.groupId); return g ? (g.code || g.name) : '-'; }), n: fcGroups.length }));
 check('UI paste FC: group by unique name, by FCG code column, unknown group created', fcp.groups.join(',') === 'FCG01,FCG02,Nope' && fcp.n === 3 && fcp.toast.includes('3'), JSON.stringify(fcp));
+// review 4 (R3): "Code" ở ô đầu có thể là mã thật -> checkbox "Dòng đầu là tiêu đề" hiện phép đoán, người dùng bỏ tick thì nhập cả hai dòng
+await page.click('#bPaste');
+await page.fill('#pasteTa', 'Code\tFirst fund\tSEA\nVN\tVietnam Fund\tSEA');
+const guessed = await ev(() => ({ checked: document.getElementById('pasteHdr').checked, touched: document.getElementById('pasteHdr').dataset.touched }));
+await page.click('#pasteHdr');
+await page.click('#bPasteGo');
+const hdr = await ev(() => ({ codes: fcs.map(f => f.code).slice(-2).join(','), n: fcs.length }));
+check('paste box: first line "Code" auto-ticks the header checkbox; unticking it imports both rows (Code and VN) as data', guessed.checked === true && guessed.touched === '' && hdr.codes === 'Code,VN' && hdr.n === 5, JSON.stringify([guessed, hdr]));
+await page.click('#bPaste');
+await page.fill('#pasteTa', 'Mã FC\tTên\nF9\tNinth');
+const guessed2 = await ev(() => document.getElementById('pasteHdr').checked);
+await page.click('#bPasteGo');
+check('a real label ("Mã FC") is guessed as header again on the next paste and dropped without any click', guessed2 === true && (await ev(() => fcs.length === 6 && fcs.slice(-1)[0].code === 'F9')));
 
 // ---- mở file JSON qua ô chọn file: trùng ID -> từ chối, dữ liệu giữ nguyên; tham chiếu hỏng -> mở nhưng báo số lượng ----
 const before = await ev(() => JSON.stringify(serializeAll()));

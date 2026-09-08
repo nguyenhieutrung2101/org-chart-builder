@@ -25,7 +25,9 @@ var DOC_PAD = 22;                                        // padding của #docWr
 var dzoom = 1, dzoomAnim = null;                         // zoom màn hình của trang (view-state, không lưu) + animation
 // Kết quả render gần nhất: tỉ lệ co sơ đồ, gốc sơ đồ trong trang, vị trí box, hàng tự nhiên, chiều cao trang thực tế
 var docView = { scale:1, tx:0, ty:0, pos:new Map(), rowBase:new Map(), maxRow:0, pageH:0, chartW:0 };
-var docRowDrag = null;                                   // đang kéo box đổi hàng -> vẽ đường kẻ hàng hướng dẫn
+var docRowDrag = null;                                   // đang kéo box đổi hàng: { id, shift (vị trí xem trước), shown } — view-state, document chưa đổi
+// rowShift dùng để dựng trang: trong lúc kéo là vị trí xem trước, còn lại là giá trị đã lưu trong document
+function rowShiftOf(id){ return docRowDrag && docRowDrag.id === id ? (docRowDrag.shift || 0) : (nodes.get(id).rowShift || 0); }
 
 function docPageSize(){
   var s = PAGE_MM[doc.page] || PAGE_MM.A4;
@@ -126,7 +128,7 @@ function docLayout(fam){
              stacked:n.children.filter(function(c){ return nodes.get(c).stack; }) };
   }
   function assignRows(id, base){                      // trả về hàng sâu nhất của cây con
-    var r = base + (nodes.get(id).rowShift || 0), k = kids(id), bottom = r;
+    var r = base + rowShiftOf(id), k = kids(id), bottom = r;
     rowBase.set(id, base); row.set(id, r);
     k.spread.forEach(function(c){ bottom = Math.max(bottom, assignRows(c, r + 1)); });
     var next = r + 1;
@@ -389,13 +391,31 @@ function buildDocSvg(forExport){
 // Fill/stroke khai báo qua <style> theo class được chuyển thành thuộc tính inline để svg2pdf in đúng (svg2pdf không đọc <style>).
 var SVG_ALLOW = { svg:1, g:1, path:1, rect:1, circle:1, ellipse:1, line:1, polyline:1, polygon:1, text:1, tspan:1, textPath:1, defs:1, symbol:1, use:1,
                   clipPath:1, mask:1, linearGradient:1, radialGradient:1, stop:1, pattern:1, marker:1, title:1, desc:1, style:1 };
-// Thuộc tính được giữ trên logo SVG: không on*; href/xlink:href chỉ tham chiếu nội bộ "#id" (gradient, clipPath, use); giá trị khác không được
-// chứa javascript:/data:/vbscript:, url() ra ngoài hay expression(). So khớp sau khi bỏ khoảng trắng + ký tự điều khiển như URL parser làm.
+// Thuộc tính được giữ trên logo SVG: không on*; href/xlink:href chỉ tham chiếu nội bộ "#id" (gradient, clipPath, use);
+// fill/stroke/stop-color/color theo DANH SÁCH GIÁ TRỊ CHO PHÉP (màu, none, currentColor, url(#id) nội bộ) — không phải cấm mẫu chuỗi;
+// giá trị khác không được chứa javascript:/data:/vbscript:, url() ra ngoài hay expression(). Giải mã escape CSS (\72 = r) và bỏ
+// khoảng trắng/ký tự điều khiển trước khi so khớp, vì CSS/URL parser đều làm vậy: "u\72l(" vẫn là url(.
+var SVG_PAINT_PROPS = /^(fill|stroke|stop-color|color|flood-color|lighting-color)$/i;
+var SVG_STYLE_PROPS = /^(fill|stroke|fill-opacity|stroke-opacity|stroke-width|opacity|stop-color|stop-opacity)$/;   // style="" -> thuộc tính
+function cssUnescape(v){
+  return String(v).replace(/\\([0-9a-f]{1,6})[ \t\n\r\f]?/gi, function(_, h){ return String.fromCodePoint(parseInt(h, 16)); }).replace(/\\([\s\S])/g, '$1');
+}
 function svgAttrOk(name, value){
   if (/^on/i.test(name)) return false;
-  var v = String(value).replace(/[\s\u0000-\u001f]+/g, '').toLowerCase();
+  var v = cssUnescape(value).replace(/[\s\u0000-\u001f]+/g, '').toLowerCase();
   if (/(^|:)href$/i.test(name)) return /^#/.test(v);
+  if (SVG_PAINT_PROPS.test(name)) return /^(none|currentcolor|transparent|inherit|#[0-9a-f]{3,8}|rgba?\([\d.,%]+\)|hsla?\([\d.,%]+\)|[a-z]+|url\(#[\w.:-]+\)(none|currentcolor|#[0-9a-f]{3,8}|[a-z]+)?)$/.test(v);
   return !/javascript:|vbscript:|data:|url\((?!#)|expression\(/.test(v);
+}
+// style="fill:...;stroke:..." trên phần tử: tách khai báo, gắn thành thuộc tính nếu qua svgAttrOk, rồi bỏ style (không giữ CSS thô)
+function inlineStyleAttr(el){
+  var st = el.getAttribute('style'); if (st == null) return;
+  st.split(';').forEach(function(kv){
+    var i = kv.indexOf(':'); if (i < 0) return;
+    var k = kv.slice(0, i).trim(), v = kv.slice(i + 1).trim();
+    if (SVG_STYLE_PROPS.test(k) && !el.hasAttribute(k) && svgAttrOk(k, v)) el.setAttribute(k, v);
+  });
+  el.removeAttribute('style');
 }
 function docLogoSvg(code){
   var d;
@@ -406,7 +426,7 @@ function docLogoSvg(code){
   Array.prototype.slice.call(root.querySelectorAll('style')).forEach(function(st){
     (st.textContent || '').replace(/\.([\w-]+)\s*\{([^}]*)\}/g, function(_, cls, body){
       var props = {};
-      body.split(';').forEach(function(kv){ var m = kv.split(':'); if (m.length === 2 && /^(fill|stroke|fill-opacity|stroke-width|opacity)$/.test(m[0].trim())) props[m[0].trim()] = m[1].trim(); });
+      body.split(';').forEach(function(kv){ var m = kv.split(':'); if (m.length === 2 && SVG_STYLE_PROPS.test(m[0].trim())) props[m[0].trim()] = m[1].trim(); });
       css[cls] = props; return '';
     });
     st.remove();
@@ -421,6 +441,7 @@ function docLogoSvg(code){
       el.remove(); return;
     }
     if (el.namespaceURI !== SVGNS || !SVG_ALLOW[el.localName]){ el.remove(); return; }
+    inlineStyleAttr(el);
     Array.prototype.slice.call(el.attributes).forEach(function(at){ if (!svgAttrOk(at.name, at.value)) el.removeAttribute(at.name); });
     (el.getAttribute('class') || '').split(/\s+/).forEach(function(c){                 // fill/stroke từ <style> đi qua cùng bộ kiểm tra thuộc tính
       var p = css[c]; if (p) Object.keys(p).forEach(function(k){ if (!el.hasAttribute(k) && svgAttrOk(k, p[k])) el.setAttribute(k, p[k]); });
@@ -624,19 +645,25 @@ function startRowDrag(id, e){
   var svg = $('docPage').firstChild, r = svg.getBoundingClientRect();
   return { id:id, y0:e.clientY, top:r.top, base:docView.rowBase.get(id), shift0:nodes.get(id).rowShift || 0, moved:false };
 }
+// Kéo là một GESTURE: trong lúc kéo chỉ đổi vị trí xem trước trong view-state (docRowDrag.shift) và vẽ lại; document KHÔNG đổi.
+// Thả chuột -> đúng MỘT mutate ghi rowShift (một bước Undo, dirty, cảnh báo chưa lưu); thả về chỗ cũ -> không ghi gì; huỷ -> bỏ xem trước.
 function moveRowDrag(d, e){
-  // Cả lượt kéo là MỘT thay đổi: mutate ở bước đầu (snapshot + dirty + vẽ đường kẻ hàng), các bước sau chỉ đổi rowShift và vẽ lại
-  if (!d.moved){ if (Math.abs(e.clientY - d.y0) < 6) return; d.moved = true; mutate(null, function(){ docRowDrag = { id:d.id }; }, renderDoc); }
+  if (!d.moved){ if (Math.abs(e.clientY - d.y0) < 6) return; d.moved = true; docRowDrag = { id:d.id, shift:d.shift0 }; renderDoc(); }
   var mm = (e.clientY - d.top) / (PX_PER_MM * dzoom);                 // toạ độ trang (mm)
   var chartY = (mm - docView.ty) / docView.scale;                     // toạ độ sơ đồ
   var target = Math.max(d.base, Math.round((chartY - DBOX.h / 2) / rowPitch()));
-  var n = nodes.get(d.id), shift = target - d.base;
-  if (shift !== (n.rowShift || 0)){ n.rowShift = shift; renderDoc(); }
+  var shift = target - d.base;
+  if (shift !== docRowDrag.shift){ docRowDrag.shift = shift; renderDoc(); }
 }
 function endRowDrag(d){
   if (!d.moved) return;
-  docRowDrag = null;
-  renderDoc(); renderDPanel();
+  var shift = docRowDrag.shift; docRowDrag = null;
+  if (shift !== d.shift0) mutate(null, function(){ nodes.get(d.id).rowShift = shift; }, function(){ renderDoc(); renderDPanel(); });
+  else renderDoc();                                                  // về chỗ cũ: chỉ xoá đường kẻ hàng
+}
+function cancelRowDrag(d){                                           // pointercancel: bỏ xem trước, document nguyên vẹn
+  if (!d.moved) return;
+  docRowDrag = null; renderDoc();
 }
 
 /* ---------- in / PDF ---------- */
