@@ -124,7 +124,7 @@ var doc = defaultDoc();
 
 var undoStack = [], lastSnapKey = null, dirty = false;
 // Tab của module Luồng duyệt đang "cũ" (dữ liệu đổi từ lần vẽ cuối). renderAll/refreshView chỉ vẽ tab đang mở;
-// showTab vẽ tab cũ đúng lúc mở nó. snap() đánh dấu tất cả vì mọi thay đổi dữ liệu đều đi qua đó.
+// showTab vẽ tab cũ đúng lúc mở nó. mutate() đánh dấu tất cả khi commit vì mọi thay đổi dữ liệu đều đi qua đó.
 var staleTabs = { org:true, vline:true, rules:true, flow:true };
 function markStale(){ Object.keys(staleTabs).forEach(function(k){ staleTabs[k] = true; }); }
 
@@ -137,36 +137,25 @@ function serializeAll(){
 // Chụp snapshot cho Undo trước một thay đổi. key khác null = đang gõ liên tục vào cùng một ô: cả chuỗi gõ chỉ chụp một lần.
 // dirty + cờ tab cũ đặt TRƯỚC khi quyết định gộp, vì thay đổi vẫn là thay đổi dù không chụp thêm snapshot
 // (trước đây: Save rồi gõ tiếp đúng ô cũ -> gộp -> dirty vẫn false -> đóng tab không cảnh báo).
-// Trả về JSON trạng thái trước thay đổi (mutate dùng để rollback), kể cả khi snapshot được gộp.
-function snap(key){
-  dirty = true; markStale();
-  var json = JSON.stringify(serializeAll());
-  if (key === null || key !== lastSnapKey){
-    undoStack.push(json);
-    if (undoStack.length > 60) undoStack.shift();
-    lastSnapKey = key;
-  }
-  return json;
-}
-// CỬA DUY NHẤT cho mọi thay đổi dữ liệu — một transaction: snapshot + dirty -> chạy fn -> kiểm tra bất biến -> vẽ lại.
-// fn ném lỗi hoặc để lại dữ liệu vi phạm bất biến -> khôi phục đúng trạng thái trước (kể cả dirty), báo toast, ném lỗi tiếp
-// để console/test thấy. Nhờ vậy một batch dán Excel lỗi giữa chừng không để lại nửa dữ liệu.
-// after: hàm vẽ lại sau khi commit, mặc định renderAll (vẽ module/tab đang mở); đang gõ thì truyền refreshView hoặc hàm vá nhẹ hơn.
-// Lỗi trong after xảy ra SAU commit: không rollback, không được hiểu là "chưa lưu". Trả về kết quả của fn.
+// CỬA DUY NHẤT cho mọi thay đổi dữ liệu — một transaction:
+//   1. chụp JSON "trước"   2. chạy fn   3. kiểm tra bất biến   4. COMMIT: history (gộp khi gõ liên tục cùng một ô: key), dirty, cờ tab cũ
+//   5. vẽ lại (after, mặc định renderAll; đang gõ thì truyền refreshView hoặc hàm vá nhẹ hơn).
+// Lỗi ở bước 2/3 -> khôi phục đúng trạng thái trước; history CHƯA bị đụng (đẩy sau khi thành công, nên stack đầy 60 cũng không mất
+// mốc cũ nhất), toast, ném lỗi tiếp để console/test thấy. fn không đổi gì (so JSON trước/sau) -> không ghi history, không dirty:
+// một cú bấm không có tác dụng không thành một bước Undo. Lỗi trong after xảy ra SAU commit: không rollback. Trả về kết quả của fn.
 function mutate(key, fn, after){
-  var wasDirty = dirty, before = snap(key), r, bad;
+  var before = JSON.stringify(serializeAll()), r, bad;
   try { r = fn(); bad = checkInvariants(); }
-  catch(e){ rollback(before, wasDirty); msg(t('msgMutateFail')); throw e; }
-  if (bad.length){ rollback(before, wasDirty); msg(t('msgMutateFail')); throw new Error('invariants: ' + bad.join('; ')); }
+  catch(e){ rollback(before); msg(t('msgMutateFail')); throw e; }
+  if (bad.length){ rollback(before); msg(t('msgMutateFail')); throw new Error('invariants: ' + bad.join('; ')); }
+  if (JSON.stringify(serializeAll()) !== before){
+    if (key === null || key !== lastSnapKey){ undoStack.push(before); if (undoStack.length > 60) undoStack.shift(); }
+    lastSnapKey = key; dirty = true; markStale();
+  }
   (after || renderAll)();
   return r;
 }
-function rollback(before, wasDirty){
-  applyState(JSON.parse(before));
-  if (undoStack[undoStack.length - 1] === before) undoStack.pop();   // snapshot của chính thay đổi hỏng
-  lastSnapKey = null; dirty = wasDirty;
-  renderAll();
-}
+function rollback(before){ applyState(JSON.parse(before)); renderAll(); }   // dirty/history chưa đổi nên không cần phục hồi
 function undo(){
   if (!undoStack.length){ msg(t('msgNoUndo')); return; }
   try { applyState(JSON.parse(undoStack.pop())); }

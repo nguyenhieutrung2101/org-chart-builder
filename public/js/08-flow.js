@@ -5,7 +5,7 @@
    hoặc ngành dọc của CBQLNS (chế độ Ngành dọc). */
 var flowViewByFc = false;                     // false = gộp theo nhóm (mặc định)
 // Gõ trong bảng nhóm/FC/CIG/box vai trò -> tính lại bảng kết quả sau khi ngừng gõ, chỉ khi tab Luồng duyệt đang mở
-// (tab ẩn đã được snap() đánh dấu cũ, sẽ vẽ lúc mở)
+// (tab ẩn đã được mutate() đánh dấu cũ, sẽ vẽ lúc mở)
 var refreshFlowResultSoon = debounce(function(){ if (MOD === 'flow' && curTab === 'flow') renderFlowResult(); }, 150);
 
 function starredNodes(){
@@ -269,41 +269,44 @@ function applyFcFilter(){
     tr.style.display = (!qy || hay.indexOf(qy) >= 0) ? '' : 'none';
   });
 }
-// Dòng tiêu đề khi dán từ Excel: ô đầu phải KHỚP TRỌN một nhãn (nhãn nút Copy của app xuất ra, cả 2 ngôn ngữ, hoặc từ chung
-// "Mã"/"Code"/"FC"/"FCG"/"ID"). Không bắt theo tiền tố: "FC 001" là mã hợp lệ, không phải header.
+// Dòng tiêu đề khi dán từ Excel: ô đầu phải KHỚP TRỌN một nhãn thật (nhãn nút Copy của app xuất ra, cả 2 ngôn ngữ, hoặc
+// "Mã"/"Code"/"Mã FC"/"FC code"). Không bắt theo tiền tố, và không nhận từ có thể là mã thật: "FC 001", "ID", "FC", "FCG" đều là dữ liệu.
 function isHeaderRow(row){                                 // row: mảng ô (parsePaste) hoặc một dòng text
   var cells = Array.isArray(row) ? row : String(row || '').split('\t');
   var first = String(cells[0] || '').trim().toLowerCase();
   if (!first) return false;
-  var labels = ['mã', 'ma', 'code', 'fc', 'fcg', 'mã fc', 'ma fc', 'mã fcg', 'ma fcg', 'fc code', 'fcg code', 'id'];
+  var labels = ['mã', 'code', 'mã fc', 'fc code'];
   ['thFcgCode','thFcCode'].forEach(function(k){ labels.push(STR.vi[k].toLowerCase(), STR.en[k].toLowerCase()); });
   return labels.indexOf(first) >= 0;
 }
 /* ---------- dán từ Excel: tách dòng (thuần) -> gộp vào state (thuần) -> vỏ DOM ---------- */
 // Tách text dán (TSV của Excel hoặc của nút Copy) thành mảng dòng × ô. Hiểu ô trong ngoặc kép như Excel/q(): "" là một dấu ngoặc,
 // tab và xuống dòng bên trong ngoặc thuộc về ô; CRLF; ô cuối rỗng. Bỏ dấu nháy đơn chống công thức mà q() thêm (chỉ khi đứng trước = + - @),
-// nên copy ở app rồi dán lại ra đúng dữ liệu gốc. Bỏ dòng tiêu đề. Thuần — test Node gọi trực tiếp.
+// nên copy ở app rồi dán lại ra đúng dữ liệu gốc (trừ dấu nháy đơn gốc đứng trước ký tự công thức — hợp đồng giống Excel).
+// Ngoặc kép mở mà không đóng -> ném lỗi nêu dòng, để không nhập nhầm nhiều dòng thành một ô. Bỏ dòng tiêu đề. Thuần — test Node gọi trực tiếp.
 function parsePaste(txt){
-  var s = String(txt || ''), rows = [], row = [], cell = '', inQ = false, atStart = true;
-  function endCell(){ row.push(unguard(cell.trim())); cell = ''; atStart = true; }
+  var s = String(txt || ''), rows = [], row = [], cell = '', inQ = false, atStart = true, line = 1, qLine = 0;
+  function endCell(){ row.push(unguard(cell.trim()).trim()); cell = ''; atStart = true; }
   function endRow(){ endCell(); if (row.some(function(c){ return c; })) rows.push(row); row = []; }
   for (var i = 0; i < s.length; i++){
     var ch = s[i];
+    if (ch === '\n') line++;
     if (inQ){
       if (ch !== '"') cell += ch;
       else if (s[i + 1] === '"'){ cell += '"'; i++; }
       else inQ = false;
     }
-    else if (ch === '"' && atStart){ inQ = true; atStart = false; }
+    else if (ch === '"' && atStart){ inQ = true; atStart = false; qLine = line; }
     else if (ch === '\t') endCell();
-    else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && s[i + 1] === '\n') i++; endRow(); }
+    else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && s[i + 1] === '\n'){ i++; line++; } endRow(); }
     else { cell += ch; atStart = false; }
   }
+  if (inQ) throw new Error(tf('errTsvQuote', { line: qLine }));
   endRow();
   if (rows.length && isHeaderRow(rows[0])) rows.shift();
   return rows;
 }
-function unguard(c){ return /^'[=+\-@]/.test(c) ? c.slice(1) : c; }   // nghịch đảo của q(): ' + ký tự công thức -> bỏ dấu nháy
+function unguard(c){ return /^'\s*[=+\-@]/.test(c) ? c.slice(1) : c; }   // nghịch đảo của q(): ' (+ khoảng trắng) + ký tự công thức -> bỏ dấu nháy
 function normKey(v){ return String(v || '').trim().toLowerCase(); }
 // key chuẩn hoá -> MẢNG mục trùng key. Chỉ tự gán khi đúng một mục; trùng thì để trống và báo — không còn "mục sau đè mục trước"
 // (cùng một người kiêm nhiệm hai box ★, hai nhóm cùng tên: gán nhầm người duyệt mà không ai biết nguy hiểm hơn để trống).
@@ -379,13 +382,15 @@ function finishPaste(taId, boxId, notesId, st, summary){
   msg(summary + (st.notes.length ? ' · ' + tf('msgImportNotes', { n: st.notes.length }) : ''));
 }
 function importGrpPaste(txt){
-  var rows = parsePaste(txt);
+  var rows;
+  try { rows = parsePaste(txt); } catch(e){ msg(e.message); return; }          // ngoặc kép chưa đóng: báo dòng, không nhập gì
   if (!rows.length){ msg(t('msgNothingImport')); return; }
   var st = mutate(null, function(){ return mergeGroupRows(rows); });     // lỗi giữa batch -> mutate rollback, không còn nửa dữ liệu
   finishPaste('pasteTaGrp', 'pasteBoxGrp', 'pasteNotesGrp', st, tf('msgGrpImported', { n: st.added, u: st.updated }));
 }
 function importPaste(txt){
-  var rows = parsePaste(txt);
+  var rows;
+  try { rows = parsePaste(txt); } catch(e){ msg(e.message); return; }
   if (!rows.length){ msg(t('msgNothingImport')); return; }
   var st = mutate(null, function(){ return mergeFcRows(rows); });
   finishPaste('pasteTa', 'pasteBox', 'pasteNotes', st, tf('msgImported', { n: st.added }) + (st.groups ? tf('msgImportedGroups', { g: st.groups }) : ''));

@@ -167,6 +167,17 @@ const hostile = await ev(() => {
 await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
 const pwned = await ev(() => window.__pwned);
 check('REGRESSION F8: hostile SVG logo is reduced to static drawing (no a/image/animate/script/foreignObject/on*/external url()), internal refs kept, nothing executes', hostile.a === 0 && hostile.image === 0 && hostile.animate === 0 && hostile.script === 0 && hostile.fo === 0 && hostile.rect === 3 && hostile.circle === 1 && hostile.use === 1 && hostile.grad === 1 && !hostile.onclick && hostile.fillGrad && !hostile.fillExt && hostile.useHref === '#sym' && pwned === undefined, JSON.stringify(hostile) + ' pwned=' + pwned);
+const reqs = []; page.on('request', r => { if (/example\.invalid/.test(r.url())) reqs.push(r.url()); });
+const viaClass = await ev(() => {
+  doc.logo = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 10"><defs><linearGradient id="g"><stop offset="0" stop-color="#00f"/></linearGradient></defs>'
+    + '<style>.x{fill:url(//example.invalid/paint.svg#p)} .y{fill:#0f0;stroke:url(http://example.invalid/s)} .z{fill:url(#g)}</style>'
+    + '<rect class="x" width="10" height="10"/><rect class="y" x="10" width="10" height="10"/><rect class="z" x="20" width="10" height="10"/></svg>';
+  renderDocAll();
+  const r = [...document.querySelectorAll('#docPage .dlogo rect')].map(x => (x.getAttribute('fill') || '-') + '/' + (x.getAttribute('stroke') || '-'));
+  return r;
+});
+await page.waitForTimeout(300);
+check('REGRESSION (review 3): fills inlined from <style> classes pass the same attribute check — external url() dropped, colour and #gradient kept, no external request', JSON.stringify(viaClass) === '["-/-","#0f0/-","url(#g)/-"]' && reqs.length === 0, JSON.stringify(viaClass) + ' ' + reqs.join(','));
 await ev(() => { doc.logo = window.__prevLogo; renderDocAll(); });   // trả lại logo hợp lệ cho các test sau
 check('annotation dropdown lists defined keys; switch to A', pg.annotOpts === ',A,E' && pg.annotAfter === 'A', pg.annotOpts);
 check('header, code block and note on page', pg.hasHeader && pg.hasCode && pg.hasNote);
