@@ -38,7 +38,7 @@ check('seen version: popup does not auto-open again; halves slide in instead', !
 await page.click('#bModFlow');
 check('chosen half expands first', await ev(() => document.getElementById('landingSplit').classList.contains('choosing') && document.getElementById('bModFlow').classList.contains('chosen') && MOD === 'landing'));
 await page.waitForSelector('#tabOrg', { state: 'visible' });
-check('then flow module opens with header, hash #flow, tab carries the rise animation', (await ev(() => MOD)) === 'flow' && (await vis('header')) && (await ev(() => location.hash)) === '#flow' && (await ev(() => getComputedStyle(document.getElementById('tabOrg')).animationName)) === 'rise');
+check('then flow module opens with header, hash #flow, tab fades in (no slide, so the page never overflows)', (await ev(() => MOD)) === 'flow' && (await vis('header')) && (await ev(() => location.hash)) === '#flow' && (await ev(() => getComputedStyle(document.getElementById('tabOrg')).animationName)) === 'fadeIn');
 check('active tab button looks pressed (translate 2px, no shadow)', await ev(() => { const cs = getComputedStyle(document.getElementById('tabBtnOrg')); return cs.transform === 'matrix(1, 0, 0, 1, 2, 2)' && cs.boxShadow === 'none'; }));
 check('switching tab restarts the rise animation on the new tab', await ev(() => { showTab('rules'); return document.getElementById('tabRules').getAnimations().length > 0 && getComputedStyle(document.getElementById('tabRules')).display !== 'none'; }));
 await page.click('#bHome');
@@ -100,6 +100,24 @@ const drows = await ev(() => { docRowDrag = { id: rootIds[0], shift: 0 }; render
 check('row guides fade in on the first frame of a drag only; dragged box is lifted', drows.first && !drows.second && drows.cleared, JSON.stringify(drows));
 const busy = await ev(async () => { const p = docPdf(); const b = document.getElementById('bPdf'); const during = b.disabled && b.classList.contains('busy'); await p; return { during, after: b.disabled || b.classList.contains('busy') }; });
 check('PDF button shows busy dots while generating, then recovers', busy.during && !busy.after, JSON.stringify(busy));
+
+// Đổi tab / module không được làm trang tràn (thanh cuộn trang chớp 13px và cả giao diện co giãn = giật). Dừng mọi animation ở
+// 40 ms — giữa hiệu ứng mở tab — rồi đo viewport; headless ẩn thanh cuộn nhưng scrollHeight vẫn cho biết trang có tràn hay không.
+await ev(() => { showModule('flow'); showTab('org'); });
+await page.waitForTimeout(400);
+const pageFlash = await ev(() => {
+  const out = [];
+  const probe = (label, go) => {
+    go(); document.getAnimations().forEach(a => { a.pause(); a.currentTime = 40; });
+    const de = document.documentElement; out.push(label + ':' + (de.scrollHeight - de.clientHeight) + '/' + (de.scrollWidth - de.clientWidth));
+    document.getAnimations().forEach(a => a.finish());
+  };
+  ['vline', 'rules', 'flow', 'org', 'flow'].forEach(t => probe(t, () => showTab(t)));
+  probe('doc', () => showModule('doc'));
+  probe('flow-module', () => showModule('flow'));
+  return out;
+});
+check('REGRESSION: mid-way through a tab / module entrance the page never overflows the viewport (no flashing page scrollbar, no 13 px layout jump)', pageFlash.every(x => /:0\/0$/.test(x)), pageFlash.join(' '));
 
 check('no page/console errors', errors.length === 0, errors.join(' | '));
 await close();

@@ -84,9 +84,12 @@ select:focus{outline:none;box-shadow:0 0 0 3px var(--cyan)}
 /* ---- Tab Sơ đồ ---- */
 #tabOrg{flex:1;min-height:0;display:flex;flex-direction:column}
 /* Chuyển cảnh chung: phần tử đi từ display:none -> hiện thì animation chạy lại từ đầu, nên chỉ cần khai báo một lần.
-   Áp cho tab / module (rise .2s) và thân card thu/mở (rise .15s). .rise dùng cho phần tử được replay() bằng JS. */
-#tabOrg,#tabVline,#tabRules,#tabFlow,#tabDoc,.rise{animation:rise .2s var(--ease)}
-#resBody,#cigBody,#paletteBody,#dBoxBody,#dPageBody,#tblHost,#flowInputs,#pasteBox,#pasteBoxGrp,#panel,#dpanel{animation:rise .15s var(--ease)}
+   Tab / module chỉ MỜ DẦN (fadeIn .2s): chúng cao kín màn hình, trượt 8px sẽ lòi đáy ra ngoài viewport -> thanh cuộn trang chớp 13px
+   và cả giao diện co giãn theo (giật). Card bên trong (rise .15s) và .rise (phần tử được replay() bằng JS) vẫn trượt lên. */
+#tabOrg,#tabVline,#tabRules,#tabFlow,#tabDoc{animation:fadeIn .2s var(--ease)}
+.rise{animation:rise .2s var(--ease)}
+#resBody,#cigBody,#paletteBody,#dBoxBody,#dPageBody,#tblHost,#flowInputs,#pasteBox,#pasteBoxGrp{animation:rise .15s var(--ease)}
+#panel,#dpanel{animation:fadeIn .15s var(--ease)}   /* panel cao kín màn hình: trượt sẽ làm trang tràn như tab */
 @keyframes rise{from{opacity:0;transform:translateY(8px)}}
 @keyframes pop{from{opacity:0;transform:scale(.92)}}
 @keyframes fadeOut{to{opacity:0;transform:scale(.94)}}
