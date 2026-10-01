@@ -81,17 +81,45 @@ const push = await ev((c1) => {
 check('▼ pushes the box one row down and its children along; siblings stay', push.shift === 1 && push.row === 2 && push.childRow === 3 && push.sibRow === 1 && push.upEnabled, JSON.stringify(push));
 check('▲ brings it back (disabled at the natural row)', push.back);
 await ev(() => dZoomTo(1));
+// Kéo là một GESTURE: trong lúc kéo document KHÔNG đổi (chỉ view-state docRowDrag), thả chuột mới ghi đúng MỘT bước Undo + dirty;
+// thả về chỗ cũ không ghi gì; pointercancel bỏ xem trước. Oracle so cả document (serializeAll) với snapshot trước khi kéo,
+// không chỉ đọc lại rowShift của một box (review 4, R1/R2: no-op detection từng nuốt bước Undo của thao tác kéo).
 const box = await page.locator('#docPage .dbox[data-id="' + built.c2 + '"] rect.bg').boundingBox();
 const pitchPx = await ev(() => rowPitch() * docView.scale * PX_PER_MM * dzoom);
-await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
-await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + pitchPx * 1.9, { steps: 8 });
-const mid = await ev((id) => ({ guides: document.querySelectorAll('#docPage .drow').length, cur: document.querySelectorAll('#docPage .drow.cur').length, shift: nodes.get(id).rowShift, sel: sel === id }), built.c2);
+const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+const pre = await ev(() => { dirty = false; return { doc: JSON.stringify(serializeAll()), hist: undoStack.length }; });   // như vừa Save
+await page.mouse.move(cx, cy); await page.mouse.down();
+await page.mouse.move(cx, cy + pitchPx * 0.9, { steps: 4 });
+const mid1 = await ev(({ id, d }) => ({ preview: docRowDrag && docRowDrag.shift, row: docView.pos.get(id).row, docShift: nodes.get(id).rowShift, same: JSON.stringify(serializeAll()) === d, dirty, hist: undoStack.length }), { id: built.c2, d: pre.doc });
+await page.mouse.move(cx, cy + pitchPx * 1.9, { steps: 4 });
+const mid = await ev(({ id, d }) => ({ guides: document.querySelectorAll('#docPage .drow').length, cur: document.querySelectorAll('#docPage .drow.cur').length, preview: docRowDrag && docRowDrag.shift, row: docView.pos.get(id).row, docShift: nodes.get(id).rowShift, same: JSON.stringify(serializeAll()) === d, dirty, hist: undoStack.length, sel: sel === id }), { id: built.c2, d: pre.doc });
 await page.mouse.up();
-const dropped = await ev((id) => ({ guides: document.querySelectorAll('#docPage .drow').length, shift: nodes.get(id).rowShift, row: docView.pos.get(id).row, y: docView.pos.get(id).y }), built.c2);
-check('vertical drag shows row guides (current row highlighted) and moves the box 2 rows down', mid.guides > 4 && mid.cur === 2 && mid.shift === 2 && mid.sel, JSON.stringify(mid));
-check('drop hides guides; box sits exactly on row 3', dropped.guides === 0 && dropped.shift === 2 && dropped.row === 3 && dropped.y === 3 * (await ev(() => rowPitch())), JSON.stringify(dropped));
+const dropped = await ev((id) => ({ guides: document.querySelectorAll('#docPage .drow').length, shift: nodes.get(id).rowShift, row: docView.pos.get(id).row, y: docView.pos.get(id).y, dirty, hist: undoStack.length, drag: docRowDrag, upEnabled: !document.getElementById('dbUp').disabled }), built.c2);
+check('while dragging (two moves, rows 1 → 2 → 3) only the PREVIEW moves: guides on, current row highlighted, document byte-identical, no undo entry, not dirty', mid1.preview === 1 && mid1.row === 2 && mid1.docShift === 0 && mid1.same && !mid1.dirty && mid1.hist === pre.hist && mid.guides > 4 && mid.cur === 2 && mid.preview === 2 && mid.row === 3 && mid.docShift === 0 && mid.same && !mid.dirty && mid.hist === pre.hist && mid.sel, JSON.stringify([mid1, mid]));
+check('REGRESSION (review 4): drop commits ONCE — box on row 3 (rowShift 2), exactly one undo entry for the whole gesture, Save → drag → dirty, guides hidden, ▲ enabled', dropped.guides === 0 && dropped.shift === 2 && dropped.row === 3 && dropped.y === 3 * (await ev(() => rowPitch())) && dropped.dirty === true && dropped.hist === pre.hist + 1 && dropped.drag === null && dropped.upEnabled, JSON.stringify(dropped));
 await ev(() => undo());
-check('undo restores the row', (await ev((id) => nodes.get(id).rowShift, built.c2)) === 0);
+const undone = await ev((d) => ({ same: JSON.stringify(serializeAll()) === d, hist: undoStack.length, guides: document.querySelectorAll('#docPage .drow').length }), pre.doc);
+check('one undo restores the WHOLE document to the pre-drag snapshot', undone.same && undone.hist === pre.hist && undone.guides === 0, JSON.stringify(undone));
+// thả về chỗ cũ: xuống 2 hàng rồi kéo ngược lên hàng gốc -> không ghi gì (không dirty, không bước Undo)
+await ev(() => { dirty = false; });
+await page.mouse.move(cx, cy); await page.mouse.down();
+await page.mouse.move(cx, cy + pitchPx * 1.9, { steps: 4 });
+await page.mouse.move(cx, cy, { steps: 4 });
+const backPreview = await ev((id) => ({ preview: docRowDrag && docRowDrag.shift, row: docView.pos.get(id).row }), built.c2);
+await page.mouse.up();
+const back = await ev(({ id, d }) => ({ same: JSON.stringify(serializeAll()) === d, dirty, hist: undoStack.length, guides: document.querySelectorAll('#docPage .drow').length, shift: nodes.get(id).rowShift, drag: docRowDrag }), { id: built.c2, d: pre.doc });
+check('dragging down and back to the original row writes nothing: document identical, not dirty, no undo entry, guides gone', backPreview.preview === 0 && backPreview.row === 1 && back.same && !back.dirty && back.hist === pre.hist && back.guides === 0 && back.shift === 0 && back.drag === null, JSON.stringify([backPreview, back]));
+// pointercancel giữa chừng: bỏ xem trước, document nguyên vẹn
+await page.mouse.move(cx, cy); await page.mouse.down();
+await page.mouse.move(cx, cy + pitchPx * 1.9, { steps: 4 });
+const cancelled = await ev(({ id, d }) => {
+  const before = { preview: docRowDrag && docRowDrag.shift, row: docView.pos.get(id).row };
+  document.getElementById('docPage').dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }));
+  return { before, same: JSON.stringify(serializeAll()) === d, dirty, hist: undoStack.length, guides: document.querySelectorAll('#docPage .drow').length, row: docView.pos.get(id).row, drag: docRowDrag };
+}, { id: built.c2, d: pre.doc });
+await page.mouse.up();
+const afterCancelUp = await ev((d) => ({ same: JSON.stringify(serializeAll()) === d, hist: undoStack.length, dirty }), pre.doc);
+check('pointercancel discards the preview: box back on its row, document identical, no undo entry; a later pointerup writes nothing either', cancelled.before.preview === 2 && cancelled.before.row === 3 && cancelled.same && !cancelled.dirty && cancelled.hist === pre.hist && cancelled.guides === 0 && cancelled.row === 1 && cancelled.drag === null && afterCancelUp.same && afterCancelUp.hist === pre.hist && !afterCancelUp.dirty, JSON.stringify([cancelled, afterCancelUp]));
 
 // ---- trang: A2, chiều cao tự động, bề rộng box, font, tiêu đề/mã/ghi chú, dropdown badge ----
 const DBOX_gy = await ev(() => DBOX.gy);
@@ -178,6 +206,19 @@ const viaClass = await ev(() => {
 });
 await page.waitForTimeout(300);
 check('REGRESSION (review 3): fills inlined from <style> classes pass the same attribute check — external url() dropped, colour and #gradient kept, no external request', JSON.stringify(viaClass) === '["-/-","#0f0/-","url(#g)/-"]' && reqs.length === 0, JSON.stringify(viaClass) + ' ' + reqs.join(','));
+// review 4 (R4): escape CSS "u\72l(" = url( — qua class, qua style="" inline và qua thuộc tính fill đều bị bỏ; style="" hợp lệ thì giữ fill/stroke
+const viaEscape = await ev(() => {
+  doc.logo = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 10"><defs><linearGradient id="g"><stop offset="0" stop-color="#00f"/></linearGradient></defs>'
+    + '<style>.e{fill:u\\72l(//example.invalid/c.svg#p)} .f{fill:u\\00072l(//example.invalid/c2.svg#p)}</style>'
+    + '<rect class="e" width="10" height="10"/><rect class="f" x="10" width="10" height="10"/>'
+    + '<rect x="20" width="10" height="10" style="fill:u\\72l(//example.invalid/s.svg#p);stroke:#123456"/>'
+    + '<rect x="30" width="10" height="10" fill="u\\72l(//example.invalid/a.svg#p)"/>'
+    + '<rect x="40" width="10" height="10" style="fill:url(#g); stroke: rgb(1, 2, 3); stroke-width:2"/></svg>';
+  renderDocAll();
+  return [...document.querySelectorAll('#docPage .dlogo rect')].map(x => (x.getAttribute('fill') || '-') + '/' + (x.getAttribute('stroke') || '-') + '/' + (x.hasAttribute('style') ? 'style' : '-'));
+});
+await page.waitForTimeout(300);
+check('REGRESSION (review 4): CSS-escaped url() (u\\72l, u\\00072l) via class, inline style or attribute is dropped; valid inline style becomes fill/stroke attributes; style="" never survives; no external request', JSON.stringify(viaEscape) === '["-/-/-","-/-/-","-/#123456/-","-/-/-","url(#g)/rgb(1, 2, 3)/-"]' && reqs.length === 0, JSON.stringify(viaEscape) + ' ' + reqs.join(','));
 await ev(() => { doc.logo = window.__prevLogo; renderDocAll(); });   // trả lại logo hợp lệ cho các test sau
 check('annotation dropdown lists defined keys; switch to A', pg.annotOpts === ',A,E' && pg.annotAfter === 'A', pg.annotOpts);
 check('header, code block and note on page', pg.hasHeader && pg.hasCode && pg.hasNote);

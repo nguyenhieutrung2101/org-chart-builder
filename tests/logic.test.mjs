@@ -239,6 +239,71 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
   check('a no-op mutation leaves history, dirty and the coalescing key untouched', hist() === h3 && A.dirty === false && A.lastSnapKey === k3);
 }
 
+// ---------- Review 4 / R1: kéo box đổi hàng là GESTURE — xem trước trong view-state, thả mới ghi đúng một transaction ----------
+// Chạy renderer thật (renderDoc dựng SVG lên DOM giả) như trong trình duyệt; #docPage có firstChild để startRowDrag đọc được.
+{
+  const A = loadApp({ realRender: true });
+  const page = A.stubEl(); page.firstChild = A.stubEl();
+  A.$ = (id) => id === 'docPage' ? page : A.stubEl();
+  A.MOD = 'doc';
+  A.addRoot(); const r = A.rootIds[0]; A.addChild(r); A.addChild(r); const c = A.nodes.get(r).children[0]; A.addChild(c);
+  A.renderDocAll();
+  A.saveJSON(); const doc0 = stable(A.serializeAll()), h0 = A.undoStack.length;
+  const px = A.rowPitch() * A.docView.scale * A.PX_PER_MM * A.dzoom;
+  // DOM giả: svg.getBoundingClientRect().top = 0 nên clientY = toạ độ trang. yOf(row) = tâm box ở hàng row (px màn hình)
+  const yOf = (row) => (A.docView.ty + A.docView.scale * (row * A.rowPitch() + A.DBOX.h / 2)) * A.PX_PER_MM * A.dzoom;
+  const rowC = A.docView.pos.get(c).row, y0 = yOf(rowC), ev = (dy) => ({ clientY: y0 + dy });
+  const d = A.startRowDrag(c, ev(0));
+  A.moveRowDrag(d, ev(2));                                                 // dưới ngưỡng 6px: chưa bắt đầu
+  const notYet = d.moved === false && A.docRowDrag === null;
+  A.moveRowDrag(d, { clientY: yOf(rowC + 1) + 1 });                       // kéo xuống một hàng
+  const s1 = { preview: A.docRowDrag && A.docRowDrag.shift, row: A.docView.pos.get(c).row, childRow: A.docView.pos.get(A.nodes.get(c).children[0]).row, docSame: stable(A.serializeAll()) === doc0, dirty: A.dirty, h: A.undoStack.length };
+  A.moveRowDrag(d, { clientY: yOf(rowC + 2) + 1 });                       // hai hàng
+  const s2 = { preview: A.docRowDrag.shift, row: A.docView.pos.get(c).row, docSame: stable(A.serializeAll()) === doc0, dirty: A.dirty, h: A.undoStack.length };
+  A.endRowDrag(d);
+  const done = { shift: A.nodes.get(c).rowShift, row: A.docView.pos.get(c).row, dirty: A.dirty, h: A.undoStack.length, drag: A.docRowDrag, inv: A.checkInvariants().length };
+  A.undo();
+  const undone = { same: stable(A.serializeAll()) === doc0, h: A.undoStack.length, row: A.docView.pos.get(c).row };
+  check('REGRESSION (review 4): during a drag only the preview moves (document byte-identical, not dirty, no undo entry); release commits ONE undo step, dirty after Save; undo restores the whole document',
+    notYet && s1.preview === 1 && s1.row === rowC + 1 && s1.childRow === rowC + 2 && s1.docSame && !s1.dirty && s1.h === h0 && s2.preview === 2 && s2.row === rowC + 2 && s2.docSame && !s2.dirty && s2.h === h0
+    && done.shift === 2 && done.row === rowC + 2 && done.dirty === true && done.h === h0 + 1 && done.drag === null && done.inv === 0 && undone.same && undone.h === h0 && undone.row === rowC, JSON.stringify({ notYet, s1, s2, done, undone, px }));
+  A.dirty = false;
+  const d2 = A.startRowDrag(c, ev(0)); A.moveRowDrag(d2, { clientY: yOf(rowC + 2) + 1 }); A.moveRowDrag(d2, ev(7)); A.endRowDrag(d2);
+  const back = { same: stable(A.serializeAll()) === doc0, dirty: A.dirty, h: A.undoStack.length, drag: A.docRowDrag };
+  const d3 = A.startRowDrag(c, ev(0)); A.moveRowDrag(d3, { clientY: yOf(rowC + 2) + 1 }); const mid3 = A.docView.pos.get(c).row; A.cancelRowDrag(d3);
+  const cancelled = { mid3, same: stable(A.serializeAll()) === doc0, dirty: A.dirty, h: A.undoStack.length, drag: A.docRowDrag, row: A.docView.pos.get(c).row };
+  const d4 = A.startRowDrag(c, ev(0)); A.endRowDrag(d4); A.cancelRowDrag(d4);
+  const untouched = { same: stable(A.serializeAll()) === doc0, dirty: A.dirty, h: A.undoStack.length };
+  check('drag back to the original row, pointercancel mid-drag, or a click without movement write nothing (document, dirty and history untouched)',
+    back.same && !back.dirty && back.h === h0 && back.drag === null && cancelled.mid3 === rowC + 2 && cancelled.same && !cancelled.dirty && cancelled.h === h0 && cancelled.drag === null && cancelled.row === rowC && untouched.same && !untouched.dirty && untouched.h === h0, JSON.stringify({ back, cancelled, untouched }));
+}
+
+// ---------- Review 4 / R4: svgAttrOk giải mã escape CSS; fill/stroke chỉ nhận danh sách giá trị cho phép ----------
+{
+  const A = loadApp();
+  const ok = (n, v) => A.svgAttrOk(n, v);
+  const rejected = ['u\\72l(//x)', 'u\\00072l(//x)', 'u\\72 l(//x)', 'url(//x)', 'url(http://x)', 'url("//x")', '\\75rl(#g) url(//x)', 'url(#g)url(//x)', 'expression(1)', 'javascript:1', 'u\\72l(#g)x;'];
+  const accepted = ['#fff', '#0F0F0F', '#00ff0080', 'red', 'none', 'currentColor', 'transparent', 'inherit', 'rgb(1, 2, 3)', 'rgba(1,2,3,.5)', 'hsl(10, 50%, 50%)', 'url(#g)', 'url(#g) none', 'url(#g) #f00', 'u\\72l(#g)'];
+  const badR = rejected.filter(v => ok('fill', v) || ok('stroke', v) || ok('stop-color', v));
+  const badA = accepted.filter(v => !ok('fill', v) || !ok('stroke', v));
+  check('svgAttrOk on paint attributes: CSS escapes are decoded before matching (u\\72l( is url(); only colours / none / currentColor / url(#id) pass; every external or escaped url() form is rejected', badR.length === 0 && badA.length === 0, 'rejected-but-passed=' + JSON.stringify(badR) + ' accepted-but-failed=' + JSON.stringify(badA));
+  check('svgAttrOk generic attributes: escaped javascript: / url( still rejected; on* never; href only #id', !ok('x', 'java\\73 cript:1') && !ok('filter', 'u\\72l(//x)') && !ok('onload', '1') && !ok('href', 'https://x') && ok('href', '#g') && ok('xlink:href', '#g') && ok('x', '10') && ok('transform', 'rotate(10)'));
+  check('cssUnescape: hex escapes with optional trailing space and backslash-char escapes', A.cssUnescape('u\\72l(') === 'url(' && A.cssUnescape('u\\00072 l(') === 'url(' && A.cssUnescape('a\\:b') === 'a:b');
+}
+
+// ---------- Review 4 / R3: parsePaste(txt, header) — lựa chọn của người dùng thắng phép đoán ----------
+{
+  const A = loadApp();
+  const txt = 'Code\tFirst fund\tSEA\nVN\tVietnam Fund\tSEA';
+  check('header: undefined guesses (Code → dropped), false keeps the row as data, true drops even a non-label first row',
+    A.parsePaste(txt).length === 1 && A.parsePaste(txt, false).length === 2 && A.parsePaste(txt, false)[0][0] === 'Code' && A.parsePaste('ID\tx\nVN\ty', true).length === 1 && A.parsePaste('ID\tx\nVN\ty', true)[0][0] === 'VN' && A.parsePaste('', true).length === 0);
+  const ck = A.stubEl(), ta = A.stubEl(); ta.value = '\n  \nMã FC\tTên\nF1\tx'; A.$ = (id) => id === 'ck' ? ck : id === 'ta' ? ta : A.stubEl();
+  A.guessHeaderBox('ta', 'ck'); const g1 = ck.checked === true && ck.dataset.touched === '' && A.headerChoice('ck') === undefined;
+  ck.checked = false; ck.dataset.touched = '1'; const g2 = A.headerChoice('ck') === false;
+  ta.value = 'FC001\tx'; A.guessHeaderBox('ta', 'ck'); const g3 = ck.checked === false && A.headerChoice('ck') === undefined;
+  check('guessHeaderBox ticks the checkbox from the first non-empty line and resets "touched"; headerChoice returns the user choice only after they clicked', g1 && g2 && g3);
+}
+
 // ---------- F6: ID quá 15 chữ số bị coi là không hợp lệ -> cấp mới, không ghi đè ----------
 {
   const A = loadApp();

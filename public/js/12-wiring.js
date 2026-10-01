@@ -186,6 +186,10 @@ $('bPaste').onclick  = function(){
   $('pasteNotes').hidden = true;
 };
 $('bPasteGo').onclick     = function(){ importPaste($('pasteTa').value); };
+$('pasteTa').oninput      = function(){ guessHeaderBox('pasteTa', 'pasteHdr'); };        // app đoán, người dùng có thể sửa
+$('pasteHdr').onclick     = function(){ this.dataset.touched = '1'; };
+$('pasteTaGrp').oninput   = function(){ guessHeaderBox('pasteTaGrp', 'pasteHdrGrp'); };
+$('pasteHdrGrp').onclick  = function(){ this.dataset.touched = '1'; };
 $('bPasteCancel').onclick = function(){ $('pasteTa').value=''; $('pasteBox').style.display='none'; };
 
 // Copy 2 bảng nhập liệu ra TSV (dán thẳng vào Excel) + dán nhóm FCG từ Excel
@@ -305,9 +309,8 @@ wireCollapse('tglDPage', 'dPageBody', 'dPageSec');
     e.preventDefault(); e.stopPropagation();
   });
   host.addEventListener('pointermove', function(e){ if (drag) moveRowDrag(drag, e); });
-  function upBox(){ if (!drag) return; var d = drag; drag = null; endRowDrag(d); }
-  host.addEventListener('pointerup', upBox);
-  host.addEventListener('pointercancel', upBox);
+  host.addEventListener('pointerup', function(){ if (!drag) return; var d = drag; drag = null; endRowDrag(d); });
+  host.addEventListener('pointercancel', function(){ if (!drag) return; var d = drag; drag = null; cancelRowDrag(d); });   // huỷ = không ghi
   host.addEventListener('dblclick', function(e){ var box = e.target.closest('.dbox'); if (box) select(box.getAttribute('data-id'), true); });
   wrap.addEventListener('pointerdown', function(e){
     if (e.button !== 0 || e.target.closest('.dbox')) return;

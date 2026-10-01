@@ -28,7 +28,8 @@ Quy tắc bất di bất dịch:
 1. **Không nơi nào sửa state ngoài `mutate`.** Nhờ vậy undo, cờ dirty (cảnh báo đóng tab) và vẽ lại luôn đi cùng nhau;
    lỗi "Save rồi gõ tiếp đúng ô cũ không được cảnh báo" không thể tái diễn. Một batch dán Excel lỗi giữa chừng không để lại nửa
    dữ liệu: document được khôi phục, còn history/dirty chưa hề bị đụng vì chỉ ghi sau khi thành công (stack đầy 60 cũng không mất mốc cũ nhất).
-   Ngoại lệ có chủ ý: kéo box đổi hàng gọi mutate ở bước đầu, các bước sau chỉ đổi `rowShift` và vẽ (một lượt kéo = một undo).
+   Kéo box đổi hàng là một **gesture**: trong lúc kéo chỉ đổi vị trí xem trước trong view-state (`docRowDrag.shift`, `rowShiftOf`)
+   và vẽ lại, document không đổi; thả chuột mới gọi đúng một `mutate` (một bước Undo, dirty); thả về chỗ cũ không ghi gì; `pointercancel` bỏ xem trước.
 1b. **Getter chỉ đọc, renderer không được đổi document.** `curGrid()` trả grid của CIG đang chọn hoặc grid Chung; muốn sửa phải
    qua `ownGrid()` (chép Chung ở lần sửa đầu) bên trong mutate. Test "render không đổi document" chạy renderer thật trên DOM giả.
 2. **Tab ẩn không được vẽ.** Thao tác ở sơ đồ với 2.000 FC không dựng lại bảng FC hay bảng luồng duyệt đang ẩn.
@@ -61,7 +62,8 @@ bỏ dấu nháy chống công thức mà `q()` thêm, kể cả sau khoảng tr
 → `mergeGroupRows` / `mergeFcRows` (thuần, chỉ đụng state, index bằng `Map`) → vỏ DOM `importGrpPaste` / `importPaste` → `finishPaste`.
 Tên chỉ dùng để khớp khi **duy nhất**; nhóm khớp theo **mã** trước. Dòng không khớp: dòng mới để trống, dòng cập nhật giữ người cũ, và
 ghi chú nói đúng điều đã xảy ra; danh sách đầy đủ hiện trong hộp dán (toast chỉ tóm tắt). Header chỉ nhận khi ô đầu khớp trọn một nhãn
-thật ("Mã FCG", "FCG code", "Mã", "Code"…); "ID", "FC", "FCG" là mã hợp lệ nên là dữ liệu.
+thật ("Mã FCG", "FCG code", "Mã", "Code"…) và kết quả đoán hiện ở checkbox "Dòng đầu là tiêu đề" cạnh hộp dán; người dùng sửa checkbox
+thì lựa chọn đó thắng (`parsePaste(txt, header)`). "ID", "FC", "FCG" là mã hợp lệ nên không bao giờ tự đoán là header.
 `groupsTsv` / `fcsTsv` xuất cùng cột với định dạng dán (FC có thêm cột mã nhóm) nên copy ở app rồi dán lại ra đúng dữ liệu gốc.
 
 ## Bảng luồng duyệt lớn
@@ -72,7 +74,8 @@ thật ("Mã FCG", "FCG code", "Mã", "Code"…); "ID", "FC", "FCG" là mã hợ
 ## Logo SVG dán vào
 
 `docLogoSvg` lọc theo **danh sách cho phép**: chỉ phần tử vẽ tĩnh trong namespace SVG; `<a>` bóc vỏ giữ con; `href` chỉ nhận `#id`;
-bỏ `on*`, `javascript:`/`data:`/`url()` ra ngoài — kể cả giá trị fill/stroke lấy từ `<style>` class (đi qua cùng `svgAttrOk`). Lý do: URL parser bỏ tab/xuống dòng nên `java<tab>script:` vẫn là `javascript:`,
+bỏ `on*`; fill/stroke/stop-color chỉ nhận màu, none, currentColor, `url(#id)` (danh sách giá trị cho phép, sau khi giải mã escape CSS
+như `u\72l(`); `style=""` được tách thành thuộc tính qua cùng luật rồi bỏ; giá trị từ `<style>` class cũng đi qua `svgAttrOk`. Lý do: URL parser bỏ tab/xuống dòng nên `java<tab>script:` vẫn là `javascript:`,
 `<a>` trong SVG kích hoạt được bằng Enter, `<image href="https://…">` tải tài nguyên ngoài. Test trình duyệt dùng payload vô hại.
 
 ## Module và thứ tự nạp

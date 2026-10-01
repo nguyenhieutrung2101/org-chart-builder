@@ -284,7 +284,8 @@ function isHeaderRow(row){                                 // row: mảng ô (pa
 // tab và xuống dòng bên trong ngoặc thuộc về ô; CRLF; ô cuối rỗng. Bỏ dấu nháy đơn chống công thức mà q() thêm (chỉ khi đứng trước = + - @),
 // nên copy ở app rồi dán lại ra đúng dữ liệu gốc (trừ dấu nháy đơn gốc đứng trước ký tự công thức — hợp đồng giống Excel).
 // Ngoặc kép mở mà không đóng -> ném lỗi nêu dòng, để không nhập nhầm nhiều dòng thành một ô. Bỏ dòng tiêu đề. Thuần — test Node gọi trực tiếp.
-function parsePaste(txt){
+// header: true/false = quyết định của người dùng (checkbox); bỏ trống = tự đoán bằng isHeaderRow (nhãn thật ở ô đầu).
+function parsePaste(txt, header){
   var s = String(txt || ''), rows = [], row = [], cell = '', inQ = false, atStart = true, line = 1, qLine = 0;
   function endCell(){ row.push(unguard(cell.trim()).trim()); cell = ''; atStart = true; }
   function endRow(){ endCell(); if (row.some(function(c){ return c; })) rows.push(row); row = []; }
@@ -303,9 +304,16 @@ function parsePaste(txt){
   }
   if (inQ) throw new Error(tf('errTsvQuote', { line: qLine }));
   endRow();
-  if (rows.length && isHeaderRow(rows[0])) rows.shift();
+  if (rows.length && (header == null ? isHeaderRow(rows[0]) : header)) rows.shift();
   return rows;
 }
+// Checkbox "Dòng đầu là tiêu đề" cạnh hộp dán: app đoán theo ô đầu và hiện kết quả đoán; người dùng sửa tay thì lấy lựa chọn đó
+function guessHeaderBox(taId, ckId){
+  var ck = $(ckId); if (!ck) return;
+  var first = String($(taId).value || '').split(/\r?\n/).filter(function(l){ return l.trim(); })[0] || '';
+  ck.checked = isHeaderRow(first); ck.dataset.touched = '';
+}
+function headerChoice(ckId){ var ck = $(ckId); return ck && ck.dataset.touched ? ck.checked : undefined; }
 function unguard(c){ return /^'\s*[=+\-@]/.test(c) ? c.slice(1) : c; }   // nghịch đảo của q(): ' (+ khoảng trắng) + ký tự công thức -> bỏ dấu nháy
 function normKey(v){ return String(v || '').trim().toLowerCase(); }
 // key chuẩn hoá -> MẢNG mục trùng key. Chỉ tự gán khi đúng một mục; trùng thì để trống và báo — không còn "mục sau đè mục trước"
@@ -383,14 +391,14 @@ function finishPaste(taId, boxId, notesId, st, summary){
 }
 function importGrpPaste(txt){
   var rows;
-  try { rows = parsePaste(txt); } catch(e){ msg(e.message); return; }          // ngoặc kép chưa đóng: báo dòng, không nhập gì
+  try { rows = parsePaste(txt, headerChoice('pasteHdrGrp')); } catch(e){ msg(e.message); return; }          // ngoặc kép chưa đóng: báo dòng, không nhập gì
   if (!rows.length){ msg(t('msgNothingImport')); return; }
   var st = mutate(null, function(){ return mergeGroupRows(rows); });     // lỗi giữa batch -> mutate rollback, không còn nửa dữ liệu
   finishPaste('pasteTaGrp', 'pasteBoxGrp', 'pasteNotesGrp', st, tf('msgGrpImported', { n: st.added, u: st.updated }));
 }
 function importPaste(txt){
   var rows;
-  try { rows = parsePaste(txt); } catch(e){ msg(e.message); return; }
+  try { rows = parsePaste(txt, headerChoice('pasteHdr')); } catch(e){ msg(e.message); return; }
   if (!rows.length){ msg(t('msgNothingImport')); return; }
   var st = mutate(null, function(){ return mergeFcRows(rows); });
   finishPaste('pasteTa', 'pasteBox', 'pasteNotes', st, tf('msgImported', { n: st.added }) + (st.groups ? tf('msgImportedGroups', { g: st.groups }) : ''));
